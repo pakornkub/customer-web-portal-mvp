@@ -1,0 +1,5 @@
+{
+  "name": "Customer Web Portal MVP",
+  "description": "A comprehensive order management system for UBE Japan and Main Traders with a step-based workflow, role-based access, and simulated CRM integration.",
+  "requestFramePermissions": []
+}
