@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Database, Trash2, AlertTriangle, RotateCcw } from 'lucide-react';
 import Swal from '../utils/swal';
+import { useStore } from '../store';
 
 export const ClearData: React.FC = () => {
   const navigate = useNavigate();
   const [clearing, setClearing] = useState(false);
+  const resetStore = useStore((state) => state.resetStore);
 
   const handleClearStorage = async () => {
     const result = await Swal.fire({
@@ -34,9 +36,10 @@ export const ClearData: React.FC = () => {
     if (result.isConfirmed) {
       setClearing(true);
 
-      // Clear localStorage
+      // Clear persisted state and reset in-memory store
       await new Promise((resolve) => setTimeout(resolve, 1500));
-      localStorage.clear();
+      useStore.persist.clearStorage();
+      resetStore();
 
       Swal.fire({
         icon: 'success',

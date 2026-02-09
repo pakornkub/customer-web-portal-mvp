@@ -49,6 +49,7 @@ interface AppState {
   updateUserPermissions: (userId: string, perms: DocumentType[]) => void;
   addUser: (user: Omit<User, 'id'>) => void;
   runScheduledChecks: () => void;
+  resetStore: () => void;
 }
 
 const INITIAL_COMPANIES: CustomerCompany[] = [
@@ -127,18 +128,26 @@ const INITIAL_MASTER: AppState['masterData'] = {
   ]
 };
 
+const getInitialDataState = () => ({
+  theme: 'light' as const,
+  currentUser: null as User | null,
+  users: [...INITIAL_USERS],
+  companies: [...INITIAL_COMPANIES],
+  orders: [] as Order[],
+  integrationLogs: [] as IntegrationLog[],
+  masterData: {
+    destinations: [...INITIAL_MASTER.destinations],
+    terms: [...INITIAL_MASTER.terms],
+    grades: [...INITIAL_MASTER.grades]
+  },
+  notifications: [] as NotificationLog[],
+  activities: [] as ActivityLog[]
+});
+
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
-      theme: 'light',
-      currentUser: null,
-      users: INITIAL_USERS,
-      companies: INITIAL_COMPANIES,
-      orders: [],
-      integrationLogs: [],
-      masterData: INITIAL_MASTER,
-      notifications: [],
-      activities: [],
+      ...getInitialDataState(),
 
       toggleTheme: () =>
         set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
@@ -298,6 +307,10 @@ export const useStore = create<AppState>()(
             `[Scheduler] Sent ${urgentCount} urgent notifications to CS`
           );
         }
+      },
+
+      resetStore: () => {
+        set(getInitialDataState());
       }
     }),
     { name: 'ube-portal-storage-v3' }
