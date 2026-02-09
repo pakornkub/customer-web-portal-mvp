@@ -5,17 +5,17 @@ import {
   Plus,
   Trash2,
   Globe,
-  Truck,
   Package,
   CreditCard,
   X,
   Check
 } from 'lucide-react';
-import Swal from 'sweetalert2';
+import Swal from '../utils/swal';
 
 export const MasterData: React.FC = () => {
   const { masterData, updateMasterData, companies } = useStore();
-  const [activeTab, setActiveTab] = useState<keyof typeof masterData>('shipTo');
+  const [activeTab, setActiveTab] =
+    useState<keyof typeof masterData>('destinations');
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -104,7 +104,6 @@ export const MasterData: React.FC = () => {
   };
 
   const tabs = [
-    { id: 'shipTo', label: 'Ship To', icon: Truck },
     { id: 'destinations', label: 'Destinations', icon: Globe },
     { id: 'terms', label: 'Terms', icon: CreditCard },
     { id: 'grades', label: 'Grades', icon: Package }

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useStore } from '../store';
 import { OrderStatus, Role } from '../types';
-import { Link } from 'react-router-dom';
-import Swal from 'sweetalert2';
+import { Link, useNavigate } from 'react-router-dom';
+import Swal from '../utils/swal';
 import {
   Search,
   Filter,
@@ -15,13 +15,88 @@ import {
   Package,
   Plus,
   Edit,
-  Trash2
+  Trash2,
+  Upload
 } from 'lucide-react';
 
+const CSV_HEADERS = [
+  'note',
+  'pono',
+  'destinationid',
+  'termid',
+  'gradeid',
+  'requestetd',
+  'requesteta',
+  'qty',
+  'asap',
+  'otherrequested'
+];
+
+const TRUTHY_VALUES = new Set(['true', '1', 'yes', 'y']);
+const FALSY_VALUES = new Set(['false', '0', 'no', 'n', '']);
+
+const normalizeHeader = (value: string) =>
+  value
+    .replace(/^\uFEFF/, '')
+    .trim()
+    .toLowerCase();
+
+const parseCsv = (text: string) => {
+  const rows: string[][] = [];
+  let current = '';
+  let row: string[] = [];
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i += 1;
+        continue;
+      }
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (char === ',' && !inQuotes) {
+      row.push(current);
+      current = '';
+      continue;
+    }
+
+    if (char === '\n' && !inQuotes) {
+      row.push(current);
+      rows.push(row);
+      row = [];
+      current = '';
+      continue;
+    }
+
+    if (char === '\r') {
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current.length > 0 || row.length > 0) {
+    row.push(current);
+    rows.push(row);
+  }
+
+  return rows;
+};
+
 export const Orders: React.FC = () => {
-  const { orders, currentUser, deleteOrder, addActivity } = useStore();
+  const { orders, currentUser, deleteOrder, addActivity, masterData } =
+    useStore();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -61,6 +136,211 @@ export const Orders: React.FC = () => {
     }
   };
 
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) return;
+
+    const text = await file.text();
+    const rows = parseCsv(text).filter((row) =>
+      row.some((cell) => cell.trim().length > 0)
+    );
+
+    if (rows.length < 2) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Import Failed',
+        text: 'CSV must include a header row and at least one data row.'
+      });
+      return;
+    }
+
+    const headers = rows[0].map(normalizeHeader);
+    const headerIndex = headers.reduce<Record<string, number>>((acc, h, i) => {
+      acc[h] = i;
+      return acc;
+    }, {});
+
+    const missingHeaders = CSV_HEADERS.filter(
+      (header) => !(header in headerIndex)
+    );
+    if (missingHeaders.length > 0) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Import Failed',
+        text: `Missing CSV columns: ${missingHeaders.join(', ')}`
+      });
+      return;
+    }
+
+    const companyId = currentUser?.customerCompanyId || 'C001';
+    const allowedGrades = new Set(
+      masterData.grades
+        .filter((g) => g.customerCompanyId.includes(companyId))
+        .map((g) => g.id)
+    );
+    const allowedDest = new Set(
+      masterData.destinations
+        .filter((d) => d.customerCompanyId.includes(companyId))
+        .map((d) => d.id)
+    );
+    const allowedTerms = new Set(
+      masterData.terms
+        .filter((t) => t.customerCompanyId.includes(companyId))
+        .map((t) => t.id)
+    );
+
+    const importErrors: string[] = [];
+    const items = rows.slice(1).reduce(
+      (acc, row, index) => {
+        const lineNo = index + 2;
+        const getCell = (key: string) => (row[headerIndex[key]] || '').trim();
+
+        const poNo = getCell('pono');
+        const destinationId = getCell('destinationid');
+        const termId = getCell('termid');
+        const gradeId = getCell('gradeid');
+        const requestETD = getCell('requestetd');
+        const requestETA = getCell('requesteta');
+        const qtyRaw = getCell('qty');
+        const asapRaw = getCell('asap').toLowerCase();
+        const otherRequested = getCell('otherrequested');
+        const note = getCell('note');
+
+        const qty = Number(qtyRaw);
+        const asap = TRUTHY_VALUES.has(asapRaw)
+          ? true
+          : FALSY_VALUES.has(asapRaw)
+            ? false
+            : null;
+
+        if (asap === null) {
+          importErrors.push(`Line ${lineNo}: Invalid asap`);
+          return acc;
+        }
+
+        const missingFields = [
+          !poNo && 'poNo',
+          !destinationId && 'destinationId',
+          !termId && 'termId',
+          !gradeId && 'gradeId',
+          !qtyRaw && 'qty'
+        ].filter((value): value is string => Boolean(value));
+
+        if (missingFields.length > 0) {
+          importErrors.push(
+            `Line ${lineNo}: Missing/invalid ${missingFields.join(', ')}`
+          );
+          return acc;
+        }
+
+        if (!allowedGrades.has(gradeId)) {
+          importErrors.push(`Line ${lineNo}: Unknown gradeId ${gradeId}`);
+          return acc;
+        }
+        if (!allowedDest.has(destinationId)) {
+          importErrors.push(
+            `Line ${lineNo}: Unknown destinationId ${destinationId}`
+          );
+          return acc;
+        }
+        if (!allowedTerms.has(termId)) {
+          importErrors.push(`Line ${lineNo}: Unknown termId ${termId}`);
+          return acc;
+        }
+
+        const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+        if (!asap && !requestETD && !requestETA) {
+          importErrors.push(`Line ${lineNo}: Missing requestETD or requestETA`);
+          return acc;
+        }
+        if (requestETD && !datePattern.test(requestETD)) {
+          importErrors.push(`Line ${lineNo}: Invalid requestETD`);
+          return acc;
+        }
+        if (requestETA && !datePattern.test(requestETA)) {
+          importErrors.push(`Line ${lineNo}: Invalid requestETA`);
+          return acc;
+        }
+
+        if (Number.isNaN(qty) || qty <= 0) {
+          importErrors.push(`Line ${lineNo}: Invalid qty`);
+          return acc;
+        }
+
+        acc.items.push({
+          poNo,
+          destinationId,
+          termId,
+          gradeId,
+          requestETD: requestETD || '',
+          requestETA: requestETA || '',
+          qty,
+          asap,
+          otherRequested
+        });
+
+        if (!acc.note && note) {
+          acc.note = note;
+        }
+
+        return acc;
+      },
+      {
+        items: [] as Array<{
+          poNo: string;
+          destinationId: string;
+          termId: string;
+          gradeId: string;
+          requestETD: string;
+          requestETA: string;
+          qty: number;
+          asap: boolean;
+          otherRequested: string;
+        }>,
+        note: ''
+      }
+    );
+
+    if (items.items.length === 0) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Import Failed',
+        text: 'No valid rows were found in the CSV file.'
+      });
+      return;
+    }
+
+    if (importErrors.length > 0) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Some rows were skipped',
+        html: `<div style="text-align:left">${importErrors
+          .slice(0, 12)
+          .map((msg) => `<div>${msg}</div>`)
+          .join('')}${
+          importErrors.length > 12
+            ? `<div>...and ${importErrors.length - 12} more</div>`
+            : ''
+        }</div>`
+      });
+    }
+
+    navigate('/orders/create', {
+      state: {
+        importItems: items.items,
+        importNote: items.note
+      }
+    });
+  };
+
   const filteredOrders = orders.filter((o) => {
     const matchesUser = currentUser?.customerCompanyId
       ? o.customerCompanyId === currentUser.customerCompanyId
@@ -86,13 +366,30 @@ export const Orders: React.FC = () => {
         {[Role.MAIN_TRADER, Role.UBE_JAPAN, Role.ADMIN].includes(
           currentUser?.role!
         ) && (
-          <Link
-            to="/orders/create"
-            className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 dark:shadow-indigo-500/10 transition-all flex items-center gap-2 shrink-0"
-          >
-            <Plus size={18} />
-            New Order
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleImportFile}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={handleImportClick}
+              className="bg-white text-indigo-700 px-6 py-3 rounded-xl font-bold hover:bg-indigo-50 border border-indigo-200 shadow-sm transition-all flex items-center gap-2"
+            >
+              <Upload size={18} />
+              Import CSV
+            </button>
+            <Link
+              to="/orders/create"
+              className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 dark:shadow-indigo-500/10 transition-all flex items-center gap-2"
+            >
+              <Plus size={18} />
+              New Order
+            </Link>
+          </div>
         )}
       </div>
 
@@ -119,7 +416,7 @@ export const Orders: React.FC = () => {
             <option value="ALL">All Status</option>
             {Object.values(OrderStatus).map((status) => (
               <option key={status} value={status}>
-                {status.replace('_', ' ')}
+                {status.replace(/_/g, ' ')}
               </option>
             ))}
           </select>
@@ -176,9 +473,12 @@ export const Orders: React.FC = () => {
                             ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900'
                             : order.status === OrderStatus.CONFIRMED
                               ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900'
-                              : order.status === OrderStatus.VESSEL_BOOKED
+                              : order.status === OrderStatus.VESSEL_SCHEDULED
                                 ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-900'
-                                : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900'
+                                : order.status ===
+                                    OrderStatus.RECEIVED_ACTUAL_PO
+                                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900'
+                                  : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900'
                       }`}
                     >
                       {order.status === OrderStatus.DRAFT && (
@@ -190,20 +490,20 @@ export const Orders: React.FC = () => {
                       {order.status === OrderStatus.CONFIRMED && (
                         <CheckCircle2 size={12} />
                       )}
-                      {order.status === OrderStatus.VESSEL_BOOKED && (
+                      {order.status === OrderStatus.VESSEL_SCHEDULED && (
                         <Ship size={12} />
                       )}
                       {order.status === OrderStatus.VESSEL_DEPARTED && (
                         <Package size={12} />
                       )}
-                      {order.status === OrderStatus.RECEIVED_PO && (
+                      {order.status === OrderStatus.RECEIVED_ACTUAL_PO && (
                         <FileText size={12} />
                       )}
-                      {order.status.replace('_', ' ')}
+                      {order.status.replace(/_/g, ' ')}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {order.status === OrderStatus.RECEIVED_PO ||
+                    {order.status === OrderStatus.RECEIVED_ACTUAL_PO ||
                     order.status === OrderStatus.VESSEL_DEPARTED ? (
                       <div className="flex gap-2">
                         <span

@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useStore } from '../store';
 import { Order, OrderStatus, Role } from '../types';
 import {
@@ -23,7 +23,6 @@ import * as z from 'zod';
 const itemSchema = z
   .object({
     poNo: z.string().min(1, 'Required'),
-    shipToId: z.string().min(1, 'Required'),
     destinationId: z.string().min(1, 'Required'),
     termId: z.string().min(1, 'Required'),
     gradeId: z.string().min(1, 'Required'),
@@ -33,30 +32,20 @@ const itemSchema = z
     asap: z.boolean(),
     otherRequested: z.string().optional().or(z.literal(''))
   })
-  .refine(
-    (data) => {
-      if (!data.asap) {
-        return data.requestETD && data.requestETD.length > 0;
-      }
-      return true;
-    },
-    {
-      message: 'Required',
-      path: ['requestETD']
+  .superRefine((data, ctx) => {
+    if (!data.asap && !data.requestETD && !data.requestETA) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Required',
+        path: ['requestETD']
+      });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Required',
+        path: ['requestETA']
+      });
     }
-  )
-  .refine(
-    (data) => {
-      if (!data.asap) {
-        return data.requestETA && data.requestETA.length > 0;
-      }
-      return true;
-    },
-    {
-      message: 'Required',
-      path: ['requestETA']
-    }
-  );
+  });
 
 const formSchema = z.object({
   note: z.string().optional().or(z.literal('')),
@@ -64,6 +53,21 @@ const formSchema = z.object({
 });
 
 type FormData = z.infer<typeof formSchema>;
+
+type ImportState = {
+  importItems?: Array<{
+    poNo: string;
+    destinationId: string;
+    termId: string;
+    gradeId: string;
+    requestETD: string;
+    requestETA: string;
+    qty: number;
+    asap: boolean;
+    otherRequested?: string;
+  }>;
+  importNote?: string;
+};
 
 export const CreateOrder: React.FC = () => {
   const {
@@ -76,11 +80,13 @@ export const CreateOrder: React.FC = () => {
     companies
   } = useStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const { orderNo } = useParams();
   const isEditMode = !!orderNo;
   const existingOrder = isEditMode
     ? orders.find((o) => o.orderNo === orderNo)
     : null;
+  const importState = location.state as ImportState | null;
 
   const today = useMemo(
     () =>
@@ -107,7 +113,6 @@ export const CreateOrder: React.FC = () => {
       items: [
         {
           poNo: '',
-          shipToId: '',
           destinationId: '',
           termId: '',
           gradeId: '',
@@ -128,7 +133,6 @@ export const CreateOrder: React.FC = () => {
         note: existingOrder.note,
         items: existingOrder.items.map((item) => ({
           poNo: item.poNo,
-          shipToId: item.shipToId,
           destinationId: item.destinationId,
           termId: item.termId,
           gradeId: item.gradeId,
@@ -141,6 +145,19 @@ export const CreateOrder: React.FC = () => {
       });
     }
   }, [isEditMode, existingOrder, reset]);
+
+  useEffect(() => {
+    if (isEditMode) return;
+    if (!importState?.importItems?.length) return;
+
+    reset({
+      note: importState.importNote || '',
+      items: importState.importItems.map((item) => ({
+        ...item,
+        otherRequested: item.otherRequested || ''
+      }))
+    });
+  }, [importState, isEditMode, reset]);
 
   const { fields, append, remove, move, insert } = useFieldArray({
     control,
@@ -217,12 +234,6 @@ export const CreateOrder: React.FC = () => {
     const ids = Array.isArray(g.customerCompanyId)
       ? g.customerCompanyId
       : [g.customerCompanyId];
-    return ids.includes(companyId);
-  });
-  const myShipTo = masterData.shipTo.filter((s) => {
-    const ids = Array.isArray(s.customerCompanyId)
-      ? s.customerCompanyId
-      : [s.customerCompanyId];
     return ids.includes(companyId);
   });
   const myDest = masterData.destinations.filter((d) => {
@@ -366,7 +377,6 @@ export const CreateOrder: React.FC = () => {
             onClick={() =>
               append({
                 poNo: '',
-                shipToId: '',
                 destinationId: '',
                 termId: '',
                 gradeId: '',
@@ -395,9 +405,6 @@ export const CreateOrder: React.FC = () => {
                 </th>
                 <th className="min-w-[180px] text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide px-4 py-3">
                   Grade
-                </th>
-                <th className="min-w-[160px] text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide px-4 py-3">
-                  Origin
                 </th>
                 <th className="min-w-[160px] text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide px-4 py-3">
                   Dest.
@@ -470,19 +477,6 @@ export const CreateOrder: React.FC = () => {
                       >
                         <option value="">Select Grade</option>
                         {myGrades.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <select
-                        {...register(`items.${index}.shipToId` as const)}
-                        className={`shadcn-input h-8 border-slate-200 dark:border-slate-800 ${rowError?.shipToId ? 'border-rose-400' : ''}`}
-                      >
-                        <option value="">Select Origin</option>
-                        {myShipTo.map((s) => (
                           <option key={s.id} value={s.id}>
                             {s.name}
                           </option>
@@ -582,7 +576,7 @@ export const CreateOrder: React.FC = () => {
             <tfoot className="bg-slate-50/50 dark:bg-slate-950/50">
               <tr className="border-t-2 border-slate-100 dark:border-slate-800">
                 <td
-                  colSpan={6}
+                  colSpan={5}
                   className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase text-right tracking-widest"
                 >
                   Aggregate Consignment Volume

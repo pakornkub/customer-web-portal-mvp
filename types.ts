@@ -11,8 +11,8 @@ export enum OrderStatus {
   DRAFT = 'DRAFT',
   CREATED = 'CREATED',
   CONFIRMED = 'CONFIRMED',
-  VESSEL_BOOKED = 'VESSEL_BOOKED',
-  RECEIVED_PO = 'RECEIVED_PO',
+  VESSEL_SCHEDULED = 'VESSEL_SCHEDULED',
+  RECEIVED_ACTUAL_PO = 'RECEIVED_ACTUAL_PO',
   VESSEL_DEPARTED = 'VESSEL_DEPARTED'
 }
 
@@ -47,6 +47,7 @@ export interface OrderDocument {
   id: string;
   type: DocumentType;
   filename: string;
+  dataUrl?: string;
   uploadedBy: string;
   uploadedAt: string;
 }
@@ -54,7 +55,6 @@ export interface OrderDocument {
 export interface OrderItem {
   id: string;
   poNo: string;
-  shipToId: string;
   destinationId: string;
   termId: string;
   requestETD: string;

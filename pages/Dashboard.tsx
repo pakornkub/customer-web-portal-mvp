@@ -69,15 +69,23 @@ export const Dashboard: React.FC = () => {
 
   const stats = [
     {
-      title: 'Pending Review',
+      title: 'Draft',
+      value: filteredOrders.filter((o) => o.status === OrderStatus.DRAFT)
+        .length,
+      icon: FileText,
+      color: 'bg-slate-500',
+      trend: 12
+    },
+    {
+      title: 'Created',
       value: filteredOrders.filter((o) => o.status === OrderStatus.CREATED)
         .length,
       icon: Clock,
       color: 'bg-amber-500',
-      trend: 12
+      trend: 9
     },
     {
-      title: 'Confirmed Orders',
+      title: 'Confirmed',
       value: filteredOrders.filter((o) => o.status === OrderStatus.CONFIRMED)
         .length,
       icon: CheckCircle2,
@@ -85,16 +93,25 @@ export const Dashboard: React.FC = () => {
       trend: 8
     },
     {
-      title: 'Vessel Booked',
+      title: 'Vessel Scheduled',
       value: filteredOrders.filter(
-        (o) => o.status === OrderStatus.VESSEL_BOOKED
+        (o) => o.status === OrderStatus.VESSEL_SCHEDULED
       ).length,
       icon: Ship,
       color: 'bg-blue-500',
       trend: 5
     },
     {
-      title: 'Order Completed',
+      title: 'Received Actual PO',
+      value: filteredOrders.filter(
+        (o) => o.status === OrderStatus.RECEIVED_ACTUAL_PO
+      ).length,
+      icon: FileText,
+      color: 'bg-purple-500',
+      trend: 6
+    },
+    {
+      title: 'Departed',
       value: filteredOrders.filter(
         (o) => o.status === OrderStatus.VESSEL_DEPARTED
       ).length,
@@ -133,7 +150,7 @@ export const Dashboard: React.FC = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
         {stats.map((stat, i) => (
           <StatCard key={i} {...stat} />
         ))}
@@ -208,9 +225,11 @@ export const Dashboard: React.FC = () => {
                                 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900'
                                 : order.status === OrderStatus.CONFIRMED
                                   ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900'
-                                  : order.status === OrderStatus.VESSEL_BOOKED
+                                  : order.status ===
+                                      OrderStatus.VESSEL_SCHEDULED
                                     ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-900'
-                                    : order.status === OrderStatus.RECEIVED_PO
+                                    : order.status ===
+                                        OrderStatus.RECEIVED_ACTUAL_PO
                                       ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900'
                                       : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900'
                             }`}
@@ -221,16 +240,17 @@ export const Dashboard: React.FC = () => {
                             {order.status === OrderStatus.CONFIRMED && (
                               <CheckCircle2 size={12} />
                             )}
-                            {order.status === OrderStatus.VESSEL_BOOKED && (
+                            {order.status === OrderStatus.VESSEL_SCHEDULED && (
                               <Ship size={12} />
                             )}
                             {order.status === OrderStatus.VESSEL_DEPARTED && (
                               <Package size={12} />
                             )}
-                            {order.status === OrderStatus.RECEIVED_PO && (
+                            {order.status ===
+                              OrderStatus.RECEIVED_ACTUAL_PO && (
                               <FileText size={12} />
                             )}
-                            {order.status.replace('_', ' ')}
+                            {order.status.replace(/_/g, ' ')}
                           </span>
                         </td>
                       </tr>

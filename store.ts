@@ -21,7 +21,6 @@ interface AppState {
   orders: Order[];
   integrationLogs: IntegrationLog[];
   masterData: {
-    shipTo: MasterDataRecord[];
     destinations: MasterDataRecord[];
     terms: MasterDataRecord[];
     grades: MasterDataRecord[];
@@ -103,11 +102,6 @@ const INITIAL_USERS: User[] = [
 ];
 
 const INITIAL_MASTER: AppState['masterData'] = {
-  shipTo: [
-    { id: 'ST-BK', name: 'Port of Bangkok', customerCompanyId: ['C001'] },
-    { id: 'ST-LC', name: 'Port of Laem Chabang', customerCompanyId: ['C002'] },
-    { id: 'ST-BK2', name: 'PAT Warehouse', customerCompanyId: ['C001', 'C002'] }
-  ],
   destinations: [
     { id: 'DEST-TKY', name: 'Tokyo Port', customerCompanyId: ['C001'] },
     { id: 'DEST-SH', name: 'Shanghai Port', customerCompanyId: ['C002'] },
@@ -287,7 +281,7 @@ export const useStore = create<AppState>()(
           if (hasUrgentETA && order.status === OrderStatus.CONFIRMED) {
             urgentCount++;
             addNotification(
-              `URGENT: Order ${order.orderNo} has ASAP items with ETA within 30 days. Vessel booking required immediately.`,
+              `URGENT: Order ${order.orderNo} has ASAP items with ETA within 30 days. Vessel scheduling required immediately.`,
               Role.CS,
               'email'
             );

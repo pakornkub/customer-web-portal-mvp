@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Database, Trash2, AlertTriangle, RotateCcw } from 'lucide-react';
-import Swal from 'sweetalert2';
+import Swal from '../utils/swal';
 
 export const ClearData: React.FC = () => {
   const navigate = useNavigate();
@@ -41,13 +41,13 @@ export const ClearData: React.FC = () => {
       Swal.fire({
         icon: 'success',
         title: 'Data Cleared',
-        text: 'All data has been removed. The page will reload.',
+        text: 'All data has been removed. Redirecting to login.',
         timer: 2000,
         showConfirmButton: false
       });
 
       setTimeout(() => {
-        navigate('/');
+        navigate('/login');
       }, 2000);
     }
   };

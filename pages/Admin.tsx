@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../store';
 import { Role, DocumentType } from '../types';
 import { UserCog, Shield, Check, X, User, Plus, UserPlus } from 'lucide-react';
-import Swal from 'sweetalert2';
+import Swal from '../utils/swal';
 
 export const Admin: React.FC = () => {
   const { users, updateUserPermissions, addActivity, addUser, companies } =

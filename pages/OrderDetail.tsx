@@ -21,8 +21,75 @@ import {
   Save,
   Send
 } from 'lucide-react';
-import Swal from 'sweetalert2';
+import Swal from '../utils/swal';
+import {
+  getActualEtdRequiredAlert,
+  getMissingFieldsAlert,
+  getNoFilesSelectedAlert,
+  getPriceRequiredAlert
+} from '../utils/alertMessages';
 import { useEffect } from 'react';
+
+const escapePdfText = (value: string) =>
+  value.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+
+const buildSimplePdf = (
+  blocks: Array<{ fontSize: number; lines: string[] }>
+) => {
+  const contentLines = ['BT', '/F1 11 Tf', '50 760 Td', '14 TL'];
+  blocks.forEach((block, blockIndex) => {
+    if (blockIndex > 0) {
+      contentLines.push('T*');
+    }
+    contentLines.push(`/F1 ${block.fontSize} Tf`);
+    block.lines.forEach((line, lineIndex) => {
+      const prefix = blockIndex === 0 && lineIndex === 0 ? '' : 'T* ';
+      contentLines.push(`${prefix}(${escapePdfText(line)}) Tj`);
+    });
+  });
+  contentLines.push('ET');
+  const content = contentLines.join('\n');
+  const objects = [
+    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+    '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
+    `4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`,
+    '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj\n'
+  ];
+
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+  objects.forEach((obj) => {
+    offsets.push(pdf.length);
+    pdf += obj;
+  });
+
+  const xrefStart = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n`;
+  pdf += '0000000000 65535 f \n';
+  offsets.slice(1).forEach((offset) => {
+    pdf += `${offset.toString().padStart(10, '0')} 00000 n \n`;
+  });
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
+
+  return pdf.replace(/[^\x00-\x7F]/g, '?');
+};
+
+const createPoPdfDataUrl = (
+  blocks: Array<{ fontSize: number; lines: string[] }>
+) => {
+  const pdf = buildSimplePdf(blocks);
+  return `data:application/pdf;base64,${btoa(pdf)}`;
+};
+
+const triggerDownload = (dataUrl: string, filename: string) => {
+  const link = document.createElement('a');
+  link.href = dataUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
 export const OrderDetail: React.FC = () => {
   const { orderNo } = useParams();
@@ -34,7 +101,8 @@ export const OrderDetail: React.FC = () => {
     deleteOrder,
     addActivity,
     addNotification,
-    addIntegrationLog
+    addIntegrationLog,
+    companies
   } = useStore();
 
   const [processing, setProcessing] = useState(false);
@@ -58,6 +126,29 @@ export const OrderDetail: React.FC = () => {
   };
 
   const order = orders.find((o) => o.orderNo === orderNo);
+  const companyName =
+    companies.find((c) => c.id === order?.customerCompanyId)?.name ||
+    order?.customerCompanyId ||
+    'Unknown Customer';
+
+  const wrapText = (value: string, width: number) => {
+    const words = value.split(' ');
+    const lines: string[] = [];
+    let current = '';
+
+    words.forEach((word) => {
+      const next = current ? `${current} ${word}` : word;
+      if (next.length > width) {
+        if (current) lines.push(current);
+        current = word;
+      } else {
+        current = next;
+      }
+    });
+
+    if (current) lines.push(current);
+    return lines.length ? lines : [''];
+  };
 
   // Populate default values from saved data when order is loaded
   useEffect(() => {
@@ -98,12 +189,7 @@ export const OrderDetail: React.FC = () => {
     );
 
     if (missingPrices.length > 0) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Price Required',
-        text: `Please set price for all ${missingPrices.length} line item(s) before approving`,
-        confirmButtonColor: '#4F46E5'
-      });
+      Swal.fire(getPriceRequiredAlert(missingPrices.length));
       return;
     }
 
@@ -173,12 +259,7 @@ export const OrderDetail: React.FC = () => {
     const hasAllDates = order.items.every((item) => etdDates[item.id]);
 
     if (!hasAllDates) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'ETD Required',
-        text: 'Please set actual ETD date for all line items',
-        confirmButtonColor: '#4F46E5'
-      });
+      Swal.fire(getActualEtdRequiredAlert(order.items.length));
       return;
     }
 
@@ -189,33 +270,100 @@ export const OrderDetail: React.FC = () => {
     }));
 
     updateOrder(order.orderNo, {
-      status: OrderStatus.VESSEL_BOOKED,
+      status: OrderStatus.VESSEL_SCHEDULED,
       items: updatedItems
     });
     addActivity(
       'Set ETD',
       currentUser!.username,
-      `Vessel booked for ${order.orderNo} with ${order.items.length} lines`
+      `Vessel scheduled for ${order.orderNo} with ${order.items.length} lines`
     );
-    addNotification(`Vessel Booked: ${order.orderNo}`, Role.UBE_JAPAN, 'email');
+    addNotification(
+      `Vessel Scheduled: ${order.orderNo}`,
+      Role.UBE_JAPAN,
+      'email'
+    );
     Swal.fire({
       icon: 'success',
-      title: 'Vessel Booked',
+      title: 'Vessel Scheduled',
       text: `ETD set successfully for ${order.orderNo}`,
       timer: 2000,
       showConfirmButton: false
     });
   };
 
+  const buildPoBlocks = () => {
+    const noteText = order.note?.trim() || '-';
+    const noteLines = wrapText(noteText, 64).map(
+      (line, index) => `${index === 0 ? 'Note' : '    '} : ${line}`
+    );
+    const headerLines = [
+      'PURCHASE ORDER',
+      '------------------------------',
+      `Order No : ${order.orderNo}`,
+      `Order Date : ${formatDate(order.orderDate)}`,
+      `Customer : ${companyName}`,
+      ...noteLines,
+      ''
+    ];
+    const tableHeader = [
+      'LN  PO NO       GRADE      QTY  DEST    TERM  ETD        ETA        ACT ETD    PRICE'
+    ];
+    const tableDivider = [
+      '--  ----------  ---------  ---- ------- ---- ---------- ---------- ---------- ------------'
+    ];
+    const tableRows = order.items.map((item, index) => {
+      const line = String(index + 1).padEnd(2, ' ');
+      const poNo = item.poNo.padEnd(10, ' ').slice(0, 10);
+      const grade = item.gradeId.padEnd(9, ' ').slice(0, 9);
+      const qty = String(item.qty).padStart(4, ' ').slice(-4);
+      const dest = item.destinationId.padEnd(7, ' ').slice(0, 7);
+      const term = item.termId.padEnd(4, ' ').slice(0, 4);
+      const etdValue = item.asap ? 'ASAP' : item.requestETD || '';
+      const etaValue = item.asap ? 'ASAP' : item.requestETA || '';
+      const etd = etdValue.padEnd(10, ' ').slice(0, 10);
+      const eta = etaValue.padEnd(10, ' ').slice(0, 10);
+      const actual = (item.actualETD || '').padEnd(10, ' ').slice(0, 10);
+      const priceNumber = item.price ?? prices[item.id];
+      const priceCurrency = item.currency ?? currencies[item.id];
+      const formattedPrice =
+        priceNumber != null
+          ? new Intl.NumberFormat('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            }).format(priceNumber)
+          : '';
+      const priceValue = formattedPrice
+        ? priceCurrency
+          ? `${formattedPrice} ${priceCurrency}`
+          : formattedPrice
+        : '';
+      const price = priceValue.trim().padEnd(12, ' ').slice(0, 12);
+      return `${line}  ${poNo}  ${grade}  ${qty} ${dest} ${term} ${etd} ${eta} ${actual} ${price}`;
+    });
+
+    return [
+      { fontSize: 14, lines: headerLines },
+      { fontSize: 9, lines: tableHeader },
+      { fontSize: 9, lines: tableDivider },
+      { fontSize: 9, lines: tableRows }
+    ];
+  };
+
   const handleGeneratePO = () => {
+    const filename = `PO_${order.orderNo}.pdf`;
+    const dataUrl = createPoPdfDataUrl(buildPoBlocks());
+    triggerDownload(dataUrl, filename);
+
     updateOrder(order.orderNo, {
-      status: OrderStatus.RECEIVED_PO,
+      status: OrderStatus.RECEIVED_ACTUAL_PO,
       documents: [
-        ...order.documents,
+        ...order.documents.filter((doc) => doc.type !== DocumentType.PO_PDF),
         {
           id: 'doc-' + Math.random().toString(36).substr(2, 5),
           type: DocumentType.PO_PDF,
-          filename: `PO_${order.orderNo}.pdf`,
+          filename,
+          dataUrl,
           uploadedAt: new Date().toISOString(),
           uploadedBy: currentUser!.username
         }
@@ -255,6 +403,27 @@ export const OrderDetail: React.FC = () => {
       return;
     }
 
+    if (doc.dataUrl) {
+      triggerDownload(doc.dataUrl, doc.filename);
+      addActivity(
+        'Download Document',
+        currentUser!.username,
+        `Downloaded ${doc.filename}`
+      );
+      return;
+    }
+
+    if (doc.type === DocumentType.PO_PDF) {
+      const filename = `PO_${order.orderNo}.pdf`;
+      triggerDownload(createPoPdfDataUrl(buildPoBlocks()), filename);
+      addActivity(
+        'Download Document',
+        currentUser!.username,
+        `Downloaded ${filename}`
+      );
+      return;
+    }
+
     // Simulate download
     addActivity(
       'Download Document',
@@ -276,12 +445,7 @@ export const OrderDetail: React.FC = () => {
     );
 
     if (filesToUpload.length === 0) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'No Files Selected',
-        text: 'Please select at least one file to upload',
-        confirmButtonColor: '#4F46E5'
-      });
+      Swal.fire(getNoFilesSelectedAlert());
       return;
     }
 
@@ -324,7 +488,11 @@ export const OrderDetail: React.FC = () => {
       });
 
       // If all required docs are uploaded, also update status
-      if (hasShippingDoc && hasBL && order.status === OrderStatus.RECEIVED_PO) {
+      if (
+        hasShippingDoc &&
+        hasBL &&
+        order.status === OrderStatus.RECEIVED_ACTUAL_PO
+      ) {
         updateOrder(order.orderNo, {
           status: OrderStatus.VESSEL_DEPARTED,
           documents: allDocs
@@ -360,8 +528,16 @@ export const OrderDetail: React.FC = () => {
     { label: 'Draft', status: OrderStatus.DRAFT, role: 'Trader' },
     { label: 'Created', status: OrderStatus.CREATED, role: 'Trader' },
     { label: 'Confirmed', status: OrderStatus.CONFIRMED, role: 'Sale' },
-    { label: 'Vessel Booked', status: OrderStatus.VESSEL_BOOKED, role: 'CS' },
-    { label: 'Received PO', status: OrderStatus.RECEIVED_PO, role: 'Trader' },
+    {
+      label: 'Vessel Scheduled',
+      status: OrderStatus.VESSEL_SCHEDULED,
+      role: 'CS'
+    },
+    {
+      label: 'Received Actual PO',
+      status: OrderStatus.RECEIVED_ACTUAL_PO,
+      role: 'Trader'
+    },
     { label: 'Departed', status: OrderStatus.VESSEL_DEPARTED, role: 'CS' }
   ];
   const activeIdx = steps.findIndex((s) => s.status === order.status);
@@ -399,26 +575,19 @@ export const OrderDetail: React.FC = () => {
 
     order.items.forEach((item, index) => {
       if (!item.poNo) missingFields.push(`Line ${index + 1}: PO Number`);
-      if (!item.shipToId) missingFields.push(`Line ${index + 1}: Origin`);
       if (!item.destinationId)
         missingFields.push(`Line ${index + 1}: Destination`);
       if (!item.termId) missingFields.push(`Line ${index + 1}: Term`);
       if (!item.gradeId) missingFields.push(`Line ${index + 1}: Grade`);
-      if (!item.asap) {
-        if (!item.requestETD) missingFields.push(`Line ${index + 1}: ETD`);
-        if (!item.requestETA) missingFields.push(`Line ${index + 1}: ETA`);
+      if (!item.asap && !item.requestETD && !item.requestETA) {
+        missingFields.push(`Line ${index + 1}: ETD or ETA`);
       }
       if (!item.qty || item.qty < 1)
         missingFields.push(`Line ${index + 1}: Quantity`);
     });
 
     if (missingFields.length > 0) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Missing Required Fields',
-        html: `<p class="text-sm mb-3">Please complete the following fields before submitting:</p><ul class="text-left text-sm space-y-1">${missingFields.map((f) => `<li>• ${f}</li>`).join('')}</ul>`,
-        confirmButtonColor: '#4F46E5'
-      });
+      Swal.fire(getMissingFieldsAlert(missingFields));
       return;
     }
 
@@ -494,9 +663,9 @@ export const OrderDetail: React.FC = () => {
                   ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900'
                   : order.status === OrderStatus.CONFIRMED
                     ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900'
-                    : order.status === OrderStatus.VESSEL_BOOKED
+                    : order.status === OrderStatus.VESSEL_SCHEDULED
                       ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900'
-                      : order.status === OrderStatus.RECEIVED_PO
+                      : order.status === OrderStatus.RECEIVED_ACTUAL_PO
                         ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-900'
                         : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900'
             }`}
@@ -506,12 +675,16 @@ export const OrderDetail: React.FC = () => {
             {order.status === OrderStatus.CONFIRMED && (
               <CheckCircle2 size={12} />
             )}
-            {order.status === OrderStatus.VESSEL_BOOKED && <Ship size={12} />}
-            {order.status === OrderStatus.RECEIVED_PO && <Package size={12} />}
+            {order.status === OrderStatus.VESSEL_SCHEDULED && (
+              <Ship size={12} />
+            )}
+            {order.status === OrderStatus.RECEIVED_ACTUAL_PO && (
+              <Package size={12} />
+            )}
             {order.status === OrderStatus.VESSEL_DEPARTED && (
               <CheckCircle2 size={12} />
             )}
-            {order.status.replace('_', ' ')}
+            {order.status.replace(/_/g, ' ')}
           </span>
         </div>
       </div>
@@ -732,11 +905,11 @@ export const OrderDetail: React.FC = () => {
                   <div className="flex flex-col w-full gap-3">
                     <div className="space-y-0.5">
                       <p className="text-[11px] font-bold dark:text-white">
-                        Vessel Booking & Logistics
+                        Vessel Scheduling & Logistics
                       </p>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400">
                         CRM confirm received. Set actual ETD per line and
-                        confirm booking.
+                        confirm scheduling.
                       </p>
                     </div>
                     <div className="space-y-2">
@@ -818,7 +991,7 @@ export const OrderDetail: React.FC = () => {
               {(currentUser?.role === Role.MAIN_TRADER ||
                 currentUser?.role === Role.UBE_JAPAN ||
                 currentUser?.role === Role.ADMIN) &&
-                order.status === OrderStatus.VESSEL_BOOKED && (
+                order.status === OrderStatus.VESSEL_SCHEDULED && (
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full gap-3">
                     <div className="space-y-0.5">
                       <p className="text-[11px] font-bold dark:text-white">
@@ -841,7 +1014,7 @@ export const OrderDetail: React.FC = () => {
               {/* CS: Step 5 */}
               {(currentUser?.role === Role.CS ||
                 currentUser?.role === Role.ADMIN) &&
-                order.status === OrderStatus.RECEIVED_PO && (
+                order.status === OrderStatus.RECEIVED_ACTUAL_PO && (
                   <div className="flex flex-col w-full gap-3">
                     <div className="space-y-0.5">
                       <p className="text-[11px] font-bold dark:text-white">
@@ -998,10 +1171,10 @@ export const OrderDetail: React.FC = () => {
                     order.status === OrderStatus.CREATED) ||
                   (currentUser?.role === Role.CS &&
                     (order.status === OrderStatus.CONFIRMED ||
-                      order.status === OrderStatus.RECEIVED_PO)) ||
+                      order.status === OrderStatus.RECEIVED_ACTUAL_PO)) ||
                   ((currentUser?.role === Role.MAIN_TRADER ||
                     currentUser?.role === Role.UBE_JAPAN) &&
-                    order.status === OrderStatus.VESSEL_BOOKED)
+                    order.status === OrderStatus.VESSEL_SCHEDULED)
                 ) && (
                   <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 italic text-[10px] font-medium">
                     <AlertCircle size={12} /> Waiting for another role to
@@ -1029,9 +1202,6 @@ export const OrderDetail: React.FC = () => {
                       Grade
                     </th>
                     <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[140px]">
-                      Origin
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[140px]">
                       Destination
                     </th>
                     <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[100px]">
@@ -1052,9 +1222,6 @@ export const OrderDetail: React.FC = () => {
                     <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[110px]">
                       Price
                     </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[150px]">
-                      Other Req.
-                    </th>
                     <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[70px]">
                       ASAP
                     </th>
@@ -1071,9 +1238,6 @@ export const OrderDetail: React.FC = () => {
                       </td>
                       <td className="px-3 py-2 text-slate-600 dark:text-slate-400 text-xs">
                         {item.gradeId}
-                      </td>
-                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400 text-xs">
-                        {item.shipToId}
                       </td>
                       <td className="px-3 py-2 text-slate-600 dark:text-slate-400 text-xs">
                         {item.destinationId}
@@ -1111,9 +1275,6 @@ export const OrderDetail: React.FC = () => {
                             Awaiting
                           </span>
                         )}
-                      </td>
-                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400 text-[10px]">
-                        {item.otherRequested || '-'}
                       </td>
                       <td className="px-3 py-2 text-center">
                         {item.asap ? (

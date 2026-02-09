@@ -11,7 +11,11 @@ import {
   Loader2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import Swal from 'sweetalert2';
+import Swal from '../utils/swal';
+import {
+  getActualEtdRequiredAlert,
+  getNoFilesSelectedAlert
+} from '../utils/alertMessages';
 
 export const CSDashboard: React.FC = () => {
   const { orders, updateOrder, addNotification, addActivity, currentUser } =
@@ -34,7 +38,7 @@ export const CSDashboard: React.FC = () => {
   );
 
   const departPending = orders.filter(
-    (o) => o.status === OrderStatus.RECEIVED_PO
+    (o) => o.status === OrderStatus.RECEIVED_ACTUAL_PO
   );
 
   const handleSubmitETD = (orderNo: string) => {
@@ -45,12 +49,7 @@ export const CSDashboard: React.FC = () => {
     const missingEtds = order.items.filter((item) => !orderEtds[item.id]);
 
     if (missingEtds.length > 0) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'ETD Required',
-        text: `Please set ETD for all ${order.items.length} line items`,
-        confirmButtonColor: '#4F46E5'
-      });
+      Swal.fire(getActualEtdRequiredAlert(order.items.length));
       return;
     }
 
@@ -61,20 +60,20 @@ export const CSDashboard: React.FC = () => {
     }));
 
     updateOrder(orderNo, {
-      status: OrderStatus.VESSEL_BOOKED,
+      status: OrderStatus.VESSEL_SCHEDULED,
       items: updatedItems
     });
 
     addActivity(
       'Set ETD',
       'CS',
-      `Vessel booked for order ${orderNo} with ${order.items.length} lines`
+      `Vessel scheduled for order ${orderNo} with ${order.items.length} lines`
     );
-    addNotification(`Vessel Booked: ${orderNo}`, Role.UBE_JAPAN, 'email');
+    addNotification(`Vessel Scheduled: ${orderNo}`, Role.UBE_JAPAN, 'email');
     Swal.fire({
       icon: 'success',
       title: 'Logistics Confirmed',
-      text: `Vessel booking confirmed for ${orderNo}`,
+      text: `Vessel scheduling confirmed for ${orderNo}`,
       timer: 2000,
       showConfirmButton: false
     });
@@ -90,12 +89,7 @@ export const CSDashboard: React.FC = () => {
     );
 
     if (filesToUpload.length === 0) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'No Files Selected',
-        text: 'Please select at least one file to upload',
-        confirmButtonColor: '#4F46E5'
-      });
+      Swal.fire(getNoFilesSelectedAlert());
       return;
     }
 
@@ -161,7 +155,7 @@ export const CSDashboard: React.FC = () => {
             if (
               hasShippingDoc &&
               hasBL &&
-              order.status === OrderStatus.RECEIVED_PO
+              order.status === OrderStatus.RECEIVED_ACTUAL_PO
             ) {
               updateOrder(orderNo, { status: OrderStatus.VESSEL_DEPARTED });
               addNotification(
@@ -210,17 +204,17 @@ export const CSDashboard: React.FC = () => {
             CS Logistics Hub
           </h1>
           <p className="text-slate-500 dark:text-slate-400 font-medium">
-            Manage vessel bookings, ETD dates, and shipping documentation.
+            Manage vessel scheduling, ETD dates, and shipping documentation.
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-8">
-        {/* Urgent/Booking Section */}
+        {/* Urgent/Scheduling Section */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
             <Truck className="text-blue-600" />
-            <h2 className="text-lg font-bold">Vessel Booking Required</h2>
+            <h2 className="text-lg font-bold">Vessel Scheduling Required</h2>
             <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-bold">
               {urgentOrders.length}
             </span>
@@ -304,13 +298,13 @@ export const CSDashboard: React.FC = () => {
                   onClick={() => handleSubmitETD(order.orderNo)}
                   className="w-full h-10 px-4 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
                 >
-                  <CheckCircle size={16} /> Confirm Vessel Booking
+                  <CheckCircle size={16} /> Confirm Vessel Schedule
                 </button>
               </div>
             ))}
             {urgentOrders.length === 0 && (
               <p className="text-sm text-slate-400 dark:text-slate-500 py-4 italic">
-                No orders pending vessel booking.
+                No orders pending vessel scheduling.
               </p>
             )}
           </div>
@@ -381,7 +375,7 @@ export const CSDashboard: React.FC = () => {
                         <td className="px-6 py-4 text-center">
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900 text-xs font-bold rounded-full uppercase">
                             <Package size={12} />
-                            RECEIVED PO
+                            RECEIVED ACTUAL PO
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">

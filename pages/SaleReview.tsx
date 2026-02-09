@@ -12,7 +12,8 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import Swal from 'sweetalert2';
+import Swal from '../utils/swal';
+import { getPriceRequiredAlert } from '../utils/alertMessages';
 
 export const SaleReview: React.FC = () => {
   const {
@@ -48,12 +49,7 @@ export const SaleReview: React.FC = () => {
       (item) => !prices[item.id] && !item.price
     );
     if (missingPrice) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Missing Price Information',
-        text: 'Please ensure all consignment lines have been valued before syncing to CRM.',
-        confirmButtonColor: '#4F46E5'
-      });
+      Swal.fire(getPriceRequiredAlert(order.items.length));
       return;
     }
 
