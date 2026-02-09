@@ -203,6 +203,7 @@ export const SaleReview: React.FC = () => {
                         <tr>
                           <th className="px-6 py-4 text-left">PO Reference</th>
                           <th className="px-6 py-4 text-left">Grade</th>
+                          <th className="px-6 py-4 text-left">Ship To</th>
                           <th className="px-6 py-4 text-right">Volume</th>
                           <th className="px-6 py-4 text-right">
                             Unit Price (USD)
@@ -221,6 +222,11 @@ export const SaleReview: React.FC = () => {
                             <td className="px-6 py-5">
                               <span className="font-bold text-slate-600 dark:text-slate-400">
                                 {item.gradeId}
+                              </span>
+                            </td>
+                            <td className="px-6 py-5">
+                              <span className="font-bold text-slate-600 dark:text-slate-400">
+                                {item.shipToId || '-'}
                               </span>
                             </td>
                             <td className="px-6 py-5 text-right">

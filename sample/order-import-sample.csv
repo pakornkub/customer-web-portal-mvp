@@ -1,3 +1,3 @@
-note,poNo,destinationId,termId,gradeId,requestETD,requestETA,qty,asap,otherRequested
-"Q1 restock",PO-0001,DEST-TKY,CIF,GRADE-PA,2026-03-10,2026-03-20,25,FALSE,
-"Q1 restock",PO-0002,DEST-OSA,EXW,GRADE-PX,,,10,TRUE,"ASAP for line 2"
+note,poNo,destinationId,termId,gradeId,shipToId,requestETD,requestETA,qty,asap,otherRequested
+"Q1 restock",PO-0001,DEST-TKY,CIF,GRADE-PA,SHIP-TH-BKK,2026-03-10,2026-03-20,25,FALSE,
+"Q1 restock",PO-0002,DEST-OSA,EXW,GRADE-PX,SHIP-JP-OSA,,,10,TRUE,"ASAP for line 2"

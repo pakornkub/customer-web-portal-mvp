@@ -25,6 +25,7 @@ const CSV_HEADERS = [
   'destinationid',
   'termid',
   'gradeid',
+  'shiptoid',
   'requestetd',
   'requesteta',
   'qty',
@@ -191,6 +192,11 @@ export const Orders: React.FC = () => {
         .filter((d) => d.customerCompanyId.includes(companyId))
         .map((d) => d.id)
     );
+    const allowedShipTos = new Set(
+      masterData.shipTos
+        .filter((s) => s.customerCompanyId.includes(companyId))
+        .map((s) => s.id)
+    );
     const allowedTerms = new Set(
       masterData.terms
         .filter((t) => t.customerCompanyId.includes(companyId))
@@ -207,6 +213,7 @@ export const Orders: React.FC = () => {
         const destinationId = getCell('destinationid');
         const termId = getCell('termid');
         const gradeId = getCell('gradeid');
+        const shipToId = getCell('shiptoid');
         const requestETD = getCell('requestetd');
         const requestETA = getCell('requesteta');
         const qtyRaw = getCell('qty');
@@ -231,6 +238,7 @@ export const Orders: React.FC = () => {
           !destinationId && 'destinationId',
           !termId && 'termId',
           !gradeId && 'gradeId',
+          !shipToId && 'shipToId',
           !qtyRaw && 'qty'
         ].filter((value): value is string => Boolean(value));
 
@@ -255,6 +263,10 @@ export const Orders: React.FC = () => {
           importErrors.push(`Line ${lineNo}: Unknown termId ${termId}`);
           return acc;
         }
+        if (!allowedShipTos.has(shipToId)) {
+          importErrors.push(`Line ${lineNo}: Unknown shipToId ${shipToId}`);
+          return acc;
+        }
 
         const datePattern = /^\d{4}-\d{2}-\d{2}$/;
         if (!asap && !requestETD && !requestETA) {
@@ -277,6 +289,7 @@ export const Orders: React.FC = () => {
 
         acc.items.push({
           poNo,
+          shipToId,
           destinationId,
           termId,
           gradeId,
@@ -296,6 +309,7 @@ export const Orders: React.FC = () => {
       {
         items: [] as Array<{
           poNo: string;
+          shipToId: string;
           destinationId: string;
           termId: string;
           gradeId: string;

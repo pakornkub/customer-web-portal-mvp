@@ -5,6 +5,7 @@ import {
   Plus,
   Trash2,
   Globe,
+  MapPin,
   Package,
   CreditCard,
   X,
@@ -105,6 +106,7 @@ export const MasterData: React.FC = () => {
 
   const tabs = [
     { id: 'destinations', label: 'Destinations', icon: Globe },
+    { id: 'shipTos', label: 'Ship To', icon: MapPin },
     { id: 'terms', label: 'Terms', icon: CreditCard },
     { id: 'grades', label: 'Grades', icon: Package }
   ];

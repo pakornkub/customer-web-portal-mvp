@@ -266,7 +266,8 @@ export const CSDashboard: React.FC = () => {
                             {item.poNo}
                           </span>
                           <span className="text-xs text-slate-500 dark:text-slate-400 ml-2">
-                            {item.gradeId} (x{item.qty})
+                            {item.gradeId} / {item.shipToId || '-'} (x{item.qty}
+                            )
                           </span>
                         </div>
                         <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">

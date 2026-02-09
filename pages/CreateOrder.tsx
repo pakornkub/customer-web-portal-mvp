@@ -23,6 +23,7 @@ import * as z from 'zod';
 const itemSchema = z
   .object({
     poNo: z.string().min(1, 'Required'),
+    shipToId: z.string().min(1, 'Required'),
     destinationId: z.string().min(1, 'Required'),
     termId: z.string().min(1, 'Required'),
     gradeId: z.string().min(1, 'Required'),
@@ -57,6 +58,7 @@ type FormData = z.infer<typeof formSchema>;
 type ImportState = {
   importItems?: Array<{
     poNo: string;
+    shipToId: string;
     destinationId: string;
     termId: string;
     gradeId: string;
@@ -113,6 +115,7 @@ export const CreateOrder: React.FC = () => {
       items: [
         {
           poNo: '',
+          shipToId: '',
           destinationId: '',
           termId: '',
           gradeId: '',
@@ -133,6 +136,7 @@ export const CreateOrder: React.FC = () => {
         note: existingOrder.note,
         items: existingOrder.items.map((item) => ({
           poNo: item.poNo,
+          shipToId: item.shipToId || '',
           destinationId: item.destinationId,
           termId: item.termId,
           gradeId: item.gradeId,
@@ -234,6 +238,12 @@ export const CreateOrder: React.FC = () => {
     const ids = Array.isArray(g.customerCompanyId)
       ? g.customerCompanyId
       : [g.customerCompanyId];
+    return ids.includes(companyId);
+  });
+  const myShipTos = masterData.shipTos.filter((s) => {
+    const ids = Array.isArray(s.customerCompanyId)
+      ? s.customerCompanyId
+      : [s.customerCompanyId];
     return ids.includes(companyId);
   });
   const myDest = masterData.destinations.filter((d) => {
@@ -377,6 +387,7 @@ export const CreateOrder: React.FC = () => {
             onClick={() =>
               append({
                 poNo: '',
+                shipToId: '',
                 destinationId: '',
                 termId: '',
                 gradeId: '',
@@ -405,6 +416,9 @@ export const CreateOrder: React.FC = () => {
                 </th>
                 <th className="min-w-[180px] text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide px-4 py-3">
                   Grade
+                </th>
+                <th className="min-w-[180px] text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide px-4 py-3">
+                  Ship To
                 </th>
                 <th className="min-w-[160px] text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide px-4 py-3">
                   Dest.
@@ -477,6 +491,19 @@ export const CreateOrder: React.FC = () => {
                       >
                         <option value="">Select Grade</option>
                         {myGrades.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <select
+                        {...register(`items.${index}.shipToId` as const)}
+                        className={`shadcn-input h-8 border-slate-200 dark:border-slate-800 ${rowError?.shipToId ? 'border-rose-400' : ''}`}
+                      >
+                        <option value="">Select Ship To</option>
+                        {myShipTos.map((s) => (
                           <option key={s.id} value={s.id}>
                             {s.name}
                           </option>

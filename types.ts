@@ -55,6 +55,7 @@ export interface OrderDocument {
 export interface OrderItem {
   id: string;
   poNo: string;
+  shipToId: string;
   destinationId: string;
   termId: string;
   requestETD: string;

@@ -284,35 +284,40 @@ export const Dashboard: React.FC = () => {
             </div>
             <div className="p-6 space-y-4">
               {urgentOrders.length > 0 ? (
-                urgentOrders.slice(0, 4).map((order) => (
-                  <Link
-                    key={order.orderNo}
-                    to={`/orders/${order.orderNo}`}
-                    className="block p-5 rounded-3xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-rose-100 dark:hover:border-rose-900 transition-all group"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <span className="font-extrabold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                        {order.orderNo}
-                      </span>
-                      <span className="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-black animate-pulse">
-                        ASAP
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-xs font-bold mb-4">
-                      <Calendar size={14} />
-                      Target ETA: {order.items[0]?.requestETA}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        Awaiting Logistics
-                      </span>
-                      <ArrowRight
-                        size={16}
-                        className="text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-indigo-600"
-                      />
-                    </div>
-                  </Link>
-                ))
+                urgentOrders.slice(0, 4).map((order) => {
+                  const hasAsap = order.items.some((item) => item.asap);
+                  return (
+                    <Link
+                      key={order.orderNo}
+                      to={`/orders/${order.orderNo}`}
+                      className="block p-5 rounded-3xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-rose-100 dark:hover:border-rose-900 transition-all group"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <span className="font-extrabold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          {order.orderNo}
+                        </span>
+                        <span className="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-black animate-pulse">
+                          ASAP
+                        </span>
+                      </div>
+                      {!hasAsap && (
+                        <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-xs font-bold mb-4">
+                          <Calendar size={14} />
+                          Target ETA: {order.items[0]?.requestETA}
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                          Awaiting Logistics
+                        </span>
+                        <ArrowRight
+                          size={16}
+                          className="text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-indigo-600"
+                        />
+                      </div>
+                    </Link>
+                  );
+                })
               ) : (
                 <div className="py-12 text-center">
                   <CheckCircle2

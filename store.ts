@@ -24,6 +24,7 @@ interface AppState {
     destinations: MasterDataRecord[];
     terms: MasterDataRecord[];
     grades: MasterDataRecord[];
+    shipTos: MasterDataRecord[];
   };
   notifications: NotificationLog[];
   activities: ActivityLog[];
@@ -125,6 +126,23 @@ const INITIAL_MASTER: AppState['masterData'] = {
       name: 'Polymer X-90',
       customerCompanyId: ['C001', 'C002']
     }
+  ],
+  shipTos: [
+    {
+      id: 'SHIP-TH-BKK',
+      name: 'Bangkok DC',
+      customerCompanyId: ['C001']
+    },
+    {
+      id: 'SHIP-JP-OSA',
+      name: 'Osaka Warehouse',
+      customerCompanyId: ['C001', 'C002']
+    },
+    {
+      id: 'SHIP-CN-SH',
+      name: 'Shanghai DC',
+      customerCompanyId: ['C002']
+    }
   ]
 };
 
@@ -138,7 +156,8 @@ const getInitialDataState = () => ({
   masterData: {
     destinations: [...INITIAL_MASTER.destinations],
     terms: [...INITIAL_MASTER.terms],
-    grades: [...INITIAL_MASTER.grades]
+    grades: [...INITIAL_MASTER.grades],
+    shipTos: [...INITIAL_MASTER.shipTos]
   },
   notifications: [] as NotificationLog[],
   activities: [] as ActivityLog[]
@@ -313,6 +332,25 @@ export const useStore = create<AppState>()(
         set(getInitialDataState());
       }
     }),
-    { name: 'ube-portal-storage-v3' }
+    {
+      name: 'ube-portal-storage-v3',
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<AppState> | undefined;
+        const persistedMaster = persisted?.masterData;
+        const safeShipTos = Array.isArray(persistedMaster?.shipTos)
+          ? persistedMaster?.shipTos
+          : currentState.masterData.shipTos;
+
+        return {
+          ...currentState,
+          ...persisted,
+          masterData: {
+            ...currentState.masterData,
+            ...(persistedMaster || {}),
+            shipTos: safeShipTos
+          }
+        } as AppState;
+      }
+    }
   )
 );

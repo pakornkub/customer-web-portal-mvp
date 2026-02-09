@@ -307,15 +307,16 @@ export const OrderDetail: React.FC = () => {
       ''
     ];
     const tableHeader = [
-      'LN  PO NO       GRADE      QTY  DEST    TERM  ETD        ETA        ACT ETD    PRICE'
+      'LN  PO NO       GRADE      SHIP TO   QTY  DEST    TERM  ETD        ETA        ACT ETD    PRICE'
     ];
     const tableDivider = [
-      '--  ----------  ---------  ---- ------- ---- ---------- ---------- ---------- ------------'
+      '--  ----------  ---------  --------- ---- ------- ---- ---------- ---------- ---------- ------------'
     ];
     const tableRows = order.items.map((item, index) => {
       const line = String(index + 1).padEnd(2, ' ');
       const poNo = item.poNo.padEnd(10, ' ').slice(0, 10);
       const grade = item.gradeId.padEnd(9, ' ').slice(0, 9);
+      const shipTo = (item.shipToId || '').padEnd(9, ' ').slice(0, 9);
       const qty = String(item.qty).padStart(4, ' ').slice(-4);
       const dest = item.destinationId.padEnd(7, ' ').slice(0, 7);
       const term = item.termId.padEnd(4, ' ').slice(0, 4);
@@ -339,7 +340,7 @@ export const OrderDetail: React.FC = () => {
           : formattedPrice
         : '';
       const price = priceValue.trim().padEnd(12, ' ').slice(0, 12);
-      return `${line}  ${poNo}  ${grade}  ${qty} ${dest} ${term} ${etd} ${eta} ${actual} ${price}`;
+      return `${line}  ${poNo}  ${grade}  ${shipTo} ${qty} ${dest} ${term} ${etd} ${eta} ${actual} ${price}`;
     });
 
     return [
@@ -575,6 +576,7 @@ export const OrderDetail: React.FC = () => {
 
     order.items.forEach((item, index) => {
       if (!item.poNo) missingFields.push(`Line ${index + 1}: PO Number`);
+      if (!item.shipToId) missingFields.push(`Line ${index + 1}: Ship To`);
       if (!item.destinationId)
         missingFields.push(`Line ${index + 1}: Destination`);
       if (!item.termId) missingFields.push(`Line ${index + 1}: Term`);
@@ -809,7 +811,8 @@ export const OrderDetail: React.FC = () => {
                         >
                           <div className="flex-1 min-w-0">
                             <p className="text-[10px] font-bold text-slate-900 dark:text-white truncate">
-                              Line {idx + 1}: {item.poNo} - {item.gradeId}
+                              Line {idx + 1}: {item.poNo} - {item.gradeId} /{' '}
+                              {item.shipToId || '-'}
                             </p>
                             <p className="text-[9px] text-slate-500 dark:text-slate-400">
                               Qty: {item.qty.toLocaleString()} units
@@ -927,7 +930,8 @@ export const OrderDetail: React.FC = () => {
                                 {item.poNo}
                               </span>
                               <span className="text-xs text-slate-500 dark:text-slate-400 ml-2">
-                                {item.gradeId} (x{item.qty})
+                                {item.gradeId} / {item.shipToId || '-'} (x
+                                {item.qty})
                               </span>
                             </div>
                             <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
@@ -1201,6 +1205,9 @@ export const OrderDetail: React.FC = () => {
                     <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[120px]">
                       Grade
                     </th>
+                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[120px]">
+                      Ship To
+                    </th>
                     <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[140px]">
                       Destination
                     </th>
@@ -1238,6 +1245,9 @@ export const OrderDetail: React.FC = () => {
                       </td>
                       <td className="px-3 py-2 text-slate-600 dark:text-slate-400 text-xs">
                         {item.gradeId}
+                      </td>
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400 text-xs">
+                        {item.shipToId || '-'}
                       </td>
                       <td className="px-3 py-2 text-slate-600 dark:text-slate-400 text-xs">
                         {item.destinationId}
