@@ -63,7 +63,7 @@ const App: React.FC = () => {
         <Route
           path="/orders/create"
           element={
-            <Protected roles={[Role.MAIN_TRADER, Role.UBE_JAPAN, Role.ADMIN]}>
+            <Protected>
               <CreateOrder />
             </Protected>
           }
@@ -71,7 +71,7 @@ const App: React.FC = () => {
         <Route
           path="/orders/edit/:orderNo"
           element={
-            <Protected roles={[Role.MAIN_TRADER, Role.UBE_JAPAN, Role.ADMIN]}>
+            <Protected>
               <CreateOrder />
             </Protected>
           }
@@ -88,7 +88,7 @@ const App: React.FC = () => {
         <Route
           path="/review"
           element={
-            <Protected roles={[Role.SALE, Role.SALE_MANAGER, Role.ADMIN]}>
+            <Protected roles={[Role.SALE, Role.ADMIN]}>
               <SaleReview />
             </Protected>
           }

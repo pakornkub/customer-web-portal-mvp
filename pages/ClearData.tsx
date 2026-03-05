@@ -59,19 +59,17 @@ export const ClearData: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold dark:text-white tracking-tight">
-            Clear Data
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
+          <h1 className="ui-page-title">Clear Data</h1>
+          <p className="ui-page-subtitle mt-1">
             Database management and storage utilities
           </p>
         </div>
       </div>
 
       {/* Warning Banner */}
-      <div className="bg-rose-50 dark:bg-rose-950/20 border-2 border-rose-200 dark:border-rose-900/50 rounded-xl p-6">
+      <div className="bg-rose-50 dark:bg-rose-950/20 border-2 border-rose-200 dark:border-rose-900/50 ui-radius-card p-6">
         <div className="flex items-start gap-4">
-          <div className="p-3 bg-rose-100 dark:bg-rose-900/30 rounded-lg">
+          <div className="p-3 bg-rose-100 dark:bg-rose-900/30 ui-radius-control">
             <AlertTriangle
               size={24}
               className="text-rose-600 dark:text-rose-400"
@@ -92,19 +90,17 @@ export const ClearData: React.FC = () => {
       </div>
 
       {/* Clear All Data Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 ui-radius-card shadow-sm overflow-hidden">
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-950/30">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 ui-radius-control">
               <Database
                 size={20}
                 className="text-indigo-600 dark:text-indigo-400"
               />
             </div>
             <div>
-              <h2 className="text-sm font-bold uppercase text-slate-700 dark:text-slate-300 tracking-wider">
-                Storage Management
-              </h2>
+              <h2 className="ui-subheader">Storage Management</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Clear all application data
               </p>
@@ -113,7 +109,7 @@ export const ClearData: React.FC = () => {
         </div>
 
         <div className="p-6 space-y-4">
-          <div className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50/50 dark:bg-slate-950/50">
+          <div className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-800 ui-radius-control bg-slate-50/50 dark:bg-slate-950/50">
             <div className="flex-1">
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">
                 Clear All Data
@@ -126,7 +122,7 @@ export const ClearData: React.FC = () => {
             <button
               onClick={handleClearStorage}
               disabled={clearing}
-              className="ml-4 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-400 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-rose-500/20 disabled:shadow-none"
+              className="ml-4 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-400 text-white px-5 py-2.5 ui-radius-control text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-rose-500/20 disabled:shadow-none"
             >
               {clearing ? (
                 <>
@@ -142,7 +138,7 @@ export const ClearData: React.FC = () => {
             </button>
           </div>
 
-          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-4">
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 ui-radius-control p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle
                 size={16}
@@ -160,7 +156,7 @@ export const ClearData: React.FC = () => {
       </div>
 
       {/* Info Card */}
-      <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 rounded-xl p-6">
+      <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 ui-radius-card p-6">
         <div className="flex items-start gap-3">
           <Database
             size={20}

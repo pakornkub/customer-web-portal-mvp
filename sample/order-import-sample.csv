@@ -1,3 +1,4 @@
 note,poNo,destinationId,termId,gradeId,shipToId,requestETD,requestETA,qty,asap,otherRequested
-"Q1 restock",PO-0001,DEST-TKY,CIF,GRADE-PA,SHIP-TH-BKK,2026-03-10,2026-03-20,25,FALSE,
-"Q1 restock",PO-0002,DEST-OSA,EXW,GRADE-PX,SHIP-JP-OSA,,,10,TRUE,"ASAP for line 2"
+"Q1 restock (updated master)",PO-0001,DEST-TKY,CIF,BR150B,SHIP-MICHELIN,2026-03-10,2026-03-20,25,FALSE,
+"Q1 restock (updated master)",PO-0002,DEST-SH,FOB,BR360B,SHIP-TOYO-TIRE,2026-03-18,2026-03-29,15,FALSE,
+"Q1 restock (updated master)",PO-0003,DEST-OSA,EXW,VCR-617,SHIP-BRIDGESTONE,,,10,TRUE,"Need earliest vessel"

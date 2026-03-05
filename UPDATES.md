@@ -1,166 +1,102 @@
-# System Updates & Improvements
+# System Updates & Improvements (Current Code Baseline)
 
 ## Overview
 
-ระบบได้รับการปรับปรุงให้สอดคล้องกับ requirements ทั้งหมดตามเอกสาร specifications
+เอกสารฉบับนี้อัปเดตให้ตรงกับโค้ดปัจจุบันใน branch/workspace ณ ตอนนี้ โดยยึด
+implementation จริงเป็นหลัก (ไม่อ้างสเปกเก่าที่ยังไม่ได้ merge)
 
 ---
 
-## ✅ Major Updates Completed
+## ✅ Current Implemented Scope
 
-### 1. **Role Management**
+### 1) Role & Access Model
 
-- ✅ เพิ่ม `SALE_MANAGER` role ใน types และ permissions
-- ✅ อัพเดท mock user: `salemgr1` (username: salemgr1, password: password)
-- ✅ SALE_MANAGER สามารถเข้าถึง Sale Review และ approve orders ได้
-- ✅ ปรับ menu navigation และ route protection
+- ใช้ roles: `ADMIN`, `MAIN_TRADER`, `UBE_JAPAN`, `SALE`, `CS`
+- ใช้ `UserGroup` แยกจาก Role เพื่อควบคุม permission ระดับ action
+- มีการควบคุมสิทธิ์ `canCreateOrder`, `shipToAccess`, `allowedShipToIds`,
+  `allowedDocumentTypes`
 
-### 2. **Data Model Enhancements**
+### 2) Workflow Engine (Line-based)
 
-- ✅ เพิ่ม `createdAt` และ `updatedAt` timestamps ใน Order interface
-- ✅ Auto-generate timestamps เมื่อ create/update orders
-- ✅ เพิ่ม `actualETD` field ใน Order (บันทึกเมื่อ CS set ETD)
-- ✅ เพิ่ม `currency` field ใน OrderItem (default: USD)
-- ✅ แสดง currency ใน price display
+- ใช้สถานะแบบ line-level ผ่าน `OrderLineStatus`:
+  - `DRAFT`, `CREATED`, `APPROVED`, `VESSEL_SCHEDULED`, `RECEIVED_ACTUAL_PO`,
+    `VESSEL_DEPARTED`
+- ใช้สถานะภาพรวม order ผ่าน `OrderProgressStatus`:
+  - `CREATE`, `IN_PROGRESS`, `COMPLETE`
+- มี matrix สำหรับกำหนดว่า user group ไหนทำ action ไหนได้
+  - `SUBMIT_LINE`, `APPROVE_LINE`, `SET_ETD`, `MARK_RECEIVED_PO`,
+    `UPLOAD_FINAL_DOCS`
 
-### 3. **Document Management**
+### 3) Admin / Configuration (Current)
 
-- ✅ ปรับปรุง Document upload UI ให้รองรับหลาย types:
-  - Shipping Document
-  - Bill of Lading (BL)
-  - Invoice
-  - Certificate of Analysis (COA)
-  - PO PDF
-- ✅ CS สามารถเลือก document type ก่อน upload
-- ✅ Auto-transition เป็น VESSEL_DEPARTED เมื่อ upload ครบ required docs
-- ✅ **Document Permission Check**:
-  - เช็คสิทธิ์ก่อน download ทุกครั้ง
-  - แสดง "No Access" badge สำหรับไฟล์ที่ไม่มีสิทธิ์
-  - บันทึก audit log เมื่อมีการพยายาม download without permission
+- หน้า `User Management` รองรับ:
+  - เพิ่ม/ลบ user
+  - แก้ไข profile user รายแถว (group, company, create-order flag, ship-to,
+    document types)
+  - ตั้งค่า line permission matrix
+  - preset matrix: `STANDARD`, `STRICT`, และ custom presets
+  - lock/unlock matrix และ reset matrix
+- หน้า `Master Data` รองรับ:
+  - `shipTos`, `groupSaleTypes`, `destinations`, `terms`, `grades`
+  - add/delete record ตาม tab
+  - ship-to ผูกกับ sale group
+  - company scope แบบ multi-select
 
-### 4. **Workflow & Notifications**
+### 4) Store / State Management
 
-#### Step 1: Customer Submit
-
-- ✅ สร้าง Order พร้อม timestamps
-- ✅ Status: CREATED
-- ✅ Notify Sale via email (mock)
-
-#### Step 2.1: Sale Approval
-
-- ✅ Sale/Sale Manager ใส่ price per item พร้อม currency
-- ✅ Simulate CRM API call (2 seconds delay)
-- ✅ บันทึก Integration Log
-- ✅ Status: CONFIRMED
-- ✅ Activity log บันทึกการ approve
-
-#### Step 2.2: CRM Callback
-
-- ✅ Simulate CRM callback หลังผ่าน 5 วินาที
-- ✅ Auto-generate Quotation Number (QT-xxxxxx)
-- ✅ Update Order.quotationNo
-- ✅ Notify Customer via email (mock)
-- ✅ บันทึก Activity log
-
-#### Step 3.1: Scheduled Job
-
-- ✅ `runScheduledChecks()` ทำงานเมื่อ login
-- ✅ ตรวจสอบ ASAP=true และ ETA ใน 30 วัน
-- ✅ Notify CS สำหรับ urgent orders
-- ✅ บันทึก Activity log
-
-#### Step 3.2: CS Set ETD
-
-- ✅ CS เลือกวันที่ actualETD
-- ✅ บันทึก actualETD ใน Order
-- ✅ Status: VESSEL_BOOKED
-- ✅ Notify Customer
-- ✅ แสดง actualETD ใน Order detail sidebar
-
-#### Step 4: Generate PO
-
-- ✅ Customer generate PO PDF
-- ✅ Status: RECEIVED_PO
-- ✅ สร้าง Document record (type: PO_PDF)
-- ✅ Notify CS
-
-#### Step 5: Upload Documents & Depart
-
-- ✅ CS upload multiple document types
-- ✅ Auto-transition เมื่อ upload ครบ
-- ✅ Status: VESSEL_DEPARTED
-- ✅ Notify Customer (+ cc CS)
-
-### 5. **Dashboard & Analytics**
-
-- ✅ แสดง stats cards พร้อม trend indicators
-- ✅ Status breakdown (Created, Confirmed, Booked, Completed)
-- ✅ **Urgent Items Widget**:
-  - แสดง orders ที่มี ASAP=true
-  - Highlight urgent orders
-  - Quick link to order detail
-- ✅ Recent shipments table
-- ✅ Role-specific widgets
-
-### 6. **Activity & Audit Logging**
-
-- ✅ บันทึก Activity Log ทุก actions:
-  - Create Order
-  - Update Order
-  - Approve Order
-  - Set ETD
-  - Generate PO
-  - Upload Documents
-  - Download Documents
-  - Download Denied (permission)
-  - CRM Callback
-  - Scheduled Alerts
-- ✅ แสดงใน Logs page พร้อม filter
-- ✅ Timestamp และ user tracking
-
-### 7. **User Permissions**
-
-- ✅ Document type permissions per user
-- ✅ Admin จัดการ allowedDocumentTypes
-- ✅ Permission check ทุก download
-- ✅ Mock users มี realistic permissions:
-  - Admin: ทุก types
-  - Trader: PO_PDF, Invoice, COA
-  - UBE Japan: PO_PDF, Invoice
-  - Sale/CS: ทุก types
+- Zustand + persist (`ube-portal-storage-v4`)
+- มีฟังก์ชันสำคัญ:
+  - order visibility ตาม company + ship-to access
+  - line action permission checks
+  - scheduled checks แจ้งเตือนกรณี ASAP + ETA ใกล้ถึงกำหนด
+  - activity log / integration log / notification log
 
 ---
 
-## 📊 Data Model Changes
+## 📦 Current Data Model Snapshot
 
-### Order Interface
+### User
+
+```typescript
+interface User {
+  id: string;
+  username: string;
+  role: Role;
+  userGroup: UserGroup;
+  companyId: string;
+  canCreateOrder: boolean;
+  shipToAccess: 'ALL' | 'SELECTED';
+  allowedShipToIds: string[];
+  allowedDocumentTypes: DocumentType[];
+}
+```
+
+### Order
 
 ```typescript
 interface Order {
   orderNo: string;
   orderDate: string;
   note: string;
-  status: OrderStatus;
-  quotationNo?: string;
-  customerCompanyId: string;
+  status: OrderProgressStatus;
+  companyId: string;
   createdBy: string;
   updatedBy: string;
-  createdAt: string; // ✅ NEW
-  updatedAt: string; // ✅ NEW
-  actualETD?: string; // ✅ NEW
+  createdAt: string;
+  updatedAt: string;
   items: OrderItem[];
   documents: OrderDocument[];
-  saleNote?: string;
 }
 ```
 
-### OrderItem Interface
+### OrderItem
 
 ```typescript
 interface OrderItem {
   id: string;
   poNo: string;
   shipToId: string;
+  status: OrderLineStatus;
   destinationId: string;
   termId: string;
   requestETD: string;
@@ -168,132 +104,94 @@ interface OrderItem {
   gradeId: string;
   qty: number;
   price?: number;
-  currency?: string; // ✅ NEW (default: USD)
-  otherRequested?: string;
+  currency?: string;
   asap: boolean;
+  documents: OrderDocument[];
 }
 ```
 
 ---
 
-## 🎭 Test Users
+## 🧪 Build & Health Status
 
-| Username | Password | Role         | CustomerCompanyId | Document Access      |
-| -------- | -------- | ------------ | ----------------- | -------------------- |
-| admin    | password | ADMIN        | -                 | All types            |
-| trader1  | password | MAIN_TRADER  | C001              | PO_PDF, Invoice, COA |
-| ube1     | password | UBE_JAPAN    | C001              | PO_PDF, Invoice      |
-| sale1    | password | SALE         | -                 | All types            |
-| salemgr1 | password | SALE_MANAGER | -                 | All types            |
-| cs1      | password | CS           | -                 | All types            |
+- `npm run build` ผ่าน ณ วันที่อัปเดตเอกสาร
+- ไม่มี TypeScript diagnostics จาก IDE ใน workspace ปัจจุบัน
+- มี warning ที่ไม่บล็อก build:
+  - `/index.css` resolve ตอน runtime
+  - chunk size เกิน threshold ของ Vite
 
----
+### UI Governance Update (Typography Standardization)
 
-## 🚀 How to Test
-
-### Complete Workflow Test:
-
-1. **Login as trader1**
-   - Create new order with ASAP items
-   - Set ETA within 30 days
-
-2. **Login as sale1**
-   - Go to Sale Review
-   - Set prices per item
-   - Approve and sync to CRM
-   - Wait 5 seconds for quotation callback
-
-3. **Login as cs1**
-   - Check urgent orders (should see ASAP notification)
-   - Set actualETD
-   - Confirm vessel booking
-
-4. **Login as trader1**
-   - Generate PO PDF
-   - Try download documents (check permissions)
-
-5. **Login as cs1**
-   - Upload Shipping Doc
-   - Upload BL
-   - Order auto-transitions to DEPARTED
-
-6. **Login as admin**
-   - View all activity logs
-   - View integration logs
-   - Manage user permissions
+- เพิ่ม typography utility กลางใน `index.html` สำหรับ:
+  - page title/subtitle
+  - section/subheader
+  - table head/body
+  - form label/helper/error
+  - micro text / kicker
+- ปรับใช้ในหน้าหลักของระบบเพื่อให้เกิดความสอดคล้องข้ามหน้า (`Orders`,
+  `CreateOrder`, `OrderDetail`, `Dashboard`, `SaleReview`, `CSDashboard`,
+  `Admin`, `MasterData`, `Logs`, `Login`, `ClearData`)
+- บันทึก guideline + checklist ใน `README.md` เพื่อใช้เป็นมาตรฐานทีม
 
 ---
 
-## 🎨 UI/UX Improvements
+## ⚠️ Known Divergences from Older Specs
 
-- ✅ Consistent spacing และ alignment
-- ✅ Modern table styles (modern-table class)
-- ✅ Status badges with dark mode support
-- ✅ Loading states พร้อม animations
-- ✅ Permission-based UI elements
-- ✅ Responsive design
-- ✅ Toast notifications
-- ✅ Activity indicators
+- ไม่มี `SALE_MANAGER` ใน code baseline ปัจจุบัน
+- ไม่ได้ใช้ `OrderStatus` แบบ legacy enum เดิม
+- เอกสาร/flow เก่าที่อ้าง `customerCompanyId` เป็นหลัก ถูกแทนที่ด้วย `companyId`
+
+> หากต้องการกลับไปใช้ spec เก่าแบบเต็ม (legacy status + SALE_MANAGER) ต้องมี
+> compatibility migration อีกหนึ่งรอบ
 
 ---
 
-## 📝 Technical Details
+## 📋 Requirement Mapping (Old Spec vs Current Code)
 
-### State Management (Zustand)
-
-- ✅ Timestamps auto-update
-- ✅ Activity logging ทุก actions
-- ✅ Scheduled job simulation
-- ✅ Permission checks
-
-### Mock Data
-
-- ✅ 6 users with different roles
-- ✅ 2 customer companies
-- ✅ Master data scoped by customer
-- ✅ Realistic document permissions
-
-### Notifications
-
-- ✅ Email notifications (mock)
-- ✅ System notifications
-- ✅ Role-based routing
-- ✅ Notification log storage
+| Requirement (Old Spec)                                | Current Code Status | Notes                                                             |
+| ----------------------------------------------------- | ------------------- | ----------------------------------------------------------------- |
+| มี role `SALE_MANAGER`                                | ❌ Not implemented  | Roles ปัจจุบัน: `ADMIN`, `MAIN_TRADER`, `UBE_JAPAN`, `SALE`, `CS` |
+| ใช้ `OrderStatus` (legacy status enum)                | ❌ Not implemented  | ใช้ `OrderProgressStatus` + `OrderLineStatus`                     |
+| ใช้ `customerCompanyId` เป็น field หลักใน order/user  | ❌ Not implemented  | ใช้ `companyId` เป็นแกนหลัก                                       |
+| Workflow แบบ line-level permission matrix             | ✅ Implemented      | มี `linePermissionMatrix` + presets + lock/unlock                 |
+| Admin จัดการ matrix + custom presets                  | ✅ Implemented      | หน้า `User Management` รองรับครบตาม code baseline                 |
+| Master Data รองรับ `groupSaleTypes` + `shipTos` scope | ✅ Implemented      | มี tab และการผูก `groupSaleType` ใน `shipTos`                     |
+| รองรับ `shipToAccess` (`ALL`/`SELECTED`) ต่อ user     | ✅ Implemented      | ใช้ใน visibility และสิทธิ์การเข้าถึง order lines                  |
+| Build ผ่านแบบไม่มี blocking errors                    | ✅ Implemented      | `npm run build` ผ่าน (มีเฉพาะ warnings ที่ไม่บล็อก)               |
 
 ---
 
-## ✨ Key Features
+## Next Steps (Optional)
 
-1. **Complete 5-Step Workflow** ตามเอกสาร
-2. **Role-Based Access Control (RBAC)** พร้อม SALE_MANAGER
-3. **Document Permission Matrix** per user
-4. **CRM Integration Simulation** with callback
-5. **Scheduled Job** สำหรับ ASAP notifications
-6. **Comprehensive Audit Trail**
-7. **Multi-Tenant Support** (scoped by customerCompanyId)
-8. **Modern UI/UX** with dark mode
+- ปรับ UI ให้สอดคล้อง design reference ใหม่ โดยไม่กระทบ logic ปัจจุบัน
+- เพิ่ม smoke-test checklist ราย role เพื่อใช้ regression หลังปรับดีไซน์
+- ถ้าต้องการ strict spec parity: วางแผน migration กลับสู่ schema/spec เดิมเป็น
+  phase แยก
 
 ---
 
-## 🔒 Security & Compliance
+## 🗂️ Old Version Change Log (Archived Reference)
 
-- ✅ Route protection per role
-- ✅ Document access control
-- ✅ Audit logging ทุก sensitive actions
-- ✅ Permission denied tracking
+ส่วนนี้เก็บไว้เป็นประวัติจากเอกสารรุ่นก่อนหน้า (legacy spec log)
+เพื่อใช้อ้างอิงย้อนหลังเท่านั้น และ **ไม่ใช่ source of truth ของโค้ดปัจจุบัน**
+
+### Legacy items previously recorded
+
+- เคยระบุ role `SALE_MANAGER` และ user `salemgr1`
+- เคยระบุการใช้ `OrderStatus` แบบ legacy (`CREATED`, `CONFIRMED`,
+  `VESSEL_BOOKED`, `RECEIVED_PO`, `VESSEL_DEPARTED`)
+- เคยระบุโมเดลที่ใช้ `customerCompanyId` เป็นหลัก
+- เคยระบุ workflow 5-step แบบ status-driven (ไม่ใช่ line-permission-driven)
+
+### Why this is archived
+
+- โค้ด baseline ปัจจุบันเปลี่ยนสถาปัตยกรรมไปใช้ line-based workflow + permission
+  matrix
+- data model ปัจจุบันยึด `companyId` และ `OrderProgressStatus`/`OrderLineStatus`
+- จึงเก็บ log เดิมไว้เพื่อ historical context เท่านั้น
 
 ---
 
-## Next Steps (Optional Enhancements)
-
-- [ ] Real-time notifications (WebSocket)
-- [ ] File upload preview
-- [ ] Export orders to Excel
-- [ ] Advanced filtering และ search
-- [ ] Email template customization
-- [ ] Multi-language support
-
----
-
-**Last Updated:** February 5, 2026 **Version:** 2.0.0 **Status:** ✅ Production
-Ready (MVP)
+**Last Updated:** February 16, 2026  
+**Version:** 2.1.0 (code-aligned)  
+**Status:** ✅ Build green / Document aligned to current implementation

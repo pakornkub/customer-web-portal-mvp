@@ -22,18 +22,16 @@ export const Login: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 px-4">
       <div className="max-w-md w-full">
-        <div className="bg-white dark:bg-slate-900 p-8 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800">
+        <div className="bg-white dark:bg-slate-900 p-8 ui-radius-card shadow-lg border border-slate-200 dark:border-slate-800">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-              UBE Portal
-            </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-2">
+            <h1 className="ui-page-title">UBE Portal</h1>
+            <p className="ui-page-subtitle mt-2">
               Sign in to manage your orders
             </p>
           </div>
 
           {error && (
-            <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg flex items-center gap-2">
+            <div className="mb-6 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 text-sm ui-radius-control flex items-center gap-2">
               <Info size={16} />
               {error}
             </div>
@@ -41,9 +39,7 @@ export const Login: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Username
-              </label>
+              <label className="block ui-form-label mb-1">Username</label>
               <input
                 type="text"
                 value={username}
@@ -54,9 +50,7 @@ export const Login: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Password
-              </label>
+              <label className="block ui-form-label mb-1">Password</label>
               <input
                 type="password"
                 value={password}
@@ -68,7 +62,7 @@ export const Login: React.FC = () => {
             </div>
             <button
               type="submit"
-              className="w-full bg-indigo-600 text-white py-2.5 px-4 rounded-xl font-bold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+              className="w-full bg-indigo-600 text-white py-2.5 px-4 ui-radius-control font-bold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
             >
               <LogIn size={18} />
               Sign In
@@ -94,7 +88,13 @@ export const Login: React.FC = () => {
               </div>
               <div className="text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
                 <span className="font-bold text-slate-700 dark:text-slate-300">
-                  sale1
+                  mizutani
+                </span>{' '}
+                (Sale)
+              </div>
+              <div className="text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
+                <span className="font-bold text-slate-700 dark:text-slate-300">
+                  sakuma
                 </span>{' '}
                 (Sale)
               </div>
@@ -111,7 +111,7 @@ export const Login: React.FC = () => {
                 (Admin)
               </div>
             </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 italic">
+            <p className="ui-form-helper mt-2 italic">
               * Use any password to login
             </p>
           </div>

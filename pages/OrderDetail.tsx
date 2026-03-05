@@ -1,1414 +1,1363 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useStore } from '../store';
-import { OrderStatus, DocumentType, Role, OrderDocument } from '../types';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  Send,
   Download,
-  FileText,
-  CheckCircle2,
-  Ship,
   ShieldCheck,
-  Package,
-  Calendar,
-  Globe,
-  Loader2,
-  DollarSign,
-  Upload,
   AlertCircle,
-  User,
-  Trash2,
-  Save,
-  Send
+  FileEdit,
+  BadgeCheck,
+  CalendarCheck,
+  FileCheck,
+  Ship,
+  FileText,
+  FileWarning,
+  CheckCircle2,
+  Circle
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import {
+  useStore,
+  canUserAccessShipTo,
+  canUserRunLineAction,
+  deriveOrderProgressStatus,
+  getVisibleOrdersForUser
+} from '../store';
 import Swal from '../utils/swal';
 import {
-  getActualEtdRequiredAlert,
-  getMissingFieldsAlert,
-  getNoFilesSelectedAlert,
-  getPriceRequiredAlert
-} from '../utils/alertMessages';
-import { useEffect } from 'react';
-
-const escapePdfText = (value: string) =>
-  value.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
-
-const buildSimplePdf = (
-  blocks: Array<{ fontSize: number; lines: string[] }>
-) => {
-  const contentLines = ['BT', '/F1 11 Tf', '50 760 Td', '14 TL'];
-  blocks.forEach((block, blockIndex) => {
-    if (blockIndex > 0) {
-      contentLines.push('T*');
-    }
-    contentLines.push(`/F1 ${block.fontSize} Tf`);
-    block.lines.forEach((line, lineIndex) => {
-      const prefix = blockIndex === 0 && lineIndex === 0 ? '' : 'T* ';
-      contentLines.push(`${prefix}(${escapePdfText(line)}) Tj`);
-    });
-  });
-  contentLines.push('ET');
-  const content = contentLines.join('\n');
-  const objects = [
-    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
-    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
-    '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
-    `4 0 obj\n<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`,
-    '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj\n'
-  ];
-
-  let pdf = '%PDF-1.4\n';
-  const offsets = [0];
-  objects.forEach((obj) => {
-    offsets.push(pdf.length);
-    pdf += obj;
-  });
-
-  const xrefStart = pdf.length;
-  pdf += `xref\n0 ${objects.length + 1}\n`;
-  pdf += '0000000000 65535 f \n';
-  offsets.slice(1).forEach((offset) => {
-    pdf += `${offset.toString().padStart(10, '0')} 00000 n \n`;
-  });
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
-
-  return pdf.replace(/[^\x00-\x7F]/g, '?');
-};
-
-const createPoPdfDataUrl = (
-  blocks: Array<{ fontSize: number; lines: string[] }>
-) => {
-  const pdf = buildSimplePdf(blocks);
-  return `data:application/pdf;base64,${btoa(pdf)}`;
-};
-
-const triggerDownload = (dataUrl: string, filename: string) => {
-  const link = document.createElement('a');
-  link.href = dataUrl;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
+  createOfficialPoPdfDataUrl,
+  createShippingInstructionPdfDataUrl
+} from '../utils/poPdf';
+import {
+  LineAction,
+  DocumentType,
+  OrderLineStatus,
+  OrderProgressStatus,
+  UserGroup
+} from '../types';
 
 export const OrderDetail: React.FC = () => {
   const { orderNo } = useParams();
-  const navigate = useNavigate();
-  const {
-    orders,
-    currentUser,
-    updateOrder,
-    deleteOrder,
-    addActivity,
-    addNotification,
-    addIntegrationLog,
-    companies
-  } = useStore();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { orders, companies, currentUser, linePermissionMatrix, updateOrder } =
+    useStore();
 
-  const [processing, setProcessing] = useState(false);
-  const [prices, setPrices] = useState<Record<string, number>>({});
-  const [currencies, setCurrencies] = useState<Record<string, string>>({});
-  const [etdDates, setEtdDates] = useState<Record<string, string>>({});
-  const [uploadingDocs, setUploadingDocs] = useState(false);
-  const [selectedDocType, setSelectedDocType] = useState<DocumentType>(
-    DocumentType.SHIPPING_DOC
+  const order = orders.find((item) => item.orderNo === orderNo);
+
+  const canAccessOrder = useMemo(
+    () =>
+      Boolean(
+        getVisibleOrdersForUser(orders, currentUser).find(
+          (item) => item.orderNo === orderNo
+        )
+      ),
+    [orders, currentUser, orderNo]
   );
-  const [selectedFiles, setSelectedFiles] = useState<
-    Record<DocumentType, File | null>
-  >({} as Record<DocumentType, File | null>);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
+  const visibleLines = useMemo(() => {
+    if (!order || !currentUser || !canAccessOrder) return [];
+    if (currentUser.role === 'ADMIN') return order.items;
 
-  const order = orders.find((o) => o.orderNo === orderNo);
-  const companyName =
-    companies.find((c) => c.id === order?.customerCompanyId)?.name ||
-    order?.customerCompanyId ||
-    'Unknown Customer';
+    return order.items.filter((line) =>
+      canUserAccessShipTo(currentUser, line.shipToId)
+    );
+  }, [order, currentUser, canAccessOrder]);
 
-  const wrapText = (value: string, width: number) => {
-    const words = value.split(' ');
-    const lines: string[] = [];
-    let current = '';
+  const selectedLineId = searchParams.get('lineId') || '';
+  const selectedLine =
+    visibleLines.find((line) => line.id === selectedLineId) || visibleLines[0];
 
-    words.forEach((word) => {
-      const next = current ? `${current} ${word}` : word;
-      if (next.length > width) {
-        if (current) lines.push(current);
-        current = word;
-      } else {
-        current = next;
-      }
-    });
+  const [priceInput, setPriceInput] = useState('');
+  const [currencyInput, setCurrencyInput] = useState('USD');
+  const [saleNoteInput, setSaleNoteInput] = useState('');
+  const [actualEtdInput, setActualEtdInput] = useState('');
+  const [draftDocFiles, setDraftDocFiles] = useState<
+    Partial<Record<DocumentType, File | null>>
+  >({});
 
-    if (current) lines.push(current);
-    return lines.length ? lines : [''];
-  };
-
-  // Populate default values from saved data when order is loaded
   useEffect(() => {
-    if (order) {
-      const initialPrices: Record<string, number> = {};
-      const initialCurrencies: Record<string, string> = {};
-      const initialETDs: Record<string, string> = {};
-
-      order.items.forEach((item) => {
-        if (item.price) {
-          initialPrices[item.id] = item.price;
-        }
-        if (item.currency) {
-          initialCurrencies[item.id] = item.currency;
-        }
-        if (item.actualETD) {
-          initialETDs[item.id] = item.actualETD;
-        }
-      });
-
-      setPrices(initialPrices);
-      setCurrencies(initialCurrencies);
-      setEtdDates(initialETDs);
+    if (!selectedLine) {
+      setPriceInput('');
+      setCurrencyInput('USD');
+      setSaleNoteInput('');
+      setActualEtdInput('');
+      setDraftDocFiles({});
+      return;
     }
-  }, [order?.orderNo]);
 
-  if (!order)
+    setPriceInput(selectedLine.price ? String(selectedLine.price) : '');
+    setCurrencyInput(selectedLine.currency || 'USD');
+    setSaleNoteInput(selectedLine.saleNote || '');
+    setActualEtdInput(selectedLine.actualETD || '');
+    setDraftDocFiles({});
+  }, [selectedLine?.id]);
+
+  const lineStatusMeta: Record<
+    OrderLineStatus,
+    {
+      label: string;
+      Icon: LucideIcon;
+      badgeClassName: string;
+      timelineClassName: string;
+    }
+  > = {
+    [OrderLineStatus.DRAFT]: {
+      label: 'DRAFT',
+      Icon: FileEdit,
+      badgeClassName:
+        'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300',
+      timelineClassName:
+        'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-300'
+    },
+    [OrderLineStatus.CREATED]: {
+      label: 'CREATED',
+      Icon: Send,
+      badgeClassName:
+        'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-300',
+      timelineClassName:
+        'border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300'
+    },
+    [OrderLineStatus.UBE_APPROVED]: {
+      label: 'UBE APPROVED',
+      Icon: ShieldCheck,
+      badgeClassName:
+        'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-950 dark:border-cyan-800 dark:text-cyan-300',
+      timelineClassName:
+        'border-cyan-300 dark:border-cyan-700 bg-cyan-50 dark:bg-cyan-950 text-cyan-600 dark:text-cyan-300'
+    },
+    [OrderLineStatus.APPROVED]: {
+      label: 'CONFIRMED',
+      Icon: BadgeCheck,
+      badgeClassName:
+        'bg-violet-50 border-violet-200 text-violet-700 dark:bg-violet-950 dark:border-violet-800 dark:text-violet-300',
+      timelineClassName:
+        'border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-950 text-violet-600 dark:text-violet-300'
+    },
+    [OrderLineStatus.VESSEL_SCHEDULED]: {
+      label: 'VESSEL SCHEDULED',
+      Icon: CalendarCheck,
+      badgeClassName:
+        'bg-sky-50 border-sky-200 text-sky-700 dark:bg-sky-950 dark:border-sky-800 dark:text-sky-300',
+      timelineClassName:
+        'border-sky-300 dark:border-sky-700 bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-300'
+    },
+    [OrderLineStatus.RECEIVED_ACTUAL_PO]: {
+      label: 'RECEIVED ACTUAL PO',
+      Icon: FileCheck,
+      badgeClassName:
+        'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-300',
+      timelineClassName:
+        'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-300'
+    },
+    [OrderLineStatus.VESSEL_DEPARTED]: {
+      label: 'DEPARTED',
+      Icon: Ship,
+      badgeClassName:
+        'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950 dark:border-emerald-800 dark:text-emerald-300',
+      timelineClassName:
+        'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-300'
+    }
+  };
+
+  const orderStatusMeta: Record<
+    OrderProgressStatus,
+    { Icon: LucideIcon; className: string; label: string }
+  > = {
+    [OrderProgressStatus.CREATE]: {
+      Icon: FileEdit,
+      className:
+        'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800',
+      label: 'DRAFT'
+    },
+    [OrderProgressStatus.IN_PROGRESS]: {
+      Icon: AlertCircle,
+      className:
+        'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+      label: 'IN PROGRESS'
+    },
+    [OrderProgressStatus.COMPLETE]: {
+      Icon: CheckCircle2,
+      className:
+        'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+      label: 'COMPLETE'
+    }
+  };
+
+  const linePermission = selectedLine
+    ? linePermissionMatrix.find(
+        (item) => item.fromStatus === selectedLine.status
+      )
+    : undefined;
+
+  const requiredGroup = linePermission?.allowedUserGroups[0] || UserGroup.ADMIN;
+
+  const ownerByToStatus = new Map<OrderLineStatus, UserGroup>(
+    linePermissionMatrix.map((item) => [
+      item.toStatus,
+      item.allowedUserGroups[0]
+    ])
+  );
+
+  const getTimelineOwner = (status: OrderLineStatus, fallback: UserGroup) =>
+    ownerByToStatus.get(status) || fallback;
+
+  const timelineSteps = [
+    {
+      status: OrderLineStatus.DRAFT,
+      label: 'DRAFT',
+      owner: 'TRADER',
+      icon: FileEdit as LucideIcon
+    },
+    {
+      status: OrderLineStatus.CREATED,
+      label: 'CREATED',
+      owner: getTimelineOwner(OrderLineStatus.CREATED, UserGroup.TRADER),
+      icon: Send as LucideIcon
+    },
+    {
+      status: OrderLineStatus.UBE_APPROVED,
+      label: 'UBE APPROVED',
+      owner: getTimelineOwner(OrderLineStatus.UBE_APPROVED, UserGroup.UBE),
+      icon: ShieldCheck as LucideIcon
+    },
+    {
+      status: OrderLineStatus.APPROVED,
+      label: 'CONFIRMED',
+      owner: getTimelineOwner(OrderLineStatus.APPROVED, UserGroup.SALE),
+      icon: BadgeCheck as LucideIcon
+    },
+    {
+      status: OrderLineStatus.VESSEL_SCHEDULED,
+      label: 'VESSEL SCHEDULED',
+      owner: getTimelineOwner(OrderLineStatus.VESSEL_SCHEDULED, UserGroup.CS),
+      icon: CalendarCheck as LucideIcon
+    },
+    {
+      status: OrderLineStatus.RECEIVED_ACTUAL_PO,
+      label: 'RECEIVED ACTUAL PO',
+      owner: getTimelineOwner(OrderLineStatus.RECEIVED_ACTUAL_PO, UserGroup.CS),
+      icon: FileCheck as LucideIcon
+    },
+    {
+      status: OrderLineStatus.VESSEL_DEPARTED,
+      label: 'DEPARTED',
+      owner: getTimelineOwner(OrderLineStatus.VESSEL_DEPARTED, UserGroup.CS),
+      icon: Ship as LucideIcon
+    }
+  ];
+
+  const selectedStepIndex = selectedLine
+    ? timelineSteps.findIndex((step) => step.status === selectedLine.status)
+    : -1;
+
+  const timelineProgressPercent =
+    selectedStepIndex <= 0
+      ? 0
+      : (selectedStepIndex / (timelineSteps.length - 1)) * 100;
+
+  const selectedToneClass = selectedLine
+    ? lineStatusMeta[selectedLine.status].timelineClassName
+    : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-300';
+
+  const actionHintByStatus: Record<
+    OrderLineStatus,
+    { title: string; description: string }
+  > = {
+    [OrderLineStatus.DRAFT]: {
+      title: 'Draft Order - Ready to Submit',
+      description:
+        'This line is in draft status. You can edit in order form or submit for sale review.'
+    },
+    [OrderLineStatus.CREATED]: {
+      title: 'Awaiting UBE Japan Approval',
+      description:
+        'This line was submitted by Trader and requires UBE Japan approval first.'
+    },
+    [OrderLineStatus.UBE_APPROVED]: {
+      title: 'Awaiting Sale Confirmation',
+      description:
+        'UBE Japan approved this line. Sale team can now confirm and send.'
+    },
+    [OrderLineStatus.APPROVED]: {
+      title: 'Waiting Vessel Schedule',
+      description: 'CS should set ETD to move this line to scheduled state.'
+    },
+    [OrderLineStatus.VESSEL_SCHEDULED]: {
+      title: 'Generate Official PO Document',
+      description:
+        'Logistics confirmed. Finalize the order by generating the formal PO PDF.'
+    },
+    [OrderLineStatus.RECEIVED_ACTUAL_PO]: {
+      title: 'Waiting Final Documents',
+      description:
+        'Upload final shipping documents to complete this logistics line.'
+    },
+    [OrderLineStatus.VESSEL_DEPARTED]: {
+      title: 'Line Completed',
+      description: 'This line has completed the end-to-end workflow.'
+    }
+  };
+
+  if (!order || !canAccessOrder) {
     return (
-      <div className="p-20 text-center font-bold text-slate-400">
-        Resource not found.
+      <div className="p-8 text-sm text-slate-500">
+        Order not found or access denied.
       </div>
     );
+  }
 
-  const handleApprove = async () => {
-    // Validate that all items have prices
-    const missingPrices = order.items.filter(
-      (item) => !prices[item.id] && !item.price
+  const canRunSelectedLineAction =
+    Boolean(selectedLine && linePermission) &&
+    canUserRunLineAction(
+      currentUser,
+      selectedLine!.status,
+      linePermission!.action,
+      linePermissionMatrix
     );
 
-    if (missingPrices.length > 0) {
-      Swal.fire(getPriceRequiredAlert(missingPrices.length));
-      return;
-    }
+  const actionLabelByLineAction: Record<LineAction, string> = {
+    [LineAction.SUBMIT_LINE]: 'Submit to Sale',
+    [LineAction.UBE_APPROVE_LINE]: 'Approve',
+    [LineAction.APPROVE_LINE]: 'Confirm & Send',
+    [LineAction.SET_ETD]: 'Mark Vessel Scheduled',
+    [LineAction.MARK_RECEIVED_PO]: 'Generate PO & Mark Received',
+    [LineAction.UPLOAD_FINAL_DOCS]: 'Complete Line'
+  };
 
-    setProcessing(true);
+  const hasShippingDoc = Boolean(
+    selectedLine?.documents.some(
+      (doc) => doc.type === DocumentType.SHIPPING_DOC
+    )
+  );
+  const hasBl = Boolean(
+    selectedLine?.documents.some((doc) => doc.type === DocumentType.BL)
+  );
+  const hasPendingShippingDoc = Boolean(
+    draftDocFiles[DocumentType.SHIPPING_DOC]
+  );
+  const hasPendingBl = Boolean(draftDocFiles[DocumentType.BL]);
+  const hasRequiredDocForComplete = hasShippingDoc || hasPendingShippingDoc;
+  const hasRequiredBlForComplete = hasBl || hasPendingBl;
 
-    // Step 2.1: Sale approval + CRM integration
-    addActivity(
-      'Sale Approve',
-      currentUser!.username,
-      `Approved order ${order.orderNo} for CRM sync`
-    );
+  const canAccessDocumentType = (docType: DocumentType) => {
+    if (!currentUser) return false;
+    return currentUser.allowedDocumentTypes.includes(docType);
+  };
 
-    await new Promise((r) => setTimeout(r, 2000));
-    const updatedItems = order.items.map((item) => ({
-      ...item,
-      price: prices[item.id] || item.price || 0,
-      currency: currencies[item.id] || item.currency || 'USD'
+  const allowedUploadDocumentTypes = useMemo(
+    () =>
+      Object.values(DocumentType).filter(
+        (type) =>
+          type !== DocumentType.PO_PDF &&
+          type !== DocumentType.SHIPPING_INSTRUCTION_PDF
+      ),
+    [currentUser]
+  );
+
+  const visibleDocuments = useMemo(() => {
+    if (!selectedLine) return [];
+    return selectedLine.documents;
+  }, [selectedLine, currentUser]);
+
+  const documentTypeLabelMap: Record<DocumentType, string> = {
+    [DocumentType.SHIPPING_DOC]: 'Shipping Document',
+    [DocumentType.BL]: 'Bill of Lading',
+    [DocumentType.INVOICE]: 'Invoice',
+    [DocumentType.COA]: 'Certificate of Analysis',
+    [DocumentType.PO_PDF]: 'PO PDF',
+    [DocumentType.SHIPPING_INSTRUCTION_PDF]: 'Shipping Instruction PDF'
+  };
+
+  const handlePickDraftDocument = (
+    docType: DocumentType,
+    file: File | null
+  ) => {
+    setDraftDocFiles((prev) => ({
+      ...prev,
+      [docType]: file
     }));
-
-    updateOrder(order.orderNo, {
-      status: OrderStatus.CONFIRMED,
-      items: updatedItems
-    });
-    addIntegrationLog({
-      orderNo: order.orderNo,
-      status: 'SUCCESS',
-      message: 'Order synced to CRM successfully. SAP record created.'
-    });
-    addNotification(
-      `Order ${order.orderNo} confirmed and synced to CRM`,
-      Role.SALE,
-      'system'
-    );
-
-    Swal.fire({
-      icon: 'success',
-      title: 'Order Approved',
-      text: `Order ${order.orderNo} has been approved and synced to CRM`,
-      timer: 2000,
-      showConfirmButton: false
-    });
-
-    // Step 2.2: Simulate CRM callback (Quotation creation)
-    setTimeout(() => {
-      const quotationNo = 'QT-' + Math.floor(100000 + Math.random() * 900000);
-      updateOrder(order.orderNo, { quotationNo });
-      addNotification(
-        `Quotation ${quotationNo} created for Order ${order.orderNo}. Ready for customer review.`,
-        Role.UBE_JAPAN,
-        'email'
-      );
-      addActivity(
-        'CRM Callback',
-        'CRM System',
-        `Quotation ${quotationNo} auto-generated for ${order.orderNo}`
-      );
-      console.log(
-        `[CRM Callback] Quotation ${quotationNo} created for ${order.orderNo}`
-      );
-    }, 5000);
-
-    setProcessing(false);
   };
 
-  const handleSetETD = () => {
-    // Check if all items have ETD dates
-    const hasAllDates = order.items.every((item) => etdDates[item.id]);
-
-    if (!hasAllDates) {
-      Swal.fire(getActualEtdRequiredAlert(order.items.length));
-      return;
-    }
-
-    // Update each item with its own actualETD
-    const updatedItems = order.items.map((item) => ({
-      ...item,
-      actualETD: etdDates[item.id]
-    }));
-
-    updateOrder(order.orderNo, {
-      status: OrderStatus.VESSEL_SCHEDULED,
-      items: updatedItems
-    });
-    addActivity(
-      'Set ETD',
-      currentUser!.username,
-      `Vessel scheduled for ${order.orderNo} with ${order.items.length} lines`
-    );
-    addNotification(
-      `Vessel Scheduled: ${order.orderNo}`,
-      Role.UBE_JAPAN,
-      'email'
-    );
-    Swal.fire({
-      icon: 'success',
-      title: 'Vessel Scheduled',
-      text: `ETD set successfully for ${order.orderNo}`,
-      timer: 2000,
-      showConfirmButton: false
-    });
+  const triggerDownload = (dataUrl: string, filename: string) => {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  const buildPoBlocks = () => {
-    const noteText = order.note?.trim() || '-';
-    const noteLines = wrapText(noteText, 64).map(
-      (line, index) => `${index === 0 ? 'Note' : '    '} : ${line}`
-    );
-    const headerLines = [
-      'PURCHASE ORDER',
-      '------------------------------',
-      `Order No : ${order.orderNo}`,
-      `Order Date : ${formatDate(order.orderDate)}`,
-      `Customer : ${companyName}`,
-      ...noteLines,
-      ''
-    ];
-    const tableHeader = [
-      'LN  PO NO       GRADE      SHIP TO   QTY  DEST    TERM  ETD        ETA        ACT ETD    PRICE'
-    ];
-    const tableDivider = [
-      '--  ----------  ---------  --------- ---- ------- ---- ---------- ---------- ---------- ------------'
-    ];
-    const tableRows = order.items.map((item, index) => {
-      const line = String(index + 1).padEnd(2, ' ');
-      const poNo = item.poNo.padEnd(10, ' ').slice(0, 10);
-      const grade = item.gradeId.padEnd(9, ' ').slice(0, 9);
-      const shipTo = (item.shipToId || '').padEnd(9, ' ').slice(0, 9);
-      const qty = String(item.qty).padStart(4, ' ').slice(-4);
-      const dest = item.destinationId.padEnd(7, ' ').slice(0, 7);
-      const term = item.termId.padEnd(4, ' ').slice(0, 4);
-      const etdValue = item.asap ? 'ASAP' : item.requestETD || '';
-      const etaValue = item.asap ? 'ASAP' : item.requestETA || '';
-      const etd = etdValue.padEnd(10, ' ').slice(0, 10);
-      const eta = etaValue.padEnd(10, ' ').slice(0, 10);
-      const actual = (item.actualETD || '').padEnd(10, ' ').slice(0, 10);
-      const priceNumber = item.price ?? prices[item.id];
-      const priceCurrency = item.currency ?? currencies[item.id];
-      const formattedPrice =
-        priceNumber != null
-          ? new Intl.NumberFormat('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            }).format(priceNumber)
-          : '';
-      const priceValue = formattedPrice
-        ? priceCurrency
-          ? `${formattedPrice} ${priceCurrency}`
-          : formattedPrice
-        : '';
-      const price = priceValue.trim().padEnd(12, ' ').slice(0, 12);
-      return `${line}  ${poNo}  ${grade}  ${shipTo} ${qty} ${dest} ${term} ${etd} ${eta} ${actual} ${price}`;
-    });
+  const handleDownloadDocument = (docId: string) => {
+    if (!selectedLine) return;
+    const doc = selectedLine.documents.find((item) => item.id === docId);
+    if (!doc) return;
 
-    return [
-      { fontSize: 14, lines: headerLines },
-      { fontSize: 9, lines: tableHeader },
-      { fontSize: 9, lines: tableDivider },
-      { fontSize: 9, lines: tableRows }
-    ];
-  };
-
-  const handleGeneratePO = () => {
-    const filename = `PO_${order.orderNo}.pdf`;
-    const dataUrl = createPoPdfDataUrl(buildPoBlocks());
-    triggerDownload(dataUrl, filename);
-
-    updateOrder(order.orderNo, {
-      status: OrderStatus.RECEIVED_ACTUAL_PO,
-      documents: [
-        ...order.documents.filter((doc) => doc.type !== DocumentType.PO_PDF),
-        {
-          id: 'doc-' + Math.random().toString(36).substr(2, 5),
-          type: DocumentType.PO_PDF,
-          filename,
-          dataUrl,
-          uploadedAt: new Date().toISOString(),
-          uploadedBy: currentUser!.username
-        }
-      ]
-    });
-    addActivity(
-      'Generate PO',
-      currentUser!.username,
-      `Generated PO PDF for ${order.orderNo}`
-    );
-    addNotification(`PO Generated for ${order.orderNo}`, Role.CS, 'system');
-    Swal.fire({
-      icon: 'success',
-      title: 'PO Generated',
-      text: `Purchase Order PDF created for ${order.orderNo}`,
-      timer: 2000,
-      showConfirmButton: false
-    });
-  };
-
-  const handleDownloadDoc = (doc: OrderDocument) => {
-    if (
-      !currentUser?.allowedDocumentTypes.includes(doc.type) &&
-      currentUser?.role !== Role.ADMIN
-    ) {
+    if (!canAccessDocumentType(doc.type)) {
       Swal.fire({
         icon: 'error',
-        title: 'Access Denied',
-        text: `You don't have permission to download ${doc.type} documents.`,
-        confirmButtonColor: '#4F46E5'
+        title: 'Permission denied',
+        text: `You do not have permission to access ${doc.type}.`
       });
-      addActivity(
-        'Download Denied',
-        currentUser!.username,
-        `Attempted to download ${doc.filename} without permission`
-      );
       return;
     }
 
     if (doc.dataUrl) {
       triggerDownload(doc.dataUrl, doc.filename);
-      addActivity(
-        'Download Document',
-        currentUser!.username,
-        `Downloaded ${doc.filename}`
-      );
       return;
     }
 
     if (doc.type === DocumentType.PO_PDF) {
-      const filename = `PO_${order.orderNo}.pdf`;
-      triggerDownload(createPoPdfDataUrl(buildPoBlocks()), filename);
-      addActivity(
-        'Download Document',
-        currentUser!.username,
-        `Downloaded ${filename}`
+      triggerDownload(
+        createOfficialPoPdfDataUrl({
+          orderNo: order.orderNo,
+          orderDate: order.orderDate,
+          poNo: selectedLine.poNo,
+          shipToId: selectedLine.shipToId,
+          destinationId: selectedLine.destinationId,
+          termId: selectedLine.termId,
+          gradeId: selectedLine.gradeId,
+          qty: selectedLine.qty,
+          price: selectedLine.price,
+          currency: selectedLine.currency,
+          requestETD: selectedLine.requestETD,
+          actualETD: selectedLine.actualETD
+        }),
+        doc.filename
       );
       return;
     }
 
-    // Simulate download
-    addActivity(
-      'Download Document',
-      currentUser!.username,
-      `Downloaded ${doc.filename}`
+    if (doc.type === DocumentType.SHIPPING_INSTRUCTION_PDF) {
+      triggerDownload(
+        createShippingInstructionPdfDataUrl({
+          orderNo: order.orderNo,
+          orderDate: order.orderDate,
+          poNo: selectedLine.poNo,
+          shipToId: selectedLine.shipToId,
+          destinationId: selectedLine.destinationId,
+          termId: selectedLine.termId,
+          gradeId: selectedLine.gradeId,
+          qty: selectedLine.qty,
+          price: selectedLine.price,
+          currency: selectedLine.currency,
+          requestETD: selectedLine.requestETD,
+          actualETD: selectedLine.actualETD
+        }),
+        doc.filename
+      );
+    }
+  };
+
+  const isActionPayloadValid = (() => {
+    if (!linePermission || !selectedLine) return false;
+
+    if (linePermission.action === LineAction.APPROVE_LINE) {
+      return Number(priceInput) > 0;
+    }
+
+    if (linePermission.action === LineAction.SET_ETD) {
+      return Boolean(actualEtdInput);
+    }
+
+    if (linePermission.action === LineAction.UPLOAD_FINAL_DOCS) {
+      return hasRequiredDocForComplete && hasRequiredBlForComplete;
+    }
+
+    return true;
+  })();
+
+  const runSelectedLineAction = async () => {
+    if (!selectedLine || !linePermission) return;
+
+    if (
+      linePermission.action === LineAction.APPROVE_LINE &&
+      Number(priceInput) <= 0
+    ) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Price required',
+        text: 'Please input price before confirming line.'
+      });
+      return;
+    }
+
+    if (linePermission.action === LineAction.SET_ETD && !actualEtdInput) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Actual ETD required',
+        text: 'Please set actual ETD before moving this line.'
+      });
+      return;
+    }
+
+    if (
+      linePermission.action === LineAction.UPLOAD_FINAL_DOCS &&
+      (!hasRequiredDocForComplete || !hasRequiredBlForComplete)
+    ) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Required documents missing',
+        text: 'Shipping Document and BL are required before complete line.'
+      });
+      return;
+    }
+
+    const confirmed = await Swal.fire({
+      icon: 'question',
+      title: 'Confirm action',
+      text: `${actionLabelByLineAction[linePermission.action]} for line ${selectedLine.poNo}?`,
+      showCancelButton: true,
+      confirmButtonText: 'Confirm',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!confirmed.isConfirmed) return;
+
+    const quotationNo =
+      linePermission.action === LineAction.APPROVE_LINE
+        ? selectedLine.quotationNo ||
+          `QT-${Math.floor(100000 + Math.random() * 900000)}`
+        : selectedLine.quotationNo;
+
+    const generatedPoFilename = `PO_${order.orderNo}_${selectedLine.poNo}.pdf`;
+    const generatedPoDataUrl =
+      linePermission.action === LineAction.MARK_RECEIVED_PO
+        ? createOfficialPoPdfDataUrl({
+            orderNo: order.orderNo,
+            orderDate: order.orderDate,
+            poNo: selectedLine.poNo,
+            shipToId: selectedLine.shipToId,
+            destinationId: selectedLine.destinationId,
+            termId: selectedLine.termId,
+            gradeId: selectedLine.gradeId,
+            qty: selectedLine.qty,
+            price: selectedLine.price,
+            currency: selectedLine.currency,
+            requestETD: selectedLine.requestETD,
+            actualETD: selectedLine.actualETD
+          })
+        : '';
+    const generatedSiFilename = `SI_${order.orderNo}_${selectedLine.poNo}.pdf`;
+    const generatedSiDataUrl =
+      linePermission.action === LineAction.MARK_RECEIVED_PO
+        ? createShippingInstructionPdfDataUrl({
+            orderNo: order.orderNo,
+            orderDate: order.orderDate,
+            poNo: selectedLine.poNo,
+            shipToId: selectedLine.shipToId,
+            destinationId: selectedLine.destinationId,
+            termId: selectedLine.termId,
+            gradeId: selectedLine.gradeId,
+            qty: selectedLine.qty,
+            price: selectedLine.price,
+            currency: selectedLine.currency,
+            requestETD: selectedLine.requestETD,
+            actualETD: selectedLine.actualETD
+          })
+        : '';
+
+    const pendingUploads =
+      linePermission.action === LineAction.UPLOAD_FINAL_DOCS
+        ? Object.entries(draftDocFiles).filter(
+            (entry): entry is [DocumentType, File] =>
+              Boolean(entry[1]) &&
+              canAccessDocumentType(entry[0] as DocumentType)
+          )
+        : [];
+
+    const uploadPayloadByType = new Map<
+      DocumentType,
+      { file: File; dataUrl: string }
+    >();
+
+    if (
+      linePermission.action === LineAction.UPLOAD_FINAL_DOCS &&
+      pendingUploads.length > 0
+    ) {
+      await Promise.all(
+        pendingUploads.map(async ([docType, file]) => {
+          const dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ''));
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(file);
+          });
+          uploadPayloadByType.set(docType, { file, dataUrl });
+        })
+      );
+    }
+
+    const nextItems = order.items.map((line) => {
+      if (line.id !== selectedLine.id) return line;
+
+      if (linePermission.action === LineAction.APPROVE_LINE) {
+        return {
+          ...line,
+          price: Number(priceInput),
+          currency: currencyInput.trim() || 'USD',
+          saleNote: saleNoteInput.trim(),
+          quotationNo,
+          status: linePermission.toStatus
+        };
+      }
+
+      if (linePermission.action === LineAction.SET_ETD) {
+        return {
+          ...line,
+          actualETD: actualEtdInput,
+          status: linePermission.toStatus
+        };
+      }
+
+      if (linePermission.action === LineAction.MARK_RECEIVED_PO) {
+        return {
+          ...line,
+          status: linePermission.toStatus,
+          documents: [
+            ...line.documents.filter(
+              (doc) =>
+                doc.type !== DocumentType.PO_PDF &&
+                doc.type !== DocumentType.SHIPPING_INSTRUCTION_PDF
+            ),
+            {
+              id: `doc-${Math.random().toString(36).slice(2, 8)}`,
+              type: DocumentType.PO_PDF,
+              filename: generatedPoFilename,
+              dataUrl: generatedPoDataUrl,
+              uploadedBy: currentUser?.username || 'system',
+              uploadedAt: new Date().toISOString()
+            },
+            {
+              id: `doc-${Math.random().toString(36).slice(2, 8)}`,
+              type: DocumentType.SHIPPING_INSTRUCTION_PDF,
+              filename: generatedSiFilename,
+              dataUrl: generatedSiDataUrl,
+              uploadedBy: currentUser?.username || 'system',
+              uploadedAt: new Date().toISOString()
+            }
+          ]
+        };
+      }
+
+      if (linePermission.action === LineAction.UPLOAD_FINAL_DOCS) {
+        const replacingTypes = new Set(uploadPayloadByType.keys());
+        const retainedDocuments = line.documents.filter(
+          (doc) => !replacingTypes.has(doc.type)
+        );
+        const uploadedDocuments = Array.from(uploadPayloadByType.entries()).map(
+          ([docType, payload]) => ({
+            id: `doc-${Math.random().toString(36).slice(2, 8)}`,
+            type: docType,
+            filename: payload.file.name,
+            dataUrl: payload.dataUrl,
+            uploadedBy: currentUser?.username || 'system',
+            uploadedAt: new Date().toISOString()
+          })
+        );
+
+        return {
+          ...line,
+          status: linePermission.toStatus,
+          documents: [...retainedDocuments, ...uploadedDocuments]
+        };
+      }
+
+      return { ...line, status: linePermission.toStatus };
+    });
+
+    updateOrder(order.orderNo, {
+      items: nextItems,
+      status: deriveOrderProgressStatus(nextItems),
+      quotationNo: quotationNo || order.quotationNo
+    });
+
+    if (
+      linePermission.action === LineAction.MARK_RECEIVED_PO &&
+      canAccessDocumentType(DocumentType.PO_PDF)
+    ) {
+      triggerDownload(generatedPoDataUrl, generatedPoFilename);
+    }
+    if (
+      linePermission.action === LineAction.MARK_RECEIVED_PO &&
+      canAccessDocumentType(DocumentType.SHIPPING_INSTRUCTION_PDF)
+    ) {
+      triggerDownload(generatedSiDataUrl, generatedSiFilename);
+    }
+
+    if (linePermission.action === LineAction.UPLOAD_FINAL_DOCS) {
+      setDraftDocFiles({});
+    }
+  };
+
+  const saveSelectedLineDraft = async () => {
+    if (!selectedLine || !linePermission) return;
+
+    const pendingUploads = Object.entries(draftDocFiles).filter(
+      (entry): entry is [DocumentType, File] =>
+        Boolean(entry[1]) && canAccessDocumentType(entry[0] as DocumentType)
     );
+
+    if (
+      linePermission.action === LineAction.UPLOAD_FINAL_DOCS &&
+      pendingUploads.length === 0
+    ) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'No file selected',
+        text: 'Please select at least one document before saving draft.'
+      });
+      return;
+    }
+
+    const confirmed = await Swal.fire({
+      icon: 'question',
+      title: 'Confirm save draft',
+      text: `Save draft for line ${selectedLine.poNo}?`,
+      showCancelButton: true,
+      confirmButtonText: 'Save Draft',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!confirmed.isConfirmed) return;
+
+    const uploadPayloadByType = new Map<
+      DocumentType,
+      { file: File; dataUrl: string }
+    >();
+
+    if (linePermission.action === LineAction.UPLOAD_FINAL_DOCS) {
+      await Promise.all(
+        pendingUploads.map(async ([docType, file]) => {
+          const dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ''));
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(file);
+          });
+          uploadPayloadByType.set(docType, { file, dataUrl });
+        })
+      );
+    }
+
+    const nextItems = order.items.map((line) => {
+      if (line.id !== selectedLine.id) return line;
+
+      if (linePermission.action === LineAction.APPROVE_LINE) {
+        return {
+          ...line,
+          price: Number(priceInput) > 0 ? Number(priceInput) : undefined,
+          currency: currencyInput.trim() || line.currency || 'USD',
+          saleNote: saleNoteInput.trim()
+        };
+      }
+
+      if (linePermission.action === LineAction.SET_ETD) {
+        return {
+          ...line,
+          actualETD: actualEtdInput || ''
+        };
+      }
+
+      if (linePermission.action === LineAction.UPLOAD_FINAL_DOCS) {
+        if (uploadPayloadByType.size === 0) return line;
+
+        const replacingTypes = new Set(uploadPayloadByType.keys());
+        const retainedDocuments = line.documents.filter(
+          (doc) => !replacingTypes.has(doc.type)
+        );
+
+        const uploadedDocuments = Array.from(uploadPayloadByType.entries()).map(
+          ([docType, payload]) => ({
+            id: `doc-${Math.random().toString(36).slice(2, 8)}`,
+            type: docType,
+            filename: payload.file.name,
+            dataUrl: payload.dataUrl,
+            uploadedBy: currentUser?.username || 'system',
+            uploadedAt: new Date().toISOString()
+          })
+        );
+
+        return {
+          ...line,
+          documents: [...retainedDocuments, ...uploadedDocuments]
+        };
+      }
+
+      return line;
+    });
+
+    updateOrder(order.orderNo, {
+      items: nextItems,
+      status: deriveOrderProgressStatus(nextItems)
+    });
+
+    if (linePermission.action === LineAction.UPLOAD_FINAL_DOCS) {
+      setDraftDocFiles({});
+    }
+
     Swal.fire({
       icon: 'success',
-      title: 'Download Started',
-      text: `Downloading: ${doc.filename}`,
-      timer: 2000,
+      title:
+        linePermission.action === LineAction.UPLOAD_FINAL_DOCS
+          ? `Draft saved (${pendingUploads.length} file${pendingUploads.length > 1 ? 's' : ''})`
+          : 'Draft saved',
+      timer: 900,
       showConfirmButton: false
     });
   };
 
-  const handleUploadDocs = () => {
-    const filesToUpload = Object.entries(selectedFiles).filter(
-      ([_, file]) => file !== null
+  const orderStatusBadge = orderStatusMeta[order.status];
+  const OrderStatusIcon = orderStatusBadge.Icon;
+
+  const renderWaitBadge = () => (
+    <span className="inline-flex items-center px-2 py-0.5 ui-radius-control border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 text-[10px] font-bold uppercase text-amber-700 dark:text-amber-300">
+      WAIT
+    </span>
+  );
+
+  const renderAsapBadge = (isAsap: boolean) =>
+    isAsap ? (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-rose-500 text-white animate-pulse">
+        ASAP
+      </span>
+    ) : (
+      <span className="text-slate-400 dark:text-slate-500">-</span>
     );
 
-    if (filesToUpload.length === 0) {
-      Swal.fire(getNoFilesSelectedAlert());
-      return;
-    }
-
-    setUploadingDocs(true);
-
-    // Upload all files and collect new documents
-    const newDocs: OrderDocument[] = [];
-    filesToUpload.forEach(([docType, file]) => {
-      const uploadFile = file as File;
-      const newDoc = {
-        id: 'doc-' + Math.random().toString(36).substr(2, 5),
-        type: docType as DocumentType,
-        filename: uploadFile.name,
-        uploadedAt: new Date().toISOString(),
-        uploadedBy: currentUser!.username
-      };
-      newDocs.push(newDoc);
-
-      addActivity(
-        'Upload Document',
-        currentUser!.username,
-        `Uploaded ${docType} for ${order.orderNo}`
-      );
-    });
-
-    // Simulate upload delay then update all at once
-    setTimeout(() => {
-      const currentDocs = order.documents || [];
-      const allDocs = [...currentDocs, ...newDocs];
-
-      // Check if all required docs are present
-      const hasShippingDoc = allDocs.some(
-        (d) => d.type === DocumentType.SHIPPING_DOC
-      );
-      const hasBL = allDocs.some((d) => d.type === DocumentType.BL);
-
-      // Update order with documents
-      updateOrder(order.orderNo, {
-        documents: allDocs
-      });
-
-      // If all required docs are uploaded, also update status
-      if (
-        hasShippingDoc &&
-        hasBL &&
-        order.status === OrderStatus.RECEIVED_ACTUAL_PO
-      ) {
-        updateOrder(order.orderNo, {
-          status: OrderStatus.VESSEL_DEPARTED,
-          documents: allDocs
-        });
-        addNotification(
-          `Vessel Departed: ${order.orderNo}`,
-          Role.UBE_JAPAN,
-          'email'
-        );
-        Swal.fire({
-          icon: 'success',
-          title: 'Status Updated',
-          text: `Order ${order.orderNo} marked as Vessel Departed`,
-          timer: 2000,
-          showConfirmButton: false
-        });
-      } else {
-        Swal.fire({
-          icon: 'success',
-          title: 'Documents Uploaded',
-          text: `${filesToUpload.length} document(s) uploaded successfully`,
-          timer: 2000,
-          showConfirmButton: false
-        });
-      }
-
-      setSelectedFiles({} as Record<DocumentType, File | null>);
-      setUploadingDocs(false);
-    }, 1500);
-  };
-
-  const steps = [
-    { label: 'Draft', status: OrderStatus.DRAFT, role: 'Trader' },
-    { label: 'Created', status: OrderStatus.CREATED, role: 'Trader' },
-    { label: 'Confirmed', status: OrderStatus.CONFIRMED, role: 'Sale' },
-    {
-      label: 'Vessel Scheduled',
-      status: OrderStatus.VESSEL_SCHEDULED,
-      role: 'CS'
-    },
-    {
-      label: 'Received Actual PO',
-      status: OrderStatus.RECEIVED_ACTUAL_PO,
-      role: 'Trader'
-    },
-    { label: 'Departed', status: OrderStatus.VESSEL_DEPARTED, role: 'CS' }
-  ];
-  const activeIdx = steps.findIndex((s) => s.status === order.status);
-
-  const handleDeleteOrder = async () => {
-    const result = await Swal.fire({
-      icon: 'warning',
-      title: 'Delete Order?',
-      text: `Are you sure you want to delete order ${order.orderNo}? This action cannot be undone.`,
-      showCancelButton: true,
-      confirmButtonColor: '#DC2626',
-      cancelButtonColor: '#64748B',
-      confirmButtonText: 'Yes, Delete',
-      cancelButtonText: 'Cancel'
-    });
-
-    if (result.isConfirmed) {
-      deleteOrder(order.orderNo);
-      Swal.fire({
-        icon: 'success',
-        title: 'Order Deleted',
-        text: `Order ${order.orderNo} has been deleted`,
-        timer: 1500,
-        showConfirmButton: false
-      });
-      setTimeout(() => {
-        navigate('/orders');
-      }, 1500);
-    }
-  };
-
-  const handleSubmitDraft = async () => {
-    // Validate required fields
-    const missingFields: string[] = [];
-
-    order.items.forEach((item, index) => {
-      if (!item.poNo) missingFields.push(`Line ${index + 1}: PO Number`);
-      if (!item.shipToId) missingFields.push(`Line ${index + 1}: Ship To`);
-      if (!item.destinationId)
-        missingFields.push(`Line ${index + 1}: Destination`);
-      if (!item.termId) missingFields.push(`Line ${index + 1}: Term`);
-      if (!item.gradeId) missingFields.push(`Line ${index + 1}: Grade`);
-      if (!item.asap && !item.requestETD && !item.requestETA) {
-        missingFields.push(`Line ${index + 1}: ETD or ETA`);
-      }
-      if (!item.qty || item.qty < 1)
-        missingFields.push(`Line ${index + 1}: Quantity`);
-    });
-
-    if (missingFields.length > 0) {
-      Swal.fire(getMissingFieldsAlert(missingFields));
-      return;
-    }
-
-    const result = await Swal.fire({
-      icon: 'question',
-      title: 'Submit Order?',
-      text: `Submit order ${order.orderNo} to Sale for review?`,
-      showCancelButton: true,
-      confirmButtonColor: '#4F46E5',
-      cancelButtonColor: '#64748B',
-      confirmButtonText: 'Yes, Submit',
-      cancelButtonText: 'Cancel'
-    });
-
-    if (result.isConfirmed) {
-      updateOrder(order.orderNo, { status: OrderStatus.CREATED });
-      addActivity(
-        'Submit Order',
-        currentUser!.username,
-        `Submitted draft order ${order.orderNo} for review`
-      );
-      addNotification(
-        `Order ${order.orderNo} submitted for review`,
-        Role.SALE,
-        'email'
-      );
-      Swal.fire({
-        icon: 'success',
-        title: 'Order Submitted',
-        text: `Order ${order.orderNo} has been submitted for review`,
-        timer: 1500,
-        showConfirmButton: false
-      });
-    }
-  };
-
-  const canDelete =
-    order.status === OrderStatus.DRAFT &&
-    (order.createdBy === currentUser?.username ||
-      currentUser?.role === Role.ADMIN);
-
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10 px-4">
-      <div className="flex items-center justify-between border-b dark:border-slate-800 pb-4">
-        <button
-          onClick={() => navigate('/orders')}
-          className="flex items-center gap-1 text-slate-400 hover:text-slate-900 dark:hover:text-white text-[10px] font-bold uppercase tracking-wider transition-colors"
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <Link
+          to="/orders"
+          className="ui-kicker text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 inline-flex items-center gap-1.5"
         >
-          <ArrowLeft size={12} /> Back
-        </button>
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back
+        </Link>
         <div className="flex items-center gap-3">
-          {canDelete && (
-            <button
-              onClick={handleDeleteOrder}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900 text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-950/50 transition-all"
-            >
-              <Trash2 size={12} /> Delete Order
-            </button>
-          )}
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">
-              Order Ref
+          <div className="inline-flex flex-col items-end leading-tight">
+            <span className="text-[9px] font-extrabold tracking-wide text-slate-500 dark:text-slate-400 uppercase">
+              ORDER REF
             </span>
-            <span className="text-xs font-bold dark:text-white leading-none">
+            <span className="mt-0.5 text-[16px] font-black text-slate-900 dark:text-slate-100">
               {order.orderNo}
             </span>
           </div>
           <span
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase border ${
-              order.status === OrderStatus.DRAFT
-                ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                : order.status === OrderStatus.CREATED
-                  ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900'
-                  : order.status === OrderStatus.CONFIRMED
-                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900'
-                    : order.status === OrderStatus.VESSEL_SCHEDULED
-                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900'
-                      : order.status === OrderStatus.RECEIVED_ACTUAL_PO
-                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-900'
-                        : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900'
-            }`}
+            className={`px-3 py-1.5 ui-radius-control text-xs font-bold border inline-flex items-center gap-1.5 ${orderStatusBadge.className}`}
           >
-            {order.status === OrderStatus.DRAFT && <FileText size={12} />}
-            {order.status === OrderStatus.CREATED && <FileText size={12} />}
-            {order.status === OrderStatus.CONFIRMED && (
-              <CheckCircle2 size={12} />
-            )}
-            {order.status === OrderStatus.VESSEL_SCHEDULED && (
-              <Ship size={12} />
-            )}
-            {order.status === OrderStatus.RECEIVED_ACTUAL_PO && (
-              <Package size={12} />
-            )}
-            {order.status === OrderStatus.VESSEL_DEPARTED && (
-              <CheckCircle2 size={12} />
-            )}
-            {order.status.replace(/_/g, ' ')}
+            <OrderStatusIcon className="w-3.5 h-3.5" />
+            {orderStatusBadge.label}
           </span>
         </div>
       </div>
 
-      {/* Order Note */}
-      {order.note && (
-        <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
-          <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-            <span className="font-bold text-slate-900 dark:text-white">
-              Note:
-            </span>{' '}
-            {order.note}
-          </p>
+      <div className="border-b border-slate-200 dark:border-slate-800" />
+
+      <div className="bg-white dark:bg-slate-900 ui-radius-card border border-slate-200 dark:border-slate-800 p-4 overflow-hidden shadow-sm">
+        <div className="flex items-center">
+          <h2 className="ui-section-title">Workflow Timeline</h2>
         </div>
-      )}
 
-      {/* Process Stepper */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex items-center justify-between shadow-sm">
-        {steps.map((s, i) => (
+        <div className="relative mt-3 px-2">
           <div
-            key={s.label}
-            className="flex flex-col items-center flex-1 relative group"
+            className="absolute top-5 h-1 rounded-full bg-slate-200 dark:bg-slate-800"
+            style={{
+              left: `${100 / (timelineSteps.length * 2)}%`,
+              right: `${100 / (timelineSteps.length * 2)}%`
+            }}
+          />
+          <div
+            className="absolute top-5 h-1 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all"
+            style={{
+              left: `${100 / (timelineSteps.length * 2)}%`,
+              width: `${Math.max(
+                0,
+                timelineProgressPercent *
+                  ((timelineSteps.length - 1) / timelineSteps.length)
+              )}%`
+            }}
+          />
+
+          <div
+            className="grid gap-2 relative"
+            style={{
+              gridTemplateColumns: `repeat(${timelineSteps.length}, minmax(0, 1fr))`
+            }}
           >
-            <div
-              className={`w-3 h-3 rounded-full z-10 border-2 ${i <= activeIdx ? 'bg-indigo-600 border-indigo-600' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}
-            ></div>
-            <div className="flex flex-col items-center mt-2">
-              <span
-                className={`text-[9px] font-black uppercase tracking-tight ${i <= activeIdx ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}`}
-              >
-                {s.label}
-              </span>
-              <span className="text-[8px] text-slate-300 dark:text-slate-600 font-bold uppercase group-hover:text-slate-500 dark:group-hover:text-slate-400 transition-colors mt-0.5">
-                {s.role}
-              </span>
-            </div>
-            {i < steps.length - 1 && (
-              <div
-                className={`absolute top-[4.5px] left-1/2 w-full h-[1.5px] ${i < activeIdx ? 'bg-indigo-600' : 'bg-slate-100 dark:bg-slate-800'}`}
-              ></div>
-            )}
-          </div>
-        ))}
-      </div>
+            {timelineSteps.map((step, index) => {
+              const isCurrent = index === selectedStepIndex;
+              const isDone = selectedStepIndex > index;
+              const isPending = !isCurrent && !isDone;
+              const StepIcon = step.icon;
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 space-y-4">
-          {/* Action Hub */}
-          <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl p-5 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-3 opacity-10">
-              <ShieldCheck size={48} className="text-indigo-600" />
-            </div>
-
-            <div className="flex items-center gap-2 mb-3">
-              <div
-                className={`p-1 rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600`}
-              >
-                <User size={12} />
-              </div>
-              <h3 className="text-[10px] font-black uppercase text-indigo-600 tracking-[0.1em]">
-                Current Required Action: {currentUser?.role}
-              </h3>
-            </div>
-
-            <div className="min-h-[60px] flex items-center">
-              {/* Trader: Draft Status - Edit and Submit */}
-              {(currentUser?.role === Role.MAIN_TRADER ||
-                currentUser?.role === Role.UBE_JAPAN ||
-                currentUser?.role === Role.ADMIN) &&
-                order.status === OrderStatus.DRAFT && (
-                  <div className="flex flex-col w-full gap-3">
-                    <div className="space-y-0.5">
-                      <p className="text-[11px] font-bold dark:text-white">
-                        Draft Order - Ready to Submit
-                      </p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                        This order is in draft status. You can edit it in the
-                        Orders list or submit it for Sale review.
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() =>
-                          navigate(`/orders/edit/${order.orderNo}`)
-                        }
-                        className="flex-1 h-10 px-4 bg-slate-600 text-white text-sm font-bold rounded-xl hover:bg-slate-700 transition-all flex items-center justify-center gap-2 shadow-lg"
-                      >
-                        <FileText size={16} />
-                        Edit Order
-                      </button>
-                      <button
-                        onClick={handleSubmitDraft}
-                        className="flex-1 h-10 px-4 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
-                      >
-                        <Send size={16} />
-                        Submit to Sale
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-              {/* Sale: Step 2 */}
-              {(currentUser?.role === Role.SALE ||
-                currentUser?.role === Role.SALE_MANAGER ||
-                currentUser?.role === Role.ADMIN) &&
-                order.status === OrderStatus.CREATED && (
-                  <div className="flex flex-col w-full gap-3">
-                    <div className="space-y-0.5">
-                      <p className="text-[11px] font-bold dark:text-white">
-                        Commercial Verification Required
-                      </p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                        Set price and currency for each line item before CRM
-                        synchronization.
-                      </p>
-                    </div>
-                    <div className="space-y-2 max-h-[240px] overflow-y-auto">
-                      {order.items.map((item, idx) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center gap-3 p-3 bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-700"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[10px] font-bold text-slate-900 dark:text-white truncate">
-                              Line {idx + 1}: {item.poNo} - {item.gradeId} /{' '}
-                              {item.shipToId || '-'}
-                            </p>
-                            <p className="text-[9px] text-slate-500 dark:text-slate-400">
-                              Qty: {item.qty.toLocaleString()} units
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-28">
-                              <input
-                                type="number"
-                                step="0.01"
-                                className="shadcn-input h-8 text-xs bg-white dark:bg-slate-950"
-                                value={prices[item.id] || ''}
-                                onChange={(e) =>
-                                  setPrices({
-                                    ...prices,
-                                    [item.id]: parseFloat(e.target.value)
-                                  })
-                                }
-                                placeholder="Price"
-                              />
-                            </div>
-                            <div className="w-20">
-                              <select
-                                className="shadcn-input h-8 text-xs bg-white dark:bg-slate-950"
-                                value={currencies[item.id] || 'USD'}
-                                onChange={(e) =>
-                                  setCurrencies({
-                                    ...currencies,
-                                    [item.id]: e.target.value
-                                  })
-                                }
-                              >
-                                <option value="USD">USD</option>
-                                <option value="THB">THB</option>
-                                <option value="JPY">JPY</option>
-                                <option value="EUR">EUR</option>
-                              </select>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={async () => {
-                          // Save Draft: บันทึกข้อมูลโดยไม่เปลี่ยน status
-                          const updatedItems = order.items.map((item) => ({
-                            ...item,
-                            price: prices[item.id] || item.price || 0,
-                            currency:
-                              currencies[item.id] || item.currency || 'USD'
-                          }));
-                          updateOrder(order.orderNo, { items: updatedItems });
-                          addActivity(
-                            'Save Draft',
-                            currentUser!.username,
-                            `Saved price data for order ${order.orderNo}`
-                          );
-                          Swal.fire({
-                            icon: 'success',
-                            title: 'Draft Saved',
-                            text: 'Price data has been saved',
-                            timer: 1500,
-                            showConfirmButton: false
-                          });
-                        }}
-                        disabled={processing}
-                        className="flex-1 h-10 px-4 bg-slate-600 text-white text-sm font-bold rounded-xl hover:bg-slate-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg"
-                      >
-                        <Save size={16} />
-                        Save Draft
-                      </button>
-                      <button
-                        onClick={handleApprove}
-                        disabled={processing}
-                        className="flex-1 h-10 px-4 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
-                      >
-                        {processing ? (
-                          <Loader2 size={16} className="animate-spin" />
-                        ) : (
-                          <CheckCircle2 size={16} />
-                        )}
-                        {processing ? 'Syncing to CRM...' : 'Approve & Send'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-              {/* CS: Step 3 */}
-              {(currentUser?.role === Role.CS ||
-                currentUser?.role === Role.ADMIN) &&
-                order.status === OrderStatus.CONFIRMED && (
-                  <div className="flex flex-col w-full gap-3">
-                    <div className="space-y-0.5">
-                      <p className="text-[11px] font-bold dark:text-white">
-                        Vessel Scheduling & Logistics
-                      </p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                        CRM confirm received. Set actual ETD per line and
-                        confirm scheduling.
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">
-                        Set Actual ETD per Line
-                      </label>
-                      {order.items.map((item) => (
-                        <div
-                          key={item.id}
-                          className="p-3 bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-700"
-                        >
-                          <div className="flex items-center justify-between gap-3 mb-2">
-                            <div className="flex-1">
-                              <span className="text-xs font-bold text-slate-900 dark:text-white">
-                                {item.poNo}
-                              </span>
-                              <span className="text-xs text-slate-500 dark:text-slate-400 ml-2">
-                                {item.gradeId} / {item.shipToId || '-'} (x
-                                {item.qty})
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
-                              Req. ETA: {item.requestETA}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Calendar size={14} className="text-slate-400" />
-                            <input
-                              type="date"
-                              className="shadcn-input h-8 text-xs flex-1 bg-white dark:bg-slate-950"
-                              value={etdDates[item.id] || ''}
-                              onChange={(e) =>
-                                setEtdDates({
-                                  ...etdDates,
-                                  [item.id]: e.target.value
-                                })
-                              }
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          // Save Draft: บันทึก ETD โดยไม่เปลี่ยน status
-                          const updatedItems = order.items.map((item) => ({
-                            ...item,
-                            actualETD: etdDates[item.id] || item.actualETD || ''
-                          }));
-                          updateOrder(order.orderNo, { items: updatedItems });
-                          addActivity(
-                            'Save Draft',
-                            currentUser!.username,
-                            `Saved ETD data for order ${order.orderNo}`
-                          );
-                          Swal.fire({
-                            icon: 'success',
-                            title: 'Draft Saved',
-                            text: 'ETD data has been saved',
-                            timer: 1500,
-                            showConfirmButton: false
-                          });
-                        }}
-                        className="flex-1 h-10 px-4 bg-slate-600 text-white text-sm font-bold rounded-xl hover:bg-slate-700 transition-all flex items-center justify-center gap-2 shadow-lg"
-                      >
-                        <Save size={16} /> Save Draft
-                      </button>
-                      <button
-                        onClick={handleSetETD}
-                        className="flex-1 h-10 px-4 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
-                      >
-                        <CheckCircle2 size={16} /> Confirm & Send
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-              {/* Trader: Step 4 */}
-              {(currentUser?.role === Role.MAIN_TRADER ||
-                currentUser?.role === Role.UBE_JAPAN ||
-                currentUser?.role === Role.ADMIN) &&
-                order.status === OrderStatus.VESSEL_SCHEDULED && (
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full gap-3">
-                    <div className="space-y-0.5">
-                      <p className="text-[11px] font-bold dark:text-white">
-                        Generate Official PO Document
-                      </p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                        Logistics confirmed. Finalize the order by generating
-                        the formal PO PDF.
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleGeneratePO}
-                      className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-500/20"
-                    >
-                      <FileText size={14} /> Generate PO
-                    </button>
-                  </div>
-                )}
-
-              {/* CS: Step 5 */}
-              {(currentUser?.role === Role.CS ||
-                currentUser?.role === Role.ADMIN) &&
-                order.status === OrderStatus.RECEIVED_ACTUAL_PO && (
-                  <div className="flex flex-col w-full gap-3">
-                    <div className="space-y-0.5">
-                      <p className="text-[11px] font-bold dark:text-white">
-                        Documentation Finalization
-                      </p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                        Upload shipping documents.{' '}
-                        <span className="text-rose-600 dark:text-rose-400 font-bold">
-                          Required: Shipping Doc + BL
-                        </span>{' '}
-                        to mark as departed.
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      {[
-                        {
-                          type: DocumentType.SHIPPING_DOC,
-                          label: 'Shipping Document',
-                          required: true
-                        },
-                        {
-                          type: DocumentType.BL,
-                          label: 'Bill of Lading',
-                          required: true
-                        },
-                        {
-                          type: DocumentType.INVOICE,
-                          label: 'Invoice',
-                          required: false
-                        },
-                        {
-                          type: DocumentType.COA,
-                          label: 'Certificate of Analysis',
-                          required: false
-                        }
-                      ]
-                        .filter(
-                          (doc) =>
-                            currentUser?.role === Role.ADMIN ||
-                            currentUser?.allowedDocumentTypes.includes(doc.type)
-                        )
-                        .map((doc) => {
-                          const hasDoc = order.documents.some(
-                            (d) => d.type === doc.type
-                          );
-                          return (
-                            <div
-                              key={doc.type}
-                              className="flex items-center justify-between p-3 bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-700"
-                            >
-                              <div className="flex items-center gap-3">
-                                <FileText
-                                  size={14}
-                                  className={
-                                    hasDoc
-                                      ? 'text-emerald-600 dark:text-emerald-400'
-                                      : 'text-slate-400'
-                                  }
-                                />
-                                <div className="flex-1">
-                                  <p className="text-xs font-bold text-slate-900 dark:text-white">
-                                    {doc.label}
-                                    {doc.required && (
-                                      <span className="text-rose-500 ml-1">
-                                        *
-                                      </span>
-                                    )}
-                                  </p>
-                                  {hasDoc && (
-                                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                                      ✓ Uploaded
-                                    </p>
-                                  )}
-                                  {selectedFiles[doc.type] && (
-                                    <p className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">
-                                      Selected: {selectedFiles[doc.type]!.name}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                              {!hasDoc && (
-                                <label className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 hover:bg-indigo-700 cursor-pointer transition-all">
-                                  <Upload size={12} />
-                                  {selectedFiles[doc.type]
-                                    ? 'Change'
-                                    : 'Select'}
-                                  <input
-                                    type="file"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        setSelectedFiles((prev) => ({
-                                          ...prev,
-                                          [doc.type]: file
-                                        }));
-                                      }
-                                    }}
-                                    disabled={uploadingDocs}
-                                  />
-                                </label>
-                              )}
-                            </div>
-                          );
-                        })}
-                    </div>
-                    {Object.keys(selectedFiles).length > 0 && (
-                      <button
-                        onClick={handleUploadDocs}
-                        disabled={uploadingDocs}
-                        className="w-full bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-500/20"
-                      >
-                        {uploadingDocs ? (
-                          <>
-                            <Loader2 size={14} className="animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <Upload size={14} />
-                            Upload & Send (
-                            {
-                              Object.values(selectedFiles).filter(
-                                (f) => f !== null
-                              ).length
-                            }
-                            )
-                          </>
-                        )}
-                      </button>
+              return (
+                <div key={step.status} className="text-center">
+                  <div
+                    className={`mx-auto relative z-10 w-9 h-9 ui-radius-control border inline-flex items-center justify-center transition-colors ${
+                      isCurrent
+                        ? `${selectedToneClass} shadow-sm`
+                        : isDone
+                          ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-300'
+                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500'
+                    }`}
+                  >
+                    {isDone ? (
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    ) : (
+                      <StepIcon className="w-3.5 h-3.5" />
                     )}
                   </div>
-                )}
 
-              {order.status === OrderStatus.VESSEL_DEPARTED && (
-                <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 p-2.5 rounded-md w-full">
-                  <CheckCircle2
-                    size={14}
-                    className="text-emerald-600 shrink-0"
-                  />
-                  <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold uppercase tracking-tight">
-                    Supply chain workflow successfully closed. Vessel has
-                    departed.
-                  </span>
+                  <div className="mt-2">
+                    <p
+                      className={`text-[10px] font-black uppercase leading-tight ${
+                        isCurrent
+                          ? 'text-slate-800 dark:text-slate-100'
+                          : isDone
+                            ? 'text-emerald-700 dark:text-emerald-300'
+                            : 'text-slate-500 dark:text-slate-400'
+                      }`}
+                    >
+                      {step.label}
+                    </p>
+                    <p
+                      className={`mt-0.5 text-[10px] uppercase ${
+                        isPending
+                          ? 'text-slate-400 dark:text-slate-500'
+                          : 'text-slate-500 dark:text-slate-400'
+                      }`}
+                    >
+                      {step.owner}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div className="xl:col-span-2 space-y-4">
+          <div className="bg-white dark:bg-slate-900 ui-radius-card border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="ui-kicker text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Current Required Action: {requiredGroup}
+                </p>
+                {selectedLine ? (
+                  <>
+                    <h3 className="mt-2 text-base font-bold text-slate-900 dark:text-white">
+                      {actionHintByStatus[selectedLine.status].title}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      {actionHintByStatus[selectedLine.status].description}
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+                    No visible line selected.
+                  </p>
+                )}
+              </div>
+              <ShieldCheck className="w-8 h-8 text-slate-300 dark:text-slate-700" />
+            </div>
+
+            <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-2">
+              {linePermission?.action === LineAction.APPROVE_LINE && (
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                      Price
+                    </p>
+                    <input
+                      type="number"
+                      min={0}
+                      value={priceInput}
+                      onChange={(event) => setPriceInput(event.target.value)}
+                      placeholder="Price"
+                      className="shadcn-input h-8 text-xs"
+                      disabled={!canRunSelectedLineAction}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                      Currency
+                    </p>
+                    <select
+                      value={currencyInput}
+                      onChange={(event) => setCurrencyInput(event.target.value)}
+                      className="shadcn-input h-8 text-xs"
+                      disabled={!canRunSelectedLineAction}
+                    >
+                      <option value="USD">USD</option>
+                      <option value="THB">THB</option>
+                      <option value="EUR">EUR</option>
+                      <option value="JPY">JPY</option>
+                      <option value="CNY">CNY</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                      Note
+                    </p>
+                    <input
+                      value={saleNoteInput}
+                      onChange={(event) => setSaleNoteInput(event.target.value)}
+                      placeholder="Internal note"
+                      className="shadcn-input h-8 text-xs"
+                      disabled={!canRunSelectedLineAction}
+                    />
+                  </div>
                 </div>
               )}
 
-              {/* Role/Status Mismatch Fallback */}
-              {![OrderStatus.VESSEL_DEPARTED].includes(order.status) &&
-                currentUser?.role !== Role.ADMIN &&
-                !(
-                  ((currentUser?.role === Role.SALE ||
-                    currentUser?.role === Role.SALE_MANAGER) &&
-                    order.status === OrderStatus.CREATED) ||
-                  (currentUser?.role === Role.CS &&
-                    (order.status === OrderStatus.CONFIRMED ||
-                      order.status === OrderStatus.RECEIVED_ACTUAL_PO)) ||
-                  ((currentUser?.role === Role.MAIN_TRADER ||
-                    currentUser?.role === Role.UBE_JAPAN) &&
-                    order.status === OrderStatus.VESSEL_SCHEDULED)
-                ) && (
-                  <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 italic text-[10px] font-medium">
-                    <AlertCircle size={12} /> Waiting for another role to
-                    complete the next step...
+              {linePermission?.action === LineAction.SET_ETD && (
+                <div className="md:col-span-2">
+                  <div className="space-y-1">
+                    <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                      Actual ETD
+                    </p>
+                    <input
+                      type="date"
+                      value={actualEtdInput}
+                      onChange={(event) =>
+                        setActualEtdInput(event.target.value)
+                      }
+                      className="shadcn-input h-8 text-xs"
+                      disabled={!canRunSelectedLineAction}
+                    />
                   </div>
+                </div>
+              )}
+
+              {linePermission?.action === LineAction.UPLOAD_FINAL_DOCS && (
+                <div className="md:col-span-2 space-y-2">
+                  <div className="space-y-2">
+                    {allowedUploadDocumentTypes.map((docType) => {
+                      const canAccessDocType = canAccessDocumentType(docType);
+                      const existingDocument = selectedLine?.documents.find(
+                        (doc) => doc.type === docType
+                      );
+                      const pickedFile = draftDocFiles[docType] || null;
+                      return (
+                        <div
+                          key={docType}
+                          className="p-2 border border-slate-200 dark:border-slate-700 ui-radius-control flex items-center justify-between gap-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                              {documentTypeLabelMap[docType] || docType}
+                              {(docType === DocumentType.SHIPPING_DOC ||
+                                docType === DocumentType.BL) && (
+                                <span className="text-rose-500"> *</span>
+                              )}
+                              {!canAccessDocType && (
+                                <span className="ml-2 text-[10px] font-bold uppercase text-rose-600 dark:text-rose-400">
+                                  No Access
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                              {pickedFile?.name ||
+                                existingDocument?.filename ||
+                                'No file selected'}
+                            </p>
+                          </div>
+                          <label
+                            className={`px-3 h-8 inline-flex items-center ui-radius-control text-xs font-bold ${
+                              canRunSelectedLineAction
+                                ? canAccessDocType
+                                  ? 'bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                            }`}
+                          >
+                            Select
+                            <input
+                              type="file"
+                              className="hidden"
+                              disabled={
+                                !canRunSelectedLineAction || !canAccessDocType
+                              }
+                              onChange={(event) =>
+                                handlePickDraftDocument(
+                                  docType,
+                                  event.target.files?.[0] || null
+                                )
+                              }
+                            />
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="ui-micro-text text-slate-500 dark:text-slate-400">
+                    Required before complete: Shipping Document (
+                    {hasRequiredDocForComplete ? '✓' : '✕'}) and BL (
+                    {hasRequiredBlForComplete ? '✓' : '✕'})
+                  </p>
+                </div>
+              )}
+
+              {linePermission &&
+                [
+                  LineAction.APPROVE_LINE,
+                  LineAction.SET_ETD,
+                  LineAction.UPLOAD_FINAL_DOCS
+                ].includes(linePermission.action) && (
+                  <button
+                    onClick={saveSelectedLineDraft}
+                    disabled={!canRunSelectedLineAction}
+                    className={`px-4 py-2.5 ui-radius-control text-sm font-bold inline-flex items-center justify-center gap-2 ${
+                      canRunSelectedLineAction
+                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    Save Draft
+                  </button>
                 )}
+
+              {linePermission && (
+                <button
+                  onClick={runSelectedLineAction}
+                  disabled={!canRunSelectedLineAction || !isActionPayloadValid}
+                  className={`px-4 py-2.5 ui-radius-control text-sm font-bold inline-flex items-center justify-center gap-2 ${
+                    canRunSelectedLineAction && isActionPayloadValid
+                      ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  <Send className="w-4 h-4" />
+                  {actionLabelByLineAction[linePermission.action]}
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Consignment Items */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-            <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50">
-              <h3 className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-                Detailed Consignment Lines
-              </h3>
+          <div className="bg-white dark:bg-slate-900 ui-radius-card border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/20">
+              <h2 className="ui-section-title">Line Detail</h2>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[140px]">
-                      PO Ref.
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[120px]">
-                      Grade
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[120px]">
-                      Ship To
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[140px]">
-                      Destination
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[100px]">
-                      Term
-                    </th>
-                    <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[80px]">
-                      Qty
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[110px]">
-                      Req. ETD
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[110px]">
-                      Req. ETA
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[110px]">
-                      Actual ETD
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[110px]">
-                      Price
-                    </th>
-                    <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[70px]">
-                      ASAP
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
-                  {order.items.map((item) => (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
-                    >
-                      <td className="px-3 py-2 font-bold text-slate-900 dark:text-white text-xs">
-                        {item.poNo}
-                      </td>
-                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400 text-xs">
-                        {item.gradeId}
-                      </td>
-                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400 text-xs">
-                        {item.shipToId || '-'}
-                      </td>
-                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400 text-xs">
-                        {item.destinationId}
-                      </td>
-                      <td className="px-3 py-2 text-slate-600 dark:text-slate-400 text-xs">
-                        {item.termId}
-                      </td>
-                      <td className="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white tabular-nums text-xs">
-                        {item.qty.toLocaleString()}
-                      </td>
-                      <td className="px-3 py-2 text-slate-500 dark:text-slate-400 font-medium tabular-nums text-xs">
-                        {item.requestETD}
-                      </td>
-                      <td className="px-3 py-2 text-slate-500 dark:text-slate-400 font-medium tabular-nums text-xs">
-                        {item.requestETA}
-                      </td>
-                      <td className="px-3 py-2">
-                        {item.actualETD ? (
-                          <span className="text-blue-600 dark:text-blue-400 font-bold flex items-center gap-1 text-xs">
-                            {item.actualETD}
-                          </span>
-                        ) : (
-                          <span className="text-slate-300 dark:text-slate-700 text-xs">
-                            -
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2">
-                        {item.price ? (
-                          <span className="text-indigo-600 dark:text-indigo-400 font-bold text-xs">
-                            ${item.price.toFixed(2)} {item.currency || 'USD'}
-                          </span>
-                        ) : (
-                          <span className="text-[9px] font-black text-amber-500 uppercase bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded tracking-tighter">
-                            Awaiting
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        {item.asap ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
-                            ASAP
-                          </span>
-                        ) : (
-                          <span className="text-slate-300 dark:text-slate-700">
-                            -
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {selectedLine ? (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                    PO Ref.
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {selectedLine.poNo}
+                  </p>
+                </div>
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                    Ship To
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {selectedLine.shipToId}
+                  </p>
+                </div>
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                    Destination
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {selectedLine.destinationId}
+                  </p>
+                </div>
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                    Term
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {selectedLine.termId}
+                  </p>
+                </div>
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                    Grade
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {selectedLine.gradeId}
+                  </p>
+                </div>
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                    Qty
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {selectedLine.qty}
+                  </p>
+                </div>
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                    Req ETD
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {selectedLine.requestETD || '-'}
+                  </p>
+                </div>
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                    Req ETA
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {selectedLine.requestETA || '-'}
+                  </p>
+                </div>
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                    Actual ETD
+                  </p>
+                  <div className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {selectedLine.actualETD || renderWaitBadge()}
+                  </div>
+                </div>
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                    Price
+                  </p>
+                  <div className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {selectedLine.price
+                      ? `${selectedLine.currency || 'USD'} ${selectedLine.price}`
+                      : renderWaitBadge()}
+                  </div>
+                </div>
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                    ASAP
+                  </p>
+                  <div className="mt-1">
+                    {renderAsapBadge(selectedLine.asap)}
+                  </div>
+                </div>
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                    Status
+                  </p>
+                  <div className="mt-1">
+                    {(() => {
+                      const lineMeta = lineStatusMeta[selectedLine.status];
+                      const LineStatusIcon = lineMeta.Icon;
+                      return (
+                        <span
+                          className={`px-2 py-1 ui-radius-control border ui-micro-text font-bold uppercase inline-flex items-center gap-1 ${lineMeta.badgeClassName}`}
+                        >
+                          <LineStatusIcon className="w-3 h-3" />
+                          {lineMeta.label}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+                <div className="md:col-span-2 border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                    Note
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100 whitespace-pre-wrap">
+                    {selectedLine.saleNote || '-'}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="px-4 py-10 text-center text-slate-400">
+                No visible line in this order.
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Sidebar Info */}
         <div className="space-y-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-4 shadow-sm">
-            <h3 className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 border-b dark:border-slate-800 pb-2 tracking-wider">
-              Metadata
-            </h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-baseline">
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">
+          <div className="bg-white dark:bg-slate-900 ui-radius-card border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+            <h2 className="ui-subheader">Metadata</h2>
+            <div className="mt-3 space-y-2 text-sm">
+              <div className="flex justify-between gap-3">
+                <span className="text-slate-500 dark:text-slate-400">
                   Created By
                 </span>
-                <span className="text-sm font-bold dark:text-white">
+                <span className="font-bold text-slate-900 dark:text-slate-100">
                   {order.createdBy}
                 </span>
               </div>
-              <div className="flex justify-between items-baseline">
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">
+              <div className="flex justify-between gap-3">
+                <span className="text-slate-500 dark:text-slate-400">
                   Submitted
                 </span>
-                <span className="text-sm font-bold dark:text-white">
-                  {formatDate(order.orderDate)}
+                <span className="font-bold text-slate-900 dark:text-slate-100">
+                  {new Date(order.orderDate).toLocaleDateString('en-GB')}
                 </span>
               </div>
-              <div className="flex justify-between items-baseline">
-                <span className="text-[10px] text-indigo-500 dark:text-indigo-400 font-bold uppercase flex items-center gap-1">
-                  <FileText size={10} /> CRM QT
+              <div className="flex justify-between gap-3">
+                <span className="text-slate-500 dark:text-slate-400">
+                  CRM QT
                 </span>
-                <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                <span className="font-bold text-slate-900 dark:text-slate-100">
                   {order.quotationNo || '-'}
                 </span>
               </div>
             </div>
-            {order.note && (
-              <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg text-xs text-slate-600 dark:text-slate-400 italic border border-slate-100 dark:border-slate-800 leading-relaxed">
-                "{order.note}"
-              </div>
-            )}
+            <div className="mt-3 p-3 ui-radius-control border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-sm italic text-slate-600 dark:text-slate-300">
+              {order.note || '-'}
+            </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3 shadow-sm">
-            <h3 className="text-xs font-black uppercase text-slate-400 dark:text-slate-500 border-b dark:border-slate-800 pb-2 tracking-wider flex items-center gap-2">
-              <FileText size={14} /> Documentation
-            </h3>
-            <div className="space-y-1.5">
-              {order.documents.length > 0 ? (
-                order.documents.map((doc) => {
-                  const hasPermission =
-                    currentUser?.allowedDocumentTypes.includes(doc.type);
-                  return (
-                    <div
-                      key={doc.id}
-                      className={`flex items-center justify-between p-2.5 rounded-lg border group/doc transition-all ${
-                        hasPermission
-                          ? 'bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-900'
-                          : 'bg-rose-50/30 dark:bg-rose-950/10 border-rose-100 dark:border-rose-900/30'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <FileText
-                          size={14}
-                          className={
-                            hasPermission
-                              ? 'text-indigo-600 dark:text-indigo-400'
-                              : 'text-rose-400 dark:text-rose-500'
-                          }
-                        />
+          <div className="bg-white dark:bg-slate-900 ui-radius-card border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+            <h2 className="ui-subheader inline-flex items-center gap-1.5">
+              <FileText className="w-4 h-4" />
+              Documentation
+            </h2>
+
+            {selectedLine && visibleDocuments.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                {visibleDocuments.map((doc) =>
+                  (() => {
+                    const canAccessDoc = canAccessDocumentType(doc.type);
+                    return (
+                      <div
+                        key={doc.id}
+                        className="p-2 border border-slate-200 dark:border-slate-700 ui-radius-control text-xs flex items-center justify-between gap-2"
+                      >
                         <div className="min-w-0">
-                          <p
-                            className={`text-[10px] font-bold truncate leading-none ${hasPermission ? 'text-slate-900 dark:text-white' : 'text-rose-600 dark:text-rose-400'}`}
-                          >
+                          <p className="font-bold text-slate-800 dark:text-slate-200">
+                            {doc.type}
+                            {!canAccessDoc && (
+                              <span className="ml-2 text-[10px] font-bold uppercase text-rose-600 dark:text-rose-400">
+                                No Access
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-slate-500 dark:text-slate-400 truncate">
                             {doc.filename}
                           </p>
-                          <p className="text-[8px] text-slate-400 dark:text-slate-500 uppercase font-bold mt-0.5">
-                            {doc.type}
-                          </p>
                         </div>
-                      </div>
-                      {hasPermission ? (
                         <button
-                          onClick={() => handleDownloadDoc(doc)}
-                          className="text-slate-300 dark:text-slate-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-1.5 group-hover/doc:bg-indigo-50 dark:group-hover/doc:bg-indigo-900/30 rounded"
+                          onClick={() => handleDownloadDocument(doc.id)}
+                          disabled={!canAccessDoc}
+                          className={`p-1.5 ui-radius-control ${
+                            canAccessDoc
+                              ? 'text-slate-400 hover:text-indigo-600 dark:text-slate-500 dark:hover:text-indigo-400'
+                              : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                          }`}
+                          title="Download document"
                         >
-                          <Download size={12} />
+                          <Download className="w-3.5 h-3.5" />
                         </button>
-                      ) : (
-                        <span className="text-[8px] font-black text-rose-500 dark:text-rose-400 uppercase px-2 py-1 bg-rose-100 dark:bg-rose-900/30 rounded">
-                          No Access
-                        </span>
-                      )}
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-center py-6">
-                  <FileText
-                    size={24}
-                    className="mx-auto text-slate-300 dark:text-slate-700 mb-2"
-                  />
-                  <p className="text-xs text-slate-400 dark:text-slate-500 italic">
-                    No documents uploaded yet
-                  </p>
-                </div>
-              )}
-            </div>
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
+            ) : (
+              <div className="mt-3 h-28 flex flex-col items-center justify-center text-center text-slate-400 dark:text-slate-500">
+                <FileWarning className="w-6 h-6 mb-2" />
+                <p className="text-sm">No documents</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

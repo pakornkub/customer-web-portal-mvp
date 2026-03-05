@@ -1,352 +1,305 @@
-import React from 'react';
-import { useStore } from '../store';
-import { OrderStatus, Role } from '../types';
-import {
-  Plus,
-  Clock,
-  CheckCircle2,
-  Ship,
-  FileText,
-  AlertCircle,
-  TrendingUp,
-  Package,
-  Calendar,
-  ArrowRight,
-  // Added Command icon to imports
-  Command
-} from 'lucide-react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
-  return `${day}/${month}/${year}`;
-};
-
-const StatCard = ({ title, value, icon: Icon, color, trend }: any) => (
-  <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-300 group hover:-translate-y-1">
-    <div className="flex items-center justify-between mb-4">
-      <div
-        className={`p-3 rounded-2xl ${color} bg-opacity-10 dark:bg-opacity-20 transition-colors group-hover:bg-opacity-20`}
-      >
-        <Icon size={24} className={color.replace('bg-', 'text-')} />
-      </div>
-      {trend && (
-        <div className="flex flex-col items-end">
-          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
-            <TrendingUp size={12} /> {trend}%
-          </span>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium">
-            vs last month
-          </span>
-        </div>
-      )}
-    </div>
-    <h3 className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
-      {title}
-    </h3>
-    <div className="flex items-baseline gap-2 mt-1">
-      <p className="text-3xl font-extrabold text-slate-900 dark:text-white">
-        {value}
-      </p>
-      <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
-        units
-      </span>
-    </div>
-  </div>
-);
+import {
+  FileEdit,
+  Send,
+  BadgeCheck,
+  CalendarCheck,
+  FileCheck,
+  Ship,
+  ShieldCheck,
+  Plus,
+  Package,
+  AlertCircle,
+  CheckCircle2
+} from 'lucide-react';
+import { useStore, getVisibleOrdersForUser } from '../store';
+import { OrderLineStatus } from '../types';
+import { LineStatusBadge } from '../components/StatusBadge';
 
 export const Dashboard: React.FC = () => {
-  const { orders, currentUser } = useStore();
+  const { orders, companies, currentUser } = useStore();
 
-  const filteredOrders = currentUser?.customerCompanyId
-    ? orders.filter(
-        (o) => o.customerCompanyId === currentUser.customerCompanyId
-      )
-    : orders;
+  const getCompanyName = (companyId: string) =>
+    companies.find((company) => company.id === companyId)?.name || companyId;
 
-  const stats = [
-    {
-      title: 'Draft',
-      value: filteredOrders.filter((o) => o.status === OrderStatus.DRAFT)
-        .length,
-      icon: FileText,
-      color: 'bg-slate-500',
-      trend: 12
-    },
-    {
-      title: 'Created',
-      value: filteredOrders.filter((o) => o.status === OrderStatus.CREATED)
-        .length,
-      icon: Clock,
-      color: 'bg-amber-500',
-      trend: 9
-    },
-    {
-      title: 'Confirmed',
-      value: filteredOrders.filter((o) => o.status === OrderStatus.CONFIRMED)
-        .length,
-      icon: CheckCircle2,
-      color: 'bg-indigo-500',
-      trend: 8
-    },
-    {
-      title: 'Vessel Scheduled',
-      value: filteredOrders.filter(
-        (o) => o.status === OrderStatus.VESSEL_SCHEDULED
-      ).length,
-      icon: Ship,
-      color: 'bg-blue-500',
-      trend: 5
-    },
-    {
-      title: 'Received Actual PO',
-      value: filteredOrders.filter(
-        (o) => o.status === OrderStatus.RECEIVED_ACTUAL_PO
-      ).length,
-      icon: FileText,
-      color: 'bg-purple-500',
-      trend: 6
-    },
-    {
-      title: 'Departed',
-      value: filteredOrders.filter(
-        (o) => o.status === OrderStatus.VESSEL_DEPARTED
-      ).length,
-      icon: Package,
-      color: 'bg-emerald-500',
-      trend: 15
-    }
-  ];
-
-  const urgentOrders = filteredOrders.filter(
-    (o) =>
-      o.items.some((i) => i.asap) && o.status !== OrderStatus.VESSEL_DEPARTED
+  const visibleOrders = useMemo(
+    () => getVisibleOrdersForUser(orders, currentUser),
+    [orders, currentUser]
   );
 
+  const visibleLines = visibleOrders.flatMap((order) => order.items);
+  const recentLineRows = useMemo(
+    () =>
+      visibleOrders
+        .flatMap((order) =>
+          order.items.map((line) => ({
+            orderNo: order.orderNo,
+            orderDate: order.orderDate,
+            companyId: order.companyId,
+            lineId: line.id,
+            poNo: line.poNo,
+            status: line.status
+          }))
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()
+        )
+        .slice(0, 8),
+    [visibleOrders]
+  );
+  const now = new Date();
+  const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  const urgentLines = visibleOrders
+    .flatMap((order) =>
+      order.items.map((line) => ({
+        orderNo: order.orderNo,
+        lineId: line.id,
+        poNo: line.poNo,
+        requestETA: line.requestETA,
+        asap: line.asap,
+        status: line.status
+      }))
+    )
+    .filter((line) => {
+      if (line.status === OrderLineStatus.VESSEL_DEPARTED) return false;
+      if (!line.asap) return false;
+      if (!line.requestETA) return true;
+      const eta = new Date(line.requestETA);
+      return eta >= now && eta <= thirtyDaysLater;
+    })
+    .slice(0, 6);
+
+  const lineStatusCards = [
+    {
+      status: OrderLineStatus.DRAFT,
+      label: 'DRAFT',
+      tone: 'slate',
+      Icon: FileEdit
+    },
+    {
+      status: OrderLineStatus.CREATED,
+      label: 'CREATED',
+      tone: 'indigo',
+      Icon: Send
+    },
+    {
+      status: OrderLineStatus.UBE_APPROVED,
+      label: 'UBE APPROVED',
+      tone: 'cyan',
+      Icon: ShieldCheck
+    },
+    {
+      status: OrderLineStatus.APPROVED,
+      label: 'CONFIRMED',
+      tone: 'violet',
+      Icon: BadgeCheck
+    },
+    {
+      status: OrderLineStatus.VESSEL_SCHEDULED,
+      label: 'VESSEL SCHEDULED',
+      tone: 'sky',
+      Icon: CalendarCheck
+    },
+    {
+      status: OrderLineStatus.RECEIVED_ACTUAL_PO,
+      label: 'RECEIVED ACTUAL PO',
+      tone: 'amber',
+      Icon: FileCheck
+    },
+    {
+      status: OrderLineStatus.VESSEL_DEPARTED,
+      label: 'DEPARTED',
+      tone: 'emerald',
+      Icon: Ship
+    }
+  ].map((item) => ({
+    ...item,
+    value: visibleLines.filter((line) => line.status === item.status).length
+  }));
+
+  const toneClassMap: Record<string, string> = {
+    slate:
+      'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300',
+    indigo:
+      'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-300',
+    amber:
+      'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-300',
+    emerald:
+      'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-300',
+    cyan: 'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-900/30 dark:border-cyan-800 dark:text-cyan-300',
+    violet:
+      'bg-violet-50 border-violet-200 text-violet-700 dark:bg-violet-900/30 dark:border-violet-800 dark:text-violet-300',
+    sky: 'bg-sky-50 border-sky-200 text-sky-700 dark:bg-sky-900/30 dark:border-sky-800 dark:text-sky-300'
+  };
+
   return (
-    <div className="space-y-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Executive Dashboard
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">
-            Overview of procurement pipeline and logistics status.
+          <h1 className="ui-page-title">Executive Dashboard</h1>
+          <p className="ui-page-subtitle">
+            Line-based workflow summary with urgent monitoring and shipment
+            progress.
           </p>
         </div>
-        {[Role.MAIN_TRADER, Role.UBE_JAPAN, Role.ADMIN].includes(
-          currentUser?.role!
-        ) && (
+        {currentUser?.canCreateOrder && (
           <Link
             to="/orders/create"
-            className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 dark:shadow-indigo-500/10 transition-all flex items-center gap-2 shrink-0"
+            className="bg-indigo-600 text-white px-4 py-2 ui-radius-control text-sm font-bold hover:bg-indigo-700 inline-flex items-center gap-2"
           >
-            <Plus size={18} />
+            <Plus className="w-4 h-4" />
             Place New Order
           </Link>
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-        {stats.map((stat, i) => (
-          <StatCard key={i} {...stat} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {lineStatusCards.map((stat) => (
+          <div
+            key={stat.label}
+            className="bg-white dark:bg-slate-900 ui-radius-card border border-slate-200 dark:border-slate-800 p-6 shadow-sm hover:shadow-lg transition-all"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="ui-kicker text-slate-500">{stat.label}</p>
+                <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-2">
+                  {stat.value}
+                </p>
+              </div>
+              <span
+                className={`p-2 rounded ${toneClassMap[stat.tone]}`}
+                title={stat.label}
+              >
+                <stat.Icon className="w-5 h-5" />
+              </span>
+            </div>
+          </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2 bg-white dark:bg-slate-900 ui-radius-card border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-start gap-3">
+              <span className="w-9 h-9 ui-radius-control bg-indigo-50 dark:bg-indigo-900/30 border-indigo-100 dark:border-indigo-800 text-indigo-600 dark:text-indigo-300 inline-flex items-center justify-center shrink-0">
+                <Package className="w-4 h-4" />
+              </span>
               <div>
-                <h2 className="font-extrabold text-lg text-slate-900 dark:text-white">
-                  Recent Shipments
+                <h2 className="font-bold text-slate-900 dark:text-white">
+                  Recent Orders
                 </h2>
-                <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-1">
-                  Live Tracking
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Latest visible orders with summary status and line count.
                 </p>
               </div>
-              <Link
-                to="/orders"
-                className="text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1 group"
-              >
-                View Logistics Board{' '}
-                <ArrowRight
-                  size={14}
-                  className="transition-transform group-hover:translate-x-1"
-                />
-              </Link>
-            </div>
-            <div className="overflow-x-auto">
-              {filteredOrders.length > 0 ? (
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="bg-slate-50/50 dark:bg-slate-950/50 text-slate-400 dark:text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-100 dark:border-slate-800">
-                      <th className="px-8 py-4 text-left">Ref Number</th>
-                      <th className="px-8 py-4 text-left">Created By</th>
-                      <th className="px-8 py-4 text-left">Submission</th>
-                      <th className="px-8 py-4 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {filteredOrders.slice(0, 5).map((order) => (
-                      <tr
-                        key={order.orderNo}
-                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group"
-                      >
-                        <td className="px-8 py-5">
-                          <Link
-                            to={`/orders/${order.orderNo}`}
-                            className="font-bold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center gap-2"
-                          >
-                            <div className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-500"></div>
-                            {order.orderNo}
-                          </Link>
-                        </td>
-                        <td className="px-8 py-5">
-                          <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">
-                            {order.createdBy}
-                          </span>
-                        </td>
-                        <td className="px-8 py-5">
-                          <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
-                            <Calendar size={14} />
-                            <span className="text-xs font-bold">
-                              {formatDate(order.orderDate)}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-8 py-5 text-center">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide ${
-                              order.status === OrderStatus.CREATED
-                                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900'
-                                : order.status === OrderStatus.CONFIRMED
-                                  ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900'
-                                  : order.status ===
-                                      OrderStatus.VESSEL_SCHEDULED
-                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-900'
-                                    : order.status ===
-                                        OrderStatus.RECEIVED_ACTUAL_PO
-                                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900'
-                                      : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900'
-                            }`}
-                          >
-                            {order.status === OrderStatus.CREATED && (
-                              <FileText size={12} />
-                            )}
-                            {order.status === OrderStatus.CONFIRMED && (
-                              <CheckCircle2 size={12} />
-                            )}
-                            {order.status === OrderStatus.VESSEL_SCHEDULED && (
-                              <Ship size={12} />
-                            )}
-                            {order.status === OrderStatus.VESSEL_DEPARTED && (
-                              <Package size={12} />
-                            )}
-                            {order.status ===
-                              OrderStatus.RECEIVED_ACTUAL_PO && (
-                              <FileText size={12} />
-                            )}
-                            {order.status.replace(/_/g, ' ')}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div className="p-20 text-center">
-                  <Package
-                    size={64}
-                    className="mx-auto mb-4 text-slate-200 dark:text-slate-700"
-                  />
-                  <p className="text-slate-400 dark:text-slate-500 font-bold">
-                    Your logistics pipeline is empty.
-                  </p>
-                </div>
-              )}
             </div>
           </div>
+          {visibleOrders.length === 0 ? (
+            <div className="h-[260px] flex flex-col items-center justify-center text-center px-6">
+              <div className="w-16 h-16 rounded-full border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-400 dark:text-slate-500 inline-flex items-center justify-center">
+                <Package className="w-8 h-8" />
+              </div>
+              <p className="mt-5 text-lg font-semibold text-slate-700 dark:text-slate-200">
+                Your logistics pipeline is empty.
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                No visible lines in your current scope.
+              </p>
+            </div>
+          ) : (
+            <table className="w-full text-sm ui-table-standard">
+              <thead className="bg-slate-50/70 dark:bg-slate-950/40 ui-table-head">
+                <tr>
+                  <th className="px-4 py-3 text-left">Order</th>
+                  <th className="px-4 py-3 text-left">PO</th>
+                  <th className="px-4 py-3 text-left">Company</th>
+                  <th className="px-4 py-3 text-left">Line Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {recentLineRows.map((row) => (
+                  <tr key={`${row.orderNo}-${row.lineId}`}>
+                    <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
+                      <Link
+                        to={`/orders/${row.orderNo}?lineId=${row.lineId}`}
+                        className="hover:text-indigo-600 dark:hover:text-indigo-400"
+                      >
+                        {row.orderNo}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">
+                      {row.poNo}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                      {getCompanyName(row.companyId)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <LineStatusBadge status={row.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-900/30 text-rose-500 dark:text-rose-400">
-                <AlertCircle size={20} />
+        <div className="bg-white dark:bg-slate-900 ui-radius-card border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-start gap-3">
+              <span className="w-9 h-9 ui-radius-control bg-rose-50 dark:bg-rose-900/30 border-rose-100 dark:border-rose-800 text-rose-600 dark:text-rose-300 inline-flex items-center justify-center shrink-0">
+                <AlertCircle className="w-4 h-4" />
+              </span>
+              <div>
+                <h2 className="font-bold text-slate-900 dark:text-white">
+                  Urgent Lines
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  ASAP lines and lines with ETA &lt; 30 days.
+                </p>
               </div>
-              <h2 className="font-extrabold text-lg text-slate-900 dark:text-white">
-                Urgent Attention
-              </h2>
-            </div>
-            <div className="p-6 space-y-4">
-              {urgentOrders.length > 0 ? (
-                urgentOrders.slice(0, 4).map((order) => {
-                  const hasAsap = order.items.some((item) => item.asap);
-                  return (
-                    <Link
-                      key={order.orderNo}
-                      to={`/orders/${order.orderNo}`}
-                      className="block p-5 rounded-3xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-rose-100 dark:hover:border-rose-900 transition-all group"
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <span className="font-extrabold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                          {order.orderNo}
-                        </span>
-                        <span className="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-black animate-pulse">
-                          ASAP
-                        </span>
-                      </div>
-                      {!hasAsap && (
-                        <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-xs font-bold mb-4">
-                          <Calendar size={14} />
-                          Target ETA: {order.items[0]?.requestETA}
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                          Awaiting Logistics
-                        </span>
-                        <ArrowRight
-                          size={16}
-                          className="text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-indigo-600"
-                        />
-                      </div>
-                    </Link>
-                  );
-                })
-              ) : (
-                <div className="py-12 text-center">
-                  <CheckCircle2
-                    size={48}
-                    className="mx-auto text-emerald-100 mb-4"
-                  />
-                  <p className="text-sm font-bold text-slate-400">
-                    Perfect! No urgent orders.
-                  </p>
-                </div>
-              )}
             </div>
           </div>
-
-          {/* <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-[2rem] p-8 text-white relative overflow-hidden group shadow-xl shadow-indigo-200">
-            <div className="absolute top-0 right-0 p-8 opacity-10 transition-transform duration-700 group-hover:scale-150">
-              <Command size={120} />
-            </div>
-            <div className="relative z-10">
-              <h3 className="font-extrabold text-xl mb-2">Need Support?</h3>
-              <p className="text-indigo-100 text-sm font-medium mb-6 leading-relaxed">
-                Our logistics specialists are available 24/7 to help with your
-                complex shipments.
+          {urgentLines.length === 0 ? (
+            <div className="h-[260px] flex flex-col items-center justify-center text-center px-6">
+              <div className="w-16 h-16 rounded-full border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-300 inline-flex items-center justify-center">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <p className="mt-5 text-lg font-semibold text-slate-700 dark:text-slate-200">
+                Perfect! No urgent orders.
               </p>
-              <button className="bg-white text-indigo-600 px-6 py-2.5 rounded-xl font-extrabold text-sm hover:bg-indigo-50 transition-colors">
-                Contact Agent
-              </button>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                No ASAP lines with ETA in the next 30 days.
+              </p>
             </div>
-          </div> */}
+          ) : (
+            <div className="p-4 space-y-3">
+              {urgentLines.map((line) => (
+                <div
+                  key={`${line.orderNo}-${line.lineId}`}
+                  className="p-4 ui-radius-panel border border-rose-200 bg-rose-50/60 dark:bg-rose-900/20 dark:border-rose-800"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <Link
+                      to={`/orders/${line.orderNo}?lineId=${line.lineId}`}
+                      className="text-xs font-bold text-rose-700 dark:text-rose-300 hover:underline"
+                    >
+                      {line.orderNo}
+                    </Link>
+                    <LineStatusBadge status={line.status as OrderLineStatus} />
+                  </div>
+                  <p className="mt-1 text-xs text-rose-700 dark:text-rose-300">
+                    PO: {line.poNo}
+                  </p>
+                  <p className="ui-micro-text text-rose-600 dark:text-rose-400 mt-0.5">
+                    ETA: {line.requestETA || '-'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

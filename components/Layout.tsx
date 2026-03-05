@@ -43,7 +43,7 @@ const NavItem: React.FC<NavItemProps> = ({
   return (
     <Link
       to={to}
-      className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group ${
+      className={`flex items-center gap-3 px-3 py-2 ui-radius-control transition-all duration-200 group ${
         isActive
           ? 'bg-indigo-600 text-white shadow-sm'
           : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -93,33 +93,19 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({
       to: '/',
       icon: LayoutDashboard,
       label: 'Dashboard',
-      roles: [
-        Role.UBE_JAPAN,
-        Role.MAIN_TRADER,
-        Role.CS,
-        Role.SALE,
-        Role.SALE_MANAGER,
-        Role.ADMIN
-      ]
+      roles: [Role.UBE_JAPAN, Role.MAIN_TRADER, Role.CS, Role.SALE, Role.ADMIN]
     },
     {
       to: '/orders',
       icon: ShoppingCart,
       label: 'Orders',
-      roles: [
-        Role.UBE_JAPAN,
-        Role.MAIN_TRADER,
-        Role.CS,
-        Role.SALE,
-        Role.SALE_MANAGER,
-        Role.ADMIN
-      ]
+      roles: [Role.UBE_JAPAN, Role.MAIN_TRADER, Role.CS, Role.SALE, Role.ADMIN]
     },
     {
       to: '/review',
       icon: FileCheck,
       label: 'Sale Review',
-      roles: [Role.SALE, Role.SALE_MANAGER, Role.ADMIN]
+      roles: [Role.SALE, Role.ADMIN]
     },
     { to: '/cs', icon: Truck, label: 'CS Hub', roles: [Role.CS, Role.ADMIN] },
     {
@@ -160,7 +146,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({
                 <Command size={18} />
               </div>
               <span className="font-bold text-lg tracking-tight dark:text-white flex gap-1">
-                UBE<span className="text-indigo-600">CUSTOMER</span>
+                UBE
+                <span className="text-indigo-600 dark:text-indigo-400">
+                  CUSTOMER
+                </span>
               </span>
             </div>
           )}
@@ -187,7 +176,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({
         <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
           <button
             onClick={toggleTheme}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+            className="w-full flex items-center gap-3 px-3 py-2 ui-radius-control text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
           >
             {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
             {!collapsed && (
@@ -198,7 +187,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({
           </button>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all"
+            className="w-full flex items-center gap-3 px-3 py-2 ui-radius-control text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all"
           >
             <LogOut size={18} />
             {!collapsed && (
@@ -240,7 +229,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({
                   {currentUser.role.replace('_', ' ')}
                 </p>
               </div>
-              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-indigo-600">
+              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                 <UserIcon size={16} />
               </div>
             </div>

@@ -1,607 +1,683 @@
-import React, { useState, useRef } from 'react';
-import { useStore } from '../store';
-import { OrderStatus, Role } from '../types';
+import React, { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import Select, { SingleValue } from 'react-select';
+import {
+  Plus,
+  Eye,
+  Pencil,
+  Trash2,
+  Search,
+  FileUp,
+  FileSpreadsheet,
+  ChevronRight,
+  ChevronDown
+} from 'lucide-react';
 import Swal from '../utils/swal';
 import {
-  Search,
-  Filter,
-  Eye,
-  ArrowUpDown,
-  ChevronRight,
-  FileText,
-  CheckCircle2,
-  Ship,
-  Package,
-  Plus,
-  Edit,
-  Trash2,
-  Upload
-} from 'lucide-react';
+  ActionIconButton,
+  ActionIconLink
+} from '../components/ActionIconButton';
+import { LineStatusBadge, OrderStatusBadge } from '../components/StatusBadge';
+import {
+  useStore,
+  getVisibleOrdersForUser,
+  canUserAccessShipTo
+} from '../store';
+import { OrderLineStatus, OrderProgressStatus } from '../types';
+import { formatStatusLabel } from '../utils/statusLabel';
 
-const CSV_HEADERS = [
-  'note',
-  'pono',
-  'destinationid',
-  'termid',
-  'gradeid',
-  'shiptoid',
-  'requestetd',
-  'requesteta',
-  'qty',
-  'asap',
-  'otherrequested'
-];
+type StatusFilter =
+  | 'ALL'
+  | `HEADER:${OrderProgressStatus}`
+  | `LINE:${OrderLineStatus}`;
 
-const TRUTHY_VALUES = new Set(['true', '1', 'yes', 'y']);
-const FALSY_VALUES = new Set(['false', '0', 'no', 'n', '']);
+type StatusOption = {
+  value: StatusFilter;
+  label: string;
+};
 
-const normalizeHeader = (value: string) =>
-  value
-    .replace(/^\uFEFF/, '')
-    .trim()
-    .toLowerCase();
+const SAMPLE_CSV =
+  'note,poNo,destinationId,termId,gradeId,shipToId,requestETD,requestETA,qty,asap,otherRequested\n"Q1 restock (updated master)",PO-0001,DEST-TKY,CIF,BR150B,SHIP-MICHELIN,2026-03-10,2026-03-20,25,FALSE,\n"Q1 restock (updated master)",PO-0002,DEST-SH,FOB,BR360B,SHIP-TOYO-TIRE,2026-03-18,2026-03-29,15,FALSE,\n"Q1 restock (updated master)",PO-0003,DEST-OSA,EXW,VCR-617,SHIP-BRIDGESTONE,,,10,TRUE,"Need earliest vessel"';
 
-const parseCsv = (text: string) => {
-  const rows: string[][] = [];
+const parseCsvLine = (line: string) => {
+  const values: string[] = [];
   let current = '';
-  let row: string[] = [];
   let inQuotes = false;
 
-  for (let i = 0; i < text.length; i += 1) {
-    const char = text[i];
-    const next = text[i + 1];
+  for (let index = 0; index < line.length; index++) {
+    const char = line[index];
 
     if (char === '"') {
-      if (inQuotes && next === '"') {
+      const isEscapedQuote = inQuotes && line[index + 1] === '"';
+      if (isEscapedQuote) {
         current += '"';
-        i += 1;
-        continue;
+        index++;
+      } else {
+        inQuotes = !inQuotes;
       }
-      inQuotes = !inQuotes;
       continue;
     }
 
     if (char === ',' && !inQuotes) {
-      row.push(current);
+      values.push(current.trim());
       current = '';
-      continue;
-    }
-
-    if (char === '\n' && !inQuotes) {
-      row.push(current);
-      rows.push(row);
-      row = [];
-      current = '';
-      continue;
-    }
-
-    if (char === '\r') {
       continue;
     }
 
     current += char;
   }
 
-  if (current.length > 0 || row.length > 0) {
-    row.push(current);
-    rows.push(row);
-  }
-
-  return rows;
+  values.push(current.trim());
+  return values;
 };
 
+const normalizeBoolean = (value: string) => value.toLowerCase() === 'true';
+
 export const Orders: React.FC = () => {
-  const { orders, currentUser, deleteOrder, addActivity, masterData } =
-    useStore();
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const { orders, companies, currentUser, deleteOrder, masterData, theme } =
+    useStore();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [expandedOrderNos, setExpandedOrderNos] = useState<string[]>([]);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
-
-  const handleDelete = async (orderNo: string, e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleDeleteOrder = async (orderNo: string) => {
     const result = await Swal.fire({
       icon: 'warning',
-      title: 'Delete Draft Order?',
-      text: `Are you sure you want to delete draft order ${orderNo}?`,
+      title: `Delete order ${orderNo}?`,
+      text: 'This action cannot be undone.',
       showCancelButton: true,
-      confirmButtonColor: '#DC2626',
-      cancelButtonColor: '#64748B',
-      confirmButtonText: 'Yes, Delete',
+      confirmButtonText: 'Delete',
       cancelButtonText: 'Cancel'
     });
 
-    if (result.isConfirmed) {
-      deleteOrder(orderNo);
-      addActivity(
-        'Delete Draft',
-        currentUser!.username,
-        `Deleted draft order ${orderNo}`
+    if (!result.isConfirmed) return;
+    deleteOrder(orderNo);
+  };
+
+  const getCompanyName = (companyId: string) =>
+    companies.find((company) => company.id === companyId)?.name || companyId;
+
+  const visibleOrders = useMemo(
+    () => getVisibleOrdersForUser(orders, currentUser),
+    [orders, currentUser]
+  );
+
+  const rows = useMemo(() => {
+    return visibleOrders
+      .map((order) => {
+        const companyName = getCompanyName(order.companyId);
+        const matchSearch =
+          order.orderNo.toLowerCase().includes(search.toLowerCase()) ||
+          order.companyId.toLowerCase().includes(search.toLowerCase()) ||
+          companyName.toLowerCase().includes(search.toLowerCase());
+
+        if (!matchSearch) return null;
+
+        if (statusFilter === 'ALL') {
+          return { order, filteredLines: order.items };
+        }
+
+        if (statusFilter.startsWith('HEADER:')) {
+          const headerStatus = statusFilter.replace(
+            'HEADER:',
+            ''
+          ) as OrderProgressStatus;
+          return order.status === headerStatus
+            ? { order, filteredLines: order.items }
+            : null;
+        }
+
+        const lineStatus = statusFilter.replace('LINE:', '') as OrderLineStatus;
+        const filteredLines = order.items.filter(
+          (line) => line.status === lineStatus
+        );
+
+        return filteredLines.length > 0 ? { order, filteredLines } : null;
+      })
+      .filter(
+        (
+          item
+        ): item is {
+          order: (typeof visibleOrders)[number];
+          filteredLines: (typeof visibleOrders)[number]['items'];
+        } => Boolean(item)
       );
-      Swal.fire({
-        icon: 'success',
-        title: 'Draft Deleted',
-        text: `Draft order ${orderNo} has been deleted`,
-        timer: 1500,
-        showConfirmButton: false
-      });
-    }
+  }, [visibleOrders, search, statusFilter]);
+
+  const canCreate = Boolean(currentUser?.canCreateOrder);
+
+  const statusOptions = useMemo<StatusOption[]>(
+    () => [
+      { value: 'ALL', label: 'All Status' },
+      ...Object.values(OrderProgressStatus).map((item) => ({
+        value: `HEADER:${item}` as StatusFilter,
+        label: `Header: ${
+          item === OrderProgressStatus.CREATE
+            ? 'DRAFT'
+            : formatStatusLabel(item)
+        }`
+      })),
+      ...Object.values(OrderLineStatus).map((item) => ({
+        value: `LINE:${item}` as StatusFilter,
+        label: `Line: ${formatStatusLabel(item)}`
+      }))
+    ],
+    []
+  );
+
+  const selectStyles = useMemo(() => {
+    const isDark = theme === 'dark';
+    return {
+      menuPortal: (base: any) => ({ ...base, zIndex: 9999 }),
+      control: (base: any, state: any) => ({
+        ...base,
+        minHeight: 36,
+        borderRadius: 'var(--radius-control)',
+        backgroundColor: isDark ? '#0f172a' : '#ffffff',
+        borderColor: state.isFocused
+          ? isDark
+            ? '#818cf8'
+            : '#6366f1'
+          : isDark
+            ? '#334155'
+            : '#cbd5e1',
+        boxShadow: 'none',
+        ':hover': {
+          borderColor: state.isFocused
+            ? isDark
+              ? '#818cf8'
+              : '#6366f1'
+            : isDark
+              ? '#475569'
+              : '#94a3b8'
+        }
+      }),
+      menu: (base: any) => ({
+        ...base,
+        borderRadius: 'var(--radius-control)',
+        backgroundColor: isDark ? '#0f172a' : '#ffffff',
+        border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`
+      }),
+      valueContainer: (base: any) => ({
+        ...base,
+        minHeight: 34,
+        padding: '0 12px'
+      }),
+      indicatorSeparator: (base: any) => ({
+        ...base,
+        marginTop: 6,
+        marginBottom: 6,
+        backgroundColor: isDark ? '#334155' : '#cbd5e1'
+      }),
+      dropdownIndicator: (base: any) => ({
+        ...base,
+        padding: 7,
+        color: isDark ? '#cbd5e1' : '#475569'
+      }),
+      singleValue: (base: any) => ({
+        ...base,
+        color: isDark ? '#e2e8f0' : '#0f172a'
+      }),
+      placeholder: (base: any) => ({
+        ...base,
+        color: isDark ? '#94a3b8' : '#64748b'
+      }),
+      option: (base: any, state: any) => ({
+        ...base,
+        backgroundColor: state.isSelected
+          ? isDark
+            ? '#4338ca'
+            : '#4f46e5'
+          : state.isFocused
+            ? isDark
+              ? '#1e293b'
+              : '#eef2ff'
+            : 'transparent',
+        color: state.isSelected ? '#ffffff' : isDark ? '#e2e8f0' : '#0f172a'
+      })
+    };
+  }, [theme]);
+
+  const isExpanded = (orderNo: string) => expandedOrderNos.includes(orderNo);
+  const toggleExpand = (orderNo: string) => {
+    setExpandedOrderNos((prev) =>
+      prev.includes(orderNo)
+        ? prev.filter((value) => value !== orderNo)
+        : [...prev, orderNo]
+    );
   };
 
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
+  const companyId = currentUser?.companyId || 'C001';
+
+  const shipTos = useMemo(
+    () =>
+      masterData.shipTos.filter(
+        (shipTo) =>
+          shipTo.customerCompanyIds.includes(companyId) &&
+          (currentUser ? canUserAccessShipTo(currentUser, shipTo.id) : false)
+      ),
+    [masterData.shipTos, companyId, currentUser]
+  );
+
+  const grades = masterData.grades.filter((row) =>
+    row.customerCompanyIds.includes(companyId)
+  );
+  const destinations = masterData.destinations.filter((row) =>
+    row.customerCompanyIds.includes(companyId)
+  );
+  const terms = masterData.terms.filter((row) =>
+    row.customerCompanyIds.includes(companyId)
+  );
+
+  const handleDownloadSample = () => {
+    const blob = new Blob([SAMPLE_CSV], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'order-import-sample.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
-  const handleImportFile = async (
+  const handleCsvImport = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
-    event.target.value = '';
-
     if (!file) return;
 
-    const text = await file.text();
-    const rows = parseCsv(text).filter((row) =>
-      row.some((cell) => cell.trim().length > 0)
-    );
+    try {
+      const content = await file.text();
+      const lines = content
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
 
-    if (rows.length < 2) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'Import Failed',
-        text: 'CSV must include a header row and at least one data row.'
-      });
-      return;
-    }
-
-    const headers = rows[0].map(normalizeHeader);
-    const headerIndex = headers.reduce<Record<string, number>>((acc, h, i) => {
-      acc[h] = i;
-      return acc;
-    }, {});
-
-    const missingHeaders = CSV_HEADERS.filter(
-      (header) => !(header in headerIndex)
-    );
-    if (missingHeaders.length > 0) {
-      await Swal.fire({
-        icon: 'error',
-        title: 'Import Failed',
-        text: `Missing CSV columns: ${missingHeaders.join(', ')}`
-      });
-      return;
-    }
-
-    const companyId = currentUser?.customerCompanyId || 'C001';
-    const allowedGrades = new Set(
-      masterData.grades
-        .filter((g) => g.customerCompanyId.includes(companyId))
-        .map((g) => g.id)
-    );
-    const allowedDest = new Set(
-      masterData.destinations
-        .filter((d) => d.customerCompanyId.includes(companyId))
-        .map((d) => d.id)
-    );
-    const allowedShipTos = new Set(
-      masterData.shipTos
-        .filter((s) => s.customerCompanyId.includes(companyId))
-        .map((s) => s.id)
-    );
-    const allowedTerms = new Set(
-      masterData.terms
-        .filter((t) => t.customerCompanyId.includes(companyId))
-        .map((t) => t.id)
-    );
-
-    const importErrors: string[] = [];
-    const items = rows.slice(1).reduce(
-      (acc, row, index) => {
-        const lineNo = index + 2;
-        const getCell = (key: string) => (row[headerIndex[key]] || '').trim();
-
-        const poNo = getCell('pono');
-        const destinationId = getCell('destinationid');
-        const termId = getCell('termid');
-        const gradeId = getCell('gradeid');
-        const shipToId = getCell('shiptoid');
-        const requestETD = getCell('requestetd');
-        const requestETA = getCell('requesteta');
-        const qtyRaw = getCell('qty');
-        const asapRaw = getCell('asap').toLowerCase();
-        const otherRequested = getCell('otherrequested');
-        const note = getCell('note');
-
-        const qty = Number(qtyRaw);
-        const asap = TRUTHY_VALUES.has(asapRaw)
-          ? true
-          : FALSY_VALUES.has(asapRaw)
-            ? false
-            : null;
-
-        if (asap === null) {
-          importErrors.push(`Line ${lineNo}: Invalid asap`);
-          return acc;
-        }
-
-        const missingFields = [
-          !poNo && 'poNo',
-          !destinationId && 'destinationId',
-          !termId && 'termId',
-          !gradeId && 'gradeId',
-          !shipToId && 'shipToId',
-          !qtyRaw && 'qty'
-        ].filter((value): value is string => Boolean(value));
-
-        if (missingFields.length > 0) {
-          importErrors.push(
-            `Line ${lineNo}: Missing/invalid ${missingFields.join(', ')}`
-          );
-          return acc;
-        }
-
-        if (!allowedGrades.has(gradeId)) {
-          importErrors.push(`Line ${lineNo}: Unknown gradeId ${gradeId}`);
-          return acc;
-        }
-        if (!allowedDest.has(destinationId)) {
-          importErrors.push(
-            `Line ${lineNo}: Unknown destinationId ${destinationId}`
-          );
-          return acc;
-        }
-        if (!allowedTerms.has(termId)) {
-          importErrors.push(`Line ${lineNo}: Unknown termId ${termId}`);
-          return acc;
-        }
-        if (!allowedShipTos.has(shipToId)) {
-          importErrors.push(`Line ${lineNo}: Unknown shipToId ${shipToId}`);
-          return acc;
-        }
-
-        const datePattern = /^\d{4}-\d{2}-\d{2}$/;
-        if (!asap && !requestETD && !requestETA) {
-          importErrors.push(`Line ${lineNo}: Missing requestETD or requestETA`);
-          return acc;
-        }
-        if (requestETD && !datePattern.test(requestETD)) {
-          importErrors.push(`Line ${lineNo}: Invalid requestETD`);
-          return acc;
-        }
-        if (requestETA && !datePattern.test(requestETA)) {
-          importErrors.push(`Line ${lineNo}: Invalid requestETA`);
-          return acc;
-        }
-
-        if (Number.isNaN(qty) || qty <= 0) {
-          importErrors.push(`Line ${lineNo}: Invalid qty`);
-          return acc;
-        }
-
-        acc.items.push({
-          poNo,
-          shipToId,
-          destinationId,
-          termId,
-          gradeId,
-          requestETD: requestETD || '',
-          requestETA: requestETA || '',
-          qty,
-          asap,
-          otherRequested
+      if (lines.length < 2) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid CSV',
+          text: 'CSV needs header + at least 1 row.'
         });
+        return;
+      }
 
-        if (!acc.note && note) {
-          acc.note = note;
+      const headers = parseCsvLine(lines[0]);
+      const requiredHeaders = [
+        'poNo',
+        'destinationId',
+        'termId',
+        'gradeId',
+        'shipToId',
+        'qty',
+        'asap'
+      ];
+
+      const missingHeader = requiredHeaders.find(
+        (header) => !headers.includes(header)
+      );
+
+      if (missingHeader) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Missing column',
+          text: `${missingHeader}`
+        });
+        return;
+      }
+
+      const rows = lines.slice(1).map((line) => {
+        const columns = parseCsvLine(line);
+        const record = headers.reduce<Record<string, string>>(
+          (acc, key, idx) => {
+            acc[key] = columns[idx] || '';
+            return acc;
+          },
+          {}
+        );
+
+        return {
+          poNo: record.poNo || '',
+          shipToId: record.shipToId || '',
+          destinationId: record.destinationId || '',
+          termId: record.termId || '',
+          gradeId: record.gradeId || '',
+          requestETD: record.requestETD || '',
+          requestETA: record.requestETA || '',
+          qty: Number(record.qty) > 0 ? Number(record.qty) : 1,
+          asap: normalizeBoolean(record.asap || ''),
+          otherRequested: record.otherRequested || ''
+        };
+      });
+
+      const shipToIds = new Set(shipTos.map((item) => item.id));
+      const destinationIds = new Set(destinations.map((item) => item.id));
+      const termIds = new Set(terms.map((item) => item.id));
+      const gradeIds = new Set(grades.map((item) => item.id));
+      const invalidMasterRows: string[] = [];
+
+      rows.forEach((row, index) => {
+        const rowNo = index + 2;
+        const invalidFields: string[] = [];
+
+        if (row.shipToId && !shipToIds.has(row.shipToId)) {
+          invalidFields.push('shipToId');
+        }
+        if (row.destinationId && !destinationIds.has(row.destinationId)) {
+          invalidFields.push('destinationId');
+        }
+        if (row.termId && !termIds.has(row.termId)) {
+          invalidFields.push('termId');
+        }
+        if (row.gradeId && !gradeIds.has(row.gradeId)) {
+          invalidFields.push('gradeId');
         }
 
-        return acc;
-      },
-      {
-        items: [] as Array<{
-          poNo: string;
-          shipToId: string;
-          destinationId: string;
-          termId: string;
-          gradeId: string;
-          requestETD: string;
-          requestETA: string;
-          qty: number;
-          asap: boolean;
-          otherRequested: string;
-        }>,
-        note: ''
-      }
-    );
+        if (invalidFields.length > 0) {
+          invalidMasterRows.push(`Row ${rowNo}: ${invalidFields.join(', ')}`);
+        }
+      });
 
-    if (items.items.length === 0) {
-      await Swal.fire({
+      if (invalidMasterRows.length > 0) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid master data reference',
+          html: `<div class="text-left text-sm"><p class="mb-2">Please fix these CSV rows:</p><ul class="list-disc pl-5">${invalidMasterRows
+            .slice(0, 8)
+            .map((item) => `<li>${item}</li>`)
+            .join('')}</ul>${
+            invalidMasterRows.length > 8
+              ? `<p class="mt-2 text-xs">...and ${invalidMasterRows.length - 8} more row(s)</p>`
+              : ''
+          }</div>`
+        });
+        return;
+      }
+
+      const validRows = rows.filter(
+        (row) =>
+          row.poNo &&
+          row.shipToId &&
+          row.destinationId &&
+          row.termId &&
+          row.gradeId
+      );
+
+      if (validRows.length === 0) {
+        Swal.fire({
+          icon: 'error',
+          title: 'No valid rows',
+          text: 'Check required fields in CSV.'
+        });
+        return;
+      }
+
+      const firstNoteLine = parseCsvLine(lines[1]);
+      const noteIndex = headers.findIndex((header) => header === 'note');
+      const note = noteIndex >= 0 ? firstNoteLine[noteIndex] || '' : '';
+
+      navigate('/orders/create', {
+        state: {
+          importedDraft: {
+            note,
+            items: validRows
+          }
+        }
+      });
+    } catch {
+      Swal.fire({
         icon: 'error',
-        title: 'Import Failed',
-        text: 'No valid rows were found in the CSV file.'
+        title: 'Import failed',
+        text: 'Cannot read CSV file.'
       });
-      return;
+    } finally {
+      if (event.target) event.target.value = '';
     }
-
-    if (importErrors.length > 0) {
-      await Swal.fire({
-        icon: 'warning',
-        title: 'Some rows were skipped',
-        html: `<div style="text-align:left">${importErrors
-          .slice(0, 12)
-          .map((msg) => `<div>${msg}</div>`)
-          .join('')}${
-          importErrors.length > 12
-            ? `<div>...and ${importErrors.length - 12} more</div>`
-            : ''
-        }</div>`
-      });
-    }
-
-    navigate('/orders/create', {
-      state: {
-        importItems: items.items,
-        importNote: items.note
-      }
-    });
   };
 
-  const filteredOrders = orders.filter((o) => {
-    const matchesUser = currentUser?.customerCompanyId
-      ? o.customerCompanyId === currentUser.customerCompanyId
-      : true;
-    const matchesSearch =
-      o.orderNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      o.customerCompanyId.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'ALL' || o.status === statusFilter;
-    return matchesUser && matchesSearch && matchesStatus;
-  });
-
   return (
-    <div className="space-y-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-8">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Order Management
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">
-            Track the lifecycle of your supplies.
+          <h1 className="ui-page-title">Order Management</h1>
+          <p className="ui-page-subtitle">
+            Visibility is controlled per line by user ship-to.
           </p>
         </div>
-        {[Role.MAIN_TRADER, Role.UBE_JAPAN, Role.ADMIN].includes(
-          currentUser?.role!
-        ) && (
-          <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              onChange={handleImportFile}
-              className="hidden"
-            />
+        {canCreate && (
+          <div className="flex items-center gap-2">
             <button
-              type="button"
-              onClick={handleImportClick}
-              className="bg-white text-indigo-700 px-6 py-3 rounded-xl font-bold hover:bg-indigo-50 border border-indigo-200 shadow-sm transition-all flex items-center gap-2"
+              onClick={handleDownloadSample}
+              className="bg-slate-700 text-white px-4 py-2 ui-radius-control text-sm font-bold hover:bg-slate-800 inline-flex items-center gap-2"
             >
-              <Upload size={18} />
+              <FileSpreadsheet className="w-4 h-4" />
+              Sample CSV
+            </button>
+            <button
+              onClick={() => csvInputRef.current?.click()}
+              className="bg-violet-600 text-white px-4 py-2 ui-radius-control text-sm font-bold hover:bg-violet-700 inline-flex items-center gap-2"
+            >
+              <FileUp className="w-4 h-4" />
               Import CSV
             </button>
+
             <Link
               to="/orders/create"
-              className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 dark:shadow-indigo-500/10 transition-all flex items-center gap-2"
+              className="bg-indigo-600 text-white px-4 py-2 ui-radius-control text-sm font-bold hover:bg-indigo-700 inline-flex items-center gap-2"
             >
-              <Plus size={18} />
+              <Plus className="w-4 h-4" />
               New Order
             </Link>
           </div>
         )}
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-        <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row gap-3 items-center bg-slate-50/30 dark:bg-slate-950/20">
-          <div className="relative flex-1 w-full">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              size={14}
-            />
+      <input
+        ref={csvInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden"
+        onChange={handleCsvImport}
+      />
+
+      <div className="bg-white dark:bg-slate-900 ui-radius-card border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-2 bg-slate-50/40 dark:bg-slate-950/20">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
-              type="text"
-              placeholder="Filter orders..."
-              className="shadcn-input pl-10 h-8 text-xs bg-white dark:bg-slate-900"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="shadcn-input h-9 text-sm pl-9"
+              placeholder="Search order no / company"
             />
           </div>
-          <select
-            className="shadcn-input h-8 text-xs w-full md:w-32 bg-white dark:bg-slate-900"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="ALL">All Status</option>
-            {Object.values(OrderStatus).map((status) => (
-              <option key={status} value={status}>
-                {status.replace(/_/g, ' ')}
-              </option>
-            ))}
-          </select>
+          <div className="md:w-60">
+            <Select
+              options={statusOptions}
+              value={statusOptions.find(
+                (option) => option.value === statusFilter
+              )}
+              onChange={(option: SingleValue<StatusOption>) =>
+                setStatusFilter(option?.value || 'ALL')
+              }
+              classNamePrefix="status-filter"
+              menuPortalTarget={document.body}
+              menuPosition="fixed"
+              styles={selectStyles}
+            />
+          </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="modern-table modern-table-compact min-w-full">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
-                <th className="min-w-[140px] text-left text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide px-4 py-3">
-                  Order Ref
-                </th>
-                <th className="min-w-[160px] text-left text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide px-4 py-3">
-                  Created By
-                </th>
-                <th className="min-w-[120px] text-left text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide px-4 py-3">
-                  Created
-                </th>
-                <th className="min-w-[140px] text-center text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide px-4 py-3">
-                  Status
-                </th>
-                <th className="min-w-[140px] text-left text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide px-4 py-3">
-                  Documents
-                </th>
-                <th className="min-w-[100px] text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide px-4 py-3">
-                  Lines
-                </th>
-                <th className="w-28 text-right text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide px-4 py-3">
-                  Action
-                </th>
+          <table className="w-full text-sm ui-table-standard">
+            <thead className="bg-slate-50/70 dark:bg-slate-950/40 ui-table-head">
+              <tr>
+                <th className="px-4 py-3 text-left">Order No</th>
+                <th className="px-4 py-3 text-left">Company</th>
+                <th className="px-4 py-3 text-left">Created By</th>
+                <th className="px-4 py-3 text-left">Status</th>
+                <th className="px-4 py-3 text-right">Visible Lines</th>
+                <th className="px-4 py-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredOrders.map((order) => (
-                <tr
-                  key={order.orderNo}
-                  className="group transition-all hover:bg-slate-50 dark:hover:bg-slate-800/40"
-                >
-                  <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
-                    {order.orderNo}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
-                    {order.createdBy}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-400 dark:text-slate-500">
-                    {formatDate(order.orderDate)}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide ${
-                        order.status === OrderStatus.DRAFT
-                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
-                          : order.status === OrderStatus.CREATED
-                            ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900'
-                            : order.status === OrderStatus.CONFIRMED
-                              ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900'
-                              : order.status === OrderStatus.VESSEL_SCHEDULED
-                                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-900'
-                                : order.status ===
-                                    OrderStatus.RECEIVED_ACTUAL_PO
-                                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-900'
-                                  : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900'
-                      }`}
-                    >
-                      {order.status === OrderStatus.DRAFT && (
-                        <FileText size={12} />
-                      )}
-                      {order.status === OrderStatus.CREATED && (
-                        <FileText size={12} />
-                      )}
-                      {order.status === OrderStatus.CONFIRMED && (
-                        <CheckCircle2 size={12} />
-                      )}
-                      {order.status === OrderStatus.VESSEL_SCHEDULED && (
-                        <Ship size={12} />
-                      )}
-                      {order.status === OrderStatus.VESSEL_DEPARTED && (
-                        <Package size={12} />
-                      )}
-                      {order.status === OrderStatus.RECEIVED_ACTUAL_PO && (
-                        <FileText size={12} />
-                      )}
-                      {order.status.replace(/_/g, ' ')}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {order.status === OrderStatus.RECEIVED_ACTUAL_PO ||
-                    order.status === OrderStatus.VESSEL_DEPARTED ? (
-                      <div className="flex gap-2">
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                            order.documents.some(
-                              (d) => d.type === 'Shipping Document'
-                            )
-                              ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
-                          }`}
+              {rows.map((row) => {
+                const { order, filteredLines } = row;
+                const expanded = isExpanded(order.orderNo);
+                return (
+                  <React.Fragment key={order.orderNo}>
+                    <tr className="bg-white dark:bg-slate-900">
+                      <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(order.orderNo)}
+                          className="inline-flex items-center gap-1.5 hover:text-indigo-600 dark:hover:text-indigo-400"
+                          title={expanded ? 'Collapse items' : 'Expand items'}
+                          aria-label={
+                            expanded ? 'Collapse items' : 'Expand items'
+                          }
                         >
-                          {order.documents.some(
-                            (d) => d.type === 'Shipping Document'
-                          )
-                            ? '✓'
-                            : '○'}{' '}
-                          Ship Doc
-                        </span>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                            order.documents.some((d) => d.type === 'BL')
-                              ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
-                          }`}
-                        >
-                          {order.documents.some((d) => d.type === 'BL')
-                            ? '✓'
-                            : '○'}{' '}
-                          BL
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-[10px] text-slate-300 dark:text-slate-700">
-                        -
-                      </span>
+                          {expanded ? (
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                          ) : (
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                          )}
+                          <span>{order.orderNo}</span>
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                        {getCompanyName(order.companyId)}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                        {order.createdBy}
+                      </td>
+                      <td className="px-4 py-3">
+                        <OrderStatusBadge status={order.status} />
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-slate-700 dark:text-slate-300">
+                        {filteredLines.length}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="inline-flex items-center gap-1.5">
+                          <ActionIconLink
+                            to={`/orders/edit/${order.orderNo}?readonly=1`}
+                            tone="indigo"
+                            title="Detail"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </ActionIconLink>
+                          {canCreate && (
+                            <ActionIconLink
+                              to={`/orders/edit/${order.orderNo}`}
+                              tone="emerald"
+                              title="Edit"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </ActionIconLink>
+                          )}
+                          {canCreate && (
+                            <ActionIconButton
+                              onClick={() => handleDeleteOrder(order.orderNo)}
+                              tone="rose"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </ActionIconButton>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+
+                    {expanded && (
+                      <tr className="bg-slate-50/40 dark:bg-slate-950/30">
+                        <td colSpan={6} className="px-4 py-3">
+                          <div className="border border-slate-200 dark:border-slate-800 ui-radius-panel overflow-hidden">
+                            <table className="w-full text-xs ui-table-standard">
+                              <thead className="bg-slate-100/80 dark:bg-slate-900/60 ui-table-head">
+                                <tr>
+                                  <th className="px-3 py-2 text-left">PO</th>
+                                  <th className="px-3 py-2 text-left">
+                                    Ship-to
+                                  </th>
+                                  <th className="px-3 py-2 text-left">
+                                    Destination
+                                  </th>
+                                  <th className="px-3 py-2 text-left">
+                                    Status
+                                  </th>
+                                  <th className="px-3 py-2 text-right">Qty</th>
+                                  <th className="px-3 py-2 text-left">
+                                    Req ETA
+                                  </th>
+                                  <th className="px-3 py-2 text-right">
+                                    Action
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                                {filteredLines.map((line) => (
+                                  <tr key={line.id}>
+                                    <td className="px-3 py-2 font-semibold text-slate-800 dark:text-slate-200">
+                                      {line.poNo}
+                                    </td>
+                                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+                                      {line.shipToId}
+                                    </td>
+                                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+                                      {line.destinationId}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <LineStatusBadge
+                                        status={line.status}
+                                        className="text-[9px]"
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2 text-right text-slate-700 dark:text-slate-300 font-semibold">
+                                      {line.qty}
+                                    </td>
+                                    <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
+                                      {line.requestETA || '-'}
+                                    </td>
+                                    <td className="px-3 py-2 text-right">
+                                      <ActionIconLink
+                                        to={`/orders/${order.orderNo}?lineId=${line.id}`}
+                                        tone="indigo"
+                                        title="Line Detail"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                      </ActionIconLink>
+                                    </td>
+                                  </tr>
+                                ))}
+                                {filteredLines.length === 0 && (
+                                  <tr>
+                                    <td
+                                      colSpan={7}
+                                      className="px-3 py-6 text-center text-slate-400"
+                                    >
+                                      No visible items in this order.
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end">
-                      <span className="text-md font-bold text-slate-500 dark:text-slate-400">
-                        {order.items.length}
-                      </span>
-                      {order.items.some((i) => i.asap) && (
-                        <span className="mb-[0.8px] ml-2 text-[9px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-bold uppercase">
-                          ASAP
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right align-middle">
-                    <div className="flex items-center justify-end gap-2">
-                      {order.status === OrderStatus.DRAFT && (
-                        <>
-                          <button
-                            onClick={(e) => handleDelete(order.orderNo, e)}
-                            className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:text-white dark:hover:text-white hover:bg-rose-600 dark:hover:bg-rose-600 hover:border-rose-600 dark:hover:border-rose-600 transition-all"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                          <Link
-                            to={`/orders/edit/${order.orderNo}`}
-                            className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:text-white dark:hover:text-white hover:bg-indigo-600 dark:hover:bg-indigo-600 hover:border-indigo-600 dark:hover:border-indigo-600 transition-all"
-                          >
-                            <Edit size={16} />
-                          </Link>
-                        </>
-                      )}
-                      <Link
-                        to={`/orders/${order.orderNo}`}
-                        className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:border-indigo-300 dark:hover:border-indigo-800 transition-all"
-                      >
-                        <Eye size={16} />
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredOrders.length === 0 && (
+                  </React.Fragment>
+                );
+              })}
+              {rows.length === 0 && (
                 <tr>
                   <td
-                    colSpan={7}
-                    className="px-4 py-10 text-center text-slate-400 dark:text-slate-500 text-sm italic"
+                    colSpan={6}
+                    className="px-4 py-10 text-center text-sm text-slate-400"
                   >
-                    No orders found matching criteria.
+                    No orders found.
                   </td>
                 </tr>
               )}

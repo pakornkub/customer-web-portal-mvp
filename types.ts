@@ -3,17 +3,45 @@ export enum Role {
   MAIN_TRADER = 'MAIN_TRADER',
   CS = 'CS',
   SALE = 'SALE',
-  SALE_MANAGER = 'SALE_MANAGER',
   ADMIN = 'ADMIN'
 }
 
-export enum OrderStatus {
+export enum OrderLineStatus {
   DRAFT = 'DRAFT',
   CREATED = 'CREATED',
-  CONFIRMED = 'CONFIRMED',
+  UBE_APPROVED = 'UBE_APPROVED',
+  APPROVED = 'APPROVED',
   VESSEL_SCHEDULED = 'VESSEL_SCHEDULED',
   RECEIVED_ACTUAL_PO = 'RECEIVED_ACTUAL_PO',
   VESSEL_DEPARTED = 'VESSEL_DEPARTED'
+}
+
+export enum OrderProgressStatus {
+  CREATE = 'CREATE',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETE = 'COMPLETE'
+}
+
+export enum UserGroup {
+  TRADER = 'TRADER',
+  UBE = 'UBE',
+  SALE = 'SALE',
+  CS = 'CS',
+  ADMIN = 'ADMIN'
+}
+
+export enum GroupSaleType {
+  OVERSEAS = 'OVERSEAS',
+  DOMESTIC = 'DOMESTIC'
+}
+
+export enum LineAction {
+  SUBMIT_LINE = 'SUBMIT_LINE',
+  UBE_APPROVE_LINE = 'UBE_APPROVE_LINE',
+  APPROVE_LINE = 'APPROVE_LINE',
+  SET_ETD = 'SET_ETD',
+  MARK_RECEIVED_PO = 'MARK_RECEIVED_PO',
+  UPLOAD_FINAL_DOCS = 'UPLOAD_FINAL_DOCS'
 }
 
 export enum DocumentType {
@@ -21,7 +49,8 @@ export enum DocumentType {
   BL = 'BL',
   INVOICE = 'Invoice',
   COA = 'COA',
-  PO_PDF = 'PO_PDF'
+  PO_PDF = 'PO_PDF',
+  SHIPPING_INSTRUCTION_PDF = 'SHIPPING_INSTRUCTION_PDF'
 }
 
 export interface CustomerCompany {
@@ -33,14 +62,34 @@ export interface User {
   id: string;
   username: string;
   role: Role;
-  customerCompanyId?: string;
+  userGroup: UserGroup;
+  companyId: string;
+  canCreateOrder: boolean;
+  shipToAccess: 'ALL' | 'SELECTED';
+  allowedShipToIds: string[];
   allowedDocumentTypes: DocumentType[];
 }
 
 export interface MasterDataRecord {
   id: string;
   name: string;
-  customerCompanyId: string[];
+  customerCompanyIds: string[];
+}
+
+export interface ShipToRecord extends MasterDataRecord {
+  groupSaleType: GroupSaleType;
+}
+
+export interface GroupSaleTypeRecord {
+  id: GroupSaleType;
+  name: string;
+}
+
+export interface LineActionPermission {
+  action: LineAction;
+  fromStatus: OrderLineStatus;
+  toStatus: OrderLineStatus;
+  allowedUserGroups: UserGroup[];
 }
 
 export interface OrderDocument {
@@ -56,6 +105,7 @@ export interface OrderItem {
   id: string;
   poNo: string;
   shipToId: string;
+  status: OrderLineStatus;
   destinationId: string;
   termId: string;
   requestETD: string;
@@ -65,8 +115,11 @@ export interface OrderItem {
   price?: number;
   currency?: string;
   otherRequested?: string;
+  saleNote?: string;
+  quotationNo?: string;
   asap: boolean;
   actualETD?: string;
+  documents: OrderDocument[];
 }
 
 export interface IntegrationLog {
@@ -81,9 +134,9 @@ export interface Order {
   orderNo: string;
   orderDate: string;
   note: string;
-  status: OrderStatus;
+  status: OrderProgressStatus;
   quotationNo?: string;
-  customerCompanyId: string;
+  companyId: string;
   createdBy: string;
   updatedBy: string;
   createdAt: string;
