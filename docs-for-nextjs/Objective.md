@@ -175,23 +175,25 @@ utils/
 
 ### Roles (Route-level access)
 
-| Role          | Description                         |
-| ------------- | ----------------------------------- |
-| `ADMIN`       | Full access to all pages and data   |
-| `MAIN_TRADER` | Customer/Trader — creates orders    |
-| `UBE_JAPAN`   | UBE Japan — first approval step     |
-| `SALE`        | Sale team — second approval + price |
-| `CS`          | Customer Service — ETD + final docs |
+| Role           | Description                                |
+| -------------- | ------------------------------------------ |
+| `ADMIN`        | Full access to all pages and data          |
+| `MAIN_TRADER`  | Customer/Trader — creates orders           |
+| `UBE_JAPAN`    | UBE Japan — can submit lines               |
+| `SALE`         | Sale team — approve + price, review PO     |
+| `SALE_MANAGER` | Sale Manager — final PO approval before CS |
+| `CS`           | Customer Service — ETD + final docs        |
 
 ### User Groups (Action-level permission)
 
-| UserGroup | Maps to Roles |
-| --------- | ------------- |
-| `TRADER`  | MAIN_TRADER   |
-| `UBE`     | UBE_JAPAN     |
-| `SALE`    | SALE          |
-| `CS`      | CS            |
-| `ADMIN`   | ADMIN         |
+| UserGroup      | Maps to Roles |
+| -------------- | ------------- |
+| `TRADER`       | MAIN_TRADER   |
+| `UBE`          | UBE_JAPAN     |
+| `SALE`         | SALE          |
+| `SALE_MANAGER` | SALE_MANAGER  |
+| `CS`           | CS            |
+| `ADMIN`        | ADMIN         |
 
 ---
 
@@ -282,10 +284,10 @@ interface CustomerCompany {
 interface MasterDataRecord {
   id: string;
   name: string;
-  customerCompanyIds: string[];
 }
 interface ShipToRecord extends MasterDataRecord {
   groupSaleType: GroupSaleType;
+  destinationIds: string[]; // destinations available for this ship-to (many-to-many via FK on ship-to side)
 }
 interface IntegrationLog {
   id: string;
@@ -326,6 +328,7 @@ enum Role {
   MAIN_TRADER,
   CS,
   SALE,
+  SALE_MANAGER,
   ADMIN
 }
 
@@ -333,6 +336,7 @@ enum UserGroup {
   TRADER,
   UBE,
   SALE,
+  SALE_MANAGER,
   CS,
   ADMIN
 }
@@ -340,10 +344,10 @@ enum UserGroup {
 enum OrderLineStatus {
   DRAFT,
   CREATED,
-  UBE_APPROVED,
   APPROVED,
+  WAIT_SALE_UEC_APPROVE_PO,
+  WAIT_MGR_UEC_APPROVE_PO,
   VESSEL_SCHEDULED,
-  RECEIVED_ACTUAL_PO,
   VESSEL_DEPARTED
 }
 
@@ -364,10 +368,10 @@ enum DocumentType {
 
 enum LineAction {
   SUBMIT_LINE,
-  UBE_APPROVE_LINE,
   APPROVE_LINE,
   SET_ETD,
-  MARK_RECEIVED_PO,
+  APPROVE_SALE_PO,
+  APPROVE_MGR_PO,
   UPLOAD_FINAL_DOCS
 }
 
@@ -389,10 +393,10 @@ Define in `utils/statusLabel.ts` — used in badges, tables, and headings.
 export const LINE_STATUS_LABELS: Record<OrderLineStatus, string> = {
   [OrderLineStatus.DRAFT]: 'Draft',
   [OrderLineStatus.CREATED]: 'Created',
-  [OrderLineStatus.UBE_APPROVED]: 'UBE Approved',
-  [OrderLineStatus.APPROVED]: 'Confirmed', // Sale-approved label
+  [OrderLineStatus.APPROVED]: 'Confirmed',
+  [OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO]: 'Wait Sale UEC Approve PO',
+  [OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO]: 'Wait Mgr UEC Approve PO',
   [OrderLineStatus.VESSEL_SCHEDULED]: 'Vessel Scheduled',
-  [OrderLineStatus.RECEIVED_ACTUAL_PO]: 'PO Received',
   [OrderLineStatus.VESSEL_DEPARTED]: 'Vessel Departed'
 };
 ```
@@ -412,10 +416,10 @@ export const ORDER_STATUS_LABELS: Record<OrderProgressStatus, string> = {
 ```ts
 export const ACTION_LABELS: Record<LineAction, string> = {
   [LineAction.SUBMIT_LINE]: 'Submit Line',
-  [LineAction.UBE_APPROVE_LINE]: 'UBE Approve',
   [LineAction.APPROVE_LINE]: 'Sale Approve',
-  [LineAction.SET_ETD]: 'Set ETD',
-  [LineAction.MARK_RECEIVED_PO]: 'Generate PO',
+  [LineAction.SET_ETD]: 'Set ETD & Generate PO',
+  [LineAction.APPROVE_SALE_PO]: 'Sale Review & Approve PO',
+  [LineAction.APPROVE_MGR_PO]: 'Manager Approve PO',
   [LineAction.UPLOAD_FINAL_DOCS]: 'Upload & Complete'
 };
 ```
@@ -441,23 +445,17 @@ export const UPLOADABLE_DOC_TYPES: DocumentType[] = [
 ];
 ```
 
-แต่ละ line มี status แยกกัน ผ่าน 6 steps:
+แต่ละ line มี status แยกกัน ผ่าน 7 steps:
 
 ```
 DRAFT
-  ├─[SUBMIT_LINE by TRADER/SALE]──▶ CREATED
-  │    └─[UBE_APPROVE_LINE by UBE]──▶ UBE_APPROVED
-  └─[SUBMIT_LINE by UBE]──▶ UBE_APPROVED  ← UBE bypasses CREATED
-       └─[APPROVE_LINE by SALE]──▶ APPROVED
-            └─[SET_ETD by CS]──▶ VESSEL_SCHEDULED
-                 └─[MARK_RECEIVED_PO by CS/TRADER]──▶ RECEIVED_ACTUAL_PO
-                      └─[UPLOAD_FINAL_DOCS by CS]──▶ VESSEL_DEPARTED
+  └─[SUBMIT_LINE by TRADER/UBE/SALE]──▶ CREATED
+       └─[APPROVE_LINE by SALE + price]──▶ APPROVED
+            └─[SET_ETD by CS] + Gen PO PDF + SI PDF──▶ WAIT_SALE_UEC_APPROVE_PO
+                 └─[APPROVE_SALE_PO by SALE] review PDF + confirm──▶ WAIT_MGR_UEC_APPROVE_PO
+                      └─[APPROVE_MGR_PO by SALE_MANAGER]──▶ VESSEL_SCHEDULED
+                           └─[UPLOAD_FINAL_DOCS by CS]──▶ VESSEL_DEPARTED
 ```
-
-> **UBE Shortcut Rule**: When a user with `userGroup === UserGroup.UBE` submits
-> a DRAFT line, the line status goes directly to `UBE_APPROVED`, skipping
-> `CREATED`. Normal TRADER/SALE users go DRAFT → CREATED → (UBE approves) →
-> UBE_APPROVED.
 
 **OrderProgressStatus** (computed):
 
@@ -467,15 +465,14 @@ DRAFT
 
 ### Step Detail & Business Rules
 
-| Step                 | Action              | Pre-condition                                               | Side Effects                                                                                                                    |
-| -------------------- | ------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Submit (TRADER/SALE) | `SUBMIT_LINE`       | Line is DRAFT, userGroup ≠ UBE                              | Line → CREATED. Notify SALE via mock email, activity log                                                                        |
-| Submit (UBE)         | `SUBMIT_LINE`       | Line is DRAFT, userGroup === UBE                            | Line → UBE_APPROVED directly (skip CREATED). Activity log                                                                       |
-| UBE Approve          | `UBE_APPROVE_LINE`  | Line is CREATED                                             | Line → UBE_APPROVED. Activity log                                                                                               |
-| Sale Approve         | `APPROVE_LINE`      | Line is UBE_APPROVED + `price > 0`                          | CRM simulation (await ~1.8s) → sets `quotationNo` (format: `QT-XXXXXX` 6 random digits), notifies CS + UBE_JAPAN                |
-| Set ETD              | `SET_ETD`           | Line is APPROVED + actualETD provided                       | Notify UBE_JAPAN via mock email, activity log                                                                                   |
-| Generate PO          | `MARK_RECEIVED_PO`  | Line is VESSEL_SCHEDULED                                    | Auto-generate PO PDF + SI PDF, attach to line docs. **Auto-download both PDFs** (if user has `allowedDocumentTypes` permission) |
-| Upload & Depart      | `UPLOAD_FINAL_DOCS` | Line is RECEIVED_ACTUAL_PO + has `Shipping Document` + `BL` | Uploaded docs replace same-type existing docs. Notify customer (mock), activity log, line → VESSEL_DEPARTED                     |
+| Step               | Action              | Pre-condition                                             | Side Effects                                                                                                                                                     |
+| ------------------ | ------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Submit             | `SUBMIT_LINE`       | Line is DRAFT                                             | Line → CREATED. Notify SALE via mock email, activity log                                                                                                         |
+| Sale Approve       | `APPROVE_LINE`      | Line is CREATED + `price > 0`                             | CRM simulation (await ~1.8s) → sets `quotationNo` (format: `QT-XXXXXX` 6 random digits), notifies CS. Line → APPROVED                                            |
+| Set ETD + Gen PO   | `SET_ETD`           | Line is APPROVED + actualETD provided                     | Auto-generate PO PDF + SI PDF, attach to line docs. **Auto-download both PDFs** (if user has `allowedDocumentTypes` permission). Line → WAIT_SALE_UEC_APPROVE_PO |
+| Sale Review PO     | `APPROVE_SALE_PO`   | Line is WAIT_SALE_UEC_APPROVE_PO                          | Sale opens/reviews PO PDF, confirms. Line → WAIT_MGR_UEC_APPROVE_PO. Activity log                                                                                |
+| Manager Approve PO | `APPROVE_MGR_PO`    | Line is WAIT_MGR_UEC_APPROVE_PO                           | Sale Manager reviews and approves. Line → VESSEL_SCHEDULED. Activity log                                                                                         |
+| Upload & Depart    | `UPLOAD_FINAL_DOCS` | Line is VESSEL_SCHEDULED + has `Shipping Document` + `BL` | Uploaded docs replace same-type existing docs. Notify customer (mock), activity log, line → VESSEL_DEPARTED                                                      |
 
 ---
 
@@ -493,24 +490,30 @@ DRAFT
 **STANDARD preset** (default):
 
 - SUBMIT_LINE: TRADER + UBE + SALE
-- UBE_APPROVE_LINE: UBE
 - APPROVE_LINE: SALE
 - SET_ETD: CS
-- MARK_RECEIVED_PO: TRADER
+- APPROVE_SALE_PO: SALE
+- APPROVE_MGR_PO: SALE_MANAGER
 - UPLOAD_FINAL_DOCS: CS
 
 **STRICT preset**:
 
 - SUBMIT_LINE: TRADER only
-- Everything else same as STANDARD except MARK_RECEIVED_PO: CS
+- APPROVE_LINE: SALE
+- SET_ETD: CS
+- APPROVE_SALE_PO: SALE
+- APPROVE_MGR_PO: SALE_MANAGER
+- UPLOAD_FINAL_DOCS: CS
 
 ### Data Visibility Rules
 
-- Non-ADMIN: only see orders where `order.companyId === user.companyId`
 - Non-ADMIN: only see lines where `canUserAccessShipTo(user, line.shipToId)` =
   true
-  - `shipToAccess === 'ALL'` → see all
-  - `shipToAccess === 'SELECTED'` → only `allowedShipToIds` list
+  - `shipToAccess === 'ALL'` → see all lines
+  - `shipToAccess === 'SELECTED'` → only lines whose `shipToId` is in
+    `allowedShipToIds`
+- Orders with zero visible lines are hidden from the user entirely
+- **No company-level filter** — ship-to access is the sole visibility gate
 
 ### Document Access Rules
 
@@ -576,12 +579,16 @@ DRAFT
 - [ ] Redirect to dashboard on login success
 - [ ] Redirect to `/login` if not authenticated
 
-**Test users to seed:** | Username | Password | Role | Company |
-|----------|----------|------|---------| | `trader1` | `password` | MAIN_TRADER
-| C001 (UBE Thailand) | | `ubejp1` | `password` | UBE_JAPAN | AG-UBE-JP | |
-`sale1` | `password` | SALE | (internal) | | `cs1` | `password` | CS |
-(internal) | | `admin` | `password` | ADMIN | (all) | | `mizutani` | `password`
-| UBE_JAPAN | AG-UBE-JP |
+**Test users to seed:**
+
+| Username    | Password   | Role         | UserGroup    | Company             |
+| ----------- | ---------- | ------------ | ------------ | ------------------- |
+| `trader1`   | `password` | MAIN_TRADER  | TRADER       | C001 (UBE Thailand) |
+| `ubejp1`    | `password` | UBE_JAPAN    | UBE          | AG-UBE-JP           |
+| `sale1`     | `password` | SALE         | SALE         | (internal)          |
+| `sale_mgr1` | `password` | SALE_MANAGER | SALE_MANAGER | (internal)          |
+| `cs1`       | `password` | CS           | CS           | (internal)          |
+| `admin`     | `password` | ADMIN        | ADMIN        | (all)               |
 
 ### TASK-03: Layout & Navigation
 
@@ -594,27 +601,29 @@ DRAFT
 
 **Sidebar menu per role:**
 
-| Menu Item    | Route            | Icon              | Show condition            |
-| ------------ | ---------------- | ----------------- | ------------------------- |
-| Dashboard    | `/`              | `LayoutDashboard` | Always                    |
-| Orders       | `/orders`        | `Package`         | Always                    |
-| Create Order | `/orders/create` | `PlusCircle`      | `canCreateOrder === true` |
-| Sale Review  | `/review`        | `ClipboardCheck`  | Role: SALE, ADMIN         |
-| CS Dashboard | `/cs`            | `Ship`            | Role: CS, ADMIN           |
-| Admin        | `/admin`         | `ShieldCheck`     | Role: ADMIN               |
-| Master Data  | `/master-data`   | `Database`        | Role: ADMIN               |
-| Logs         | `/logs`          | `ScrollText`      | Role: ADMIN               |
-| Clear Data   | `/clear-data`    | `Trash2`          | Always (dev/demo tool)    |
+| Menu Item    | Route            | Icon              | Show condition                  |
+| ------------ | ---------------- | ----------------- | ------------------------------- |
+| Dashboard    | `/`              | `LayoutDashboard` | Always                          |
+| Orders       | `/orders`        | `Package`         | Always                          |
+| Create Order | `/orders/create` | `PlusCircle`      | `canCreateOrder === true`       |
+| Sale Review  | `/review`        | `ClipboardCheck`  | Role: SALE, SALE_MANAGER, ADMIN |
+| Mgr Approve  | `/mgr-approve`   | `BadgeCheck`      | Role: SALE_MANAGER, ADMIN       |
+| CS Dashboard | `/cs`            | `Ship`            | Role: CS, ADMIN                 |
+| Admin        | `/admin`         | `ShieldCheck`     | Role: ADMIN                     |
+| Master Data  | `/master-data`   | `Database`        | Role: ADMIN                     |
+| Logs         | `/logs`          | `ScrollText`      | Role: ADMIN                     |
+| Clear Data   | `/clear-data`    | `Trash2`          | Always (dev/demo tool)          |
 
 **Role → visible menu summary:**
 
-| Role        | Visible menus                                  |
-| ----------- | ---------------------------------------------- |
-| MAIN_TRADER | Dashboard, Orders, Create Order (if permitted) |
-| UBE_JAPAN   | Dashboard, Orders                              |
-| SALE        | Dashboard, Orders, Sale Review                 |
-| CS          | Dashboard, Orders, CS Dashboard                |
-| ADMIN       | All menus                                      |
+| Role         | Visible menus                                  |
+| ------------ | ---------------------------------------------- |
+| MAIN_TRADER  | Dashboard, Orders, Create Order (if permitted) |
+| UBE_JAPAN    | Dashboard, Orders                              |
+| SALE         | Dashboard, Orders, Sale Review                 |
+| SALE_MANAGER | Dashboard, Orders, Sale Review, Mgr Approve    |
+| CS           | Dashboard, Orders, CS Dashboard                |
+| ADMIN        | All menus                                      |
 
 ### TASK-04: Dashboard (`/`)
 
@@ -646,6 +655,10 @@ DRAFT
 - [ ] Require: `asap === true` OR at least one of `requestETD` / `requestETA` is
       set (Zod cross-field refinement)
 - [ ] `shipToId` dropdown filtered by user's allowed ship-tos
+      (`canUserAccessShipTo`)
+- [ ] `destinationId` dropdown filtered by selected Ship-To's `destinationIds` —
+      when `shipToId` changes, reset `destinationId` to empty
+- [ ] `termId`, `gradeId` dropdowns show **all records** (no filter)
 - [ ] Validate with Zod before submit
 - [ ] **Selective submit**: row-level checkboxes. Only DRAFT-status lines are
       selectable. User must select ≥1 line to submit. Unselected DRAFT lines
@@ -668,18 +681,20 @@ DRAFT
 - [ ] Per-line action zone based on `canUserRunLineAction()`
 - [ ] **Line actions** (show only when applicable):
   - Submit Line (DRAFT → CREATED)
-  - UBE Approve (CREATED → UBE_APPROVED)
-  - Sale Approve with price input (UBE_APPROVED → APPROVED)
-  - Set ETD with date picker (APPROVED → VESSEL_SCHEDULED)
-  - Generate PO (VESSEL_SCHEDULED → RECEIVED_ACTUAL_PO) → triggers PDF
-    generation + download
-  - Upload Final Docs (RECEIVED_ACTUAL_PO → VESSEL_DEPARTED)
+  - Sale Approve with price + currency input (CREATED → APPROVED)
+  - Set ETD with date picker (APPROVED → WAIT_SALE_UEC_APPROVE_PO) →
+    **auto-generate PO PDF + SI PDF** + auto-download
+  - Sale Review PO: button to open PO PDF + confirm (WAIT_SALE_UEC_APPROVE_PO →
+    WAIT_MGR_UEC_APPROVE_PO)
+  - Manager Approve PO: review + approve (WAIT_MGR_UEC_APPROVE_PO →
+    VESSEL_SCHEDULED)
+  - Upload Final Docs (VESSEL_SCHEDULED → VESSEL_DEPARTED)
 - [ ] Per-line document list with download (filtered by `allowedDocumentTypes`)
 - [ ] Confirm dialog before any status-changing action
 
 ### TASK-08: Sale Review (`/review`)
 
-- [ ] List all lines with status `UBE_APPROVED` across all orders (for visible
+- [ ] List all lines with status `CREATED` across all orders (for visible
       orders)
 - [ ] Per line: PO No, Order No, Ship-To, Grade, Qty, Request ETD/ETA
 - [ ] Inline price + currency input per line
@@ -687,24 +702,33 @@ DRAFT
 - [ ] Approve button with confirm dialog
 - [ ] On approve: single `await sleep(1800)` simulating CRM API round-trip
 - [ ] After await: set `quotationNo = 'QT-' + 6 random digits` (e.g.
-      `QT-482917`); log SUCCESS to integrationLogs; notify CS (system) +
-      UBE_JAPAN (email)
+      `QT-482917`); log SUCCESS to integrationLogs; notify CS (system)
 - [ ] Show spinner/disabled state on Approve button during the 1.8s wait
 - [ ] **Save Draft** button (per line): persists price, currency, saleNote
       WITHOUT changing line status
-- [ ] Restrict page to SALE + ADMIN
+- [ ] Restrict page to SALE + SALE_MANAGER + ADMIN
 
 ### TASK-09: CS Dashboard (`/cs`)
 
 - [ ] **Stage 1 — Set ETD**: cards for lines with status `APPROVED`
   - Show: Order No, PO No, Ship-To, Grade, Qty, Request ETD, ASAP flag
-  - Action: Set Actual ETD (date input + confirm)
+  - Action: Set Actual ETD (date input + confirm) → auto-generates PO PDF + SI
+    PDF + auto-download → line → WAIT_SALE_UEC_APPROVE_PO
 - [ ] **Stage 2 — Finalize Shipping**: cards for lines with status
-      `RECEIVED_ACTUAL_PO`
+      `VESSEL_SCHEDULED`
   - Show: line info + current uploaded docs list
   - Action: upload documents (type selector + file input, save draft)
   - Complete button: only enabled when `Shipping Document` + `BL` both present
 - [ ] Restrict page to CS + ADMIN
+
+### TASK-08b: Mgr Approve (`/mgr-approve`)
+
+- [ ] List all lines with status `WAIT_MGR_UEC_APPROVE_PO` across all visible
+      orders
+- [ ] Per line: PO No, Order No, Ship-To, Grade, Qty, ETD, link/button to open
+      PO PDF
+- [ ] Approve button with confirm dialog → line → VESSEL_SCHEDULED. Activity log
+- [ ] Restrict page to SALE_MANAGER + ADMIN
 
 ### TASK-10: Admin Page (`/admin`)
 
@@ -733,10 +757,11 @@ DRAFT
 
 Tabs for each master data type:
 
-- [ ] **Ship-Tos**: id, name, groupSaleType, customerCompanyIds (multi-select)
-- [ ] **Destinations**: id, name, customerCompanyIds
-- [ ] **Terms**: id, name, customerCompanyIds
-- [ ] **Grades**: id, name, customerCompanyIds
+- [ ] **Ship-Tos**: id, name, groupSaleType, destinationIds (multi-select from
+      available destinations)
+- [ ] **Destinations**: id, name
+- [ ] **Terms**: id, name
+- [ ] **Grades**: id, name
 - [ ] **Group Sale Types**: id (enum value), name
 - [ ] Each tab: table + add row + delete row
 
@@ -1296,34 +1321,1103 @@ export const INITIAL_COMPANIES: CustomerCompany[] = [
 ```ts
 export const INITIAL_SHIP_TOS: ShipToRecord[] = [
   {
-    id: 'SHIP-MICHELIN',
-    name: 'Michelin',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.OVERSEAS
+    id: 'SHIP-AV-THOMAS',
+    name: 'A.V. THOMAS & CO.LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-COCHIN']
   },
   {
-    id: 'SHIP-MICHELIN-GOODYEAR-LATAM',
-    name: 'Michelin, Goodyear, LATAM Local',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.OVERSEAS
+    id: 'SHIP-ALERON-VIETNAM',
+    name: 'ALERON VIETNAM FOOTWEAR LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
   },
   {
-    id: 'SHIP-CHINA-LOCAL-SAILUN-MAXTREK',
-    name: 'China Local / Sailun, Maxtrek',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.OVERSEAS
+    id: 'SHIP-ALL-WELLS',
+    name: 'ALL WELLS INTERNATIONAL CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
   },
   {
-    id: 'SHIP-OIA-NON-OIA',
-    name: 'OIA / Non-OIA',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.OVERSEAS
+    id: 'SHIP-ALPHA-POLYMER-DN',
+    name: 'ALPHA-POLYMER CO., LTD. (Dong Nai Bonded)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
   },
   {
-    id: 'SHIP-DOMESTIC-TH',
-    name: 'Domestic Thailand',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.DOMESTIC
+    id: 'SHIP-ALPHA-POLYMER-TW',
+    name: 'ALPHA-POLYMER CO.,LTD (Whaleship Taiwan)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAICHUNG']
+  },
+  {
+    id: 'SHIP-ANNORA-VIETNAM',
+    name: 'ANNORA VIETNAM FOOTWEAR LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-AURORA-VIETNAM',
+    name: 'AURORA VIETNAM INDUSTRIAL FOOTWEAR CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-BALKRISHNA',
+    name: 'BALKRISHNA INDUSTRIES LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA']
+  },
+  {
+    id: 'SHIP-BOEHLE',
+    name: 'BOEHLE CHEMICALS',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CALUMET-CITY']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-TIANJIN',
+    name: 'BRIDGESTONE (TIANJIN) TIRE CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-BEIJING-AIRPORT']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-WUXI',
+    name: 'BRIDGESTONE (WUXI) TIRE CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-JAPAN',
+    name: 'Bridgestone Corporation',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TOKYO']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-MEXICO',
+    name: 'BRIDGESTONE DE MEXICO, S.A. DE C.V.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MANZANILLO']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-BRASIL',
+    name: 'BRIDGESTONE DO BRASIL',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SANTOS']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-WILSON',
+    name: 'BRIDGESTONE FIRESTONE NT WILSON PLANT',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-WILSON']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-INDIA',
+    name: 'BRIDGESTONE INDIA PRIVATE LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-POZNAN',
+    name: 'BRIDGESTONE POZNAN SP/ZO.O.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-GDYNIA']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-SA',
+    name: 'BRIDGESTONE SA (PTY) LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-PORT-ELIZABETH']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-TAIWAN',
+    name: 'BRIDGESTONE TAIWAN CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KEELUNG']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-TATABANYA',
+    name: 'BRIDGESTONE TATABANYA MANUFACTURING LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAMBURG']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-VIETNAM',
+    name: 'BRIDGESTONE VIETNAM',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-BRISA',
+    name: 'BRISA BRIDGESTONE SABANCI LASTIK SANAYI VE TICARET A.S.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-GEBZE']
+  },
+  {
+    id: 'SHIP-CEAT-KELANI',
+    name: 'CEAT KELANI INTERNATIONAL TYRES PVT LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-COLOMBO']
+  },
+  {
+    id: 'SHIP-CEAT',
+    name: 'CEAT LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHENNAI', 'DEST-NHAVA-SHEVA']
+  },
+  {
+    id: 'SHIP-CHENG-SHIN-XIAMEN',
+    name: 'CHENG SHIN RUBBER (XIAMEN) IND.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-CHENG-SHIN-TW',
+    name: 'CHENG SHIN RUBBER IND. CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAICHUNG']
+  },
+  {
+    id: 'SHIP-CHENG-SHIN-VN',
+    name: 'CHENG SHIN RUBBER (VIETNAM) IND. CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-CHENG-SHIN-SHANGHAI',
+    name: 'CHENG SHIN TIRE & RUBBER (CHINA) CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-CHENG-SHIN-CHONGQING',
+    name: 'CHENG SHIN TIRE & RUBBER (CHONGQING) CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHONGQING']
+  },
+  {
+    id: 'SHIP-CHENG-SHIN-XIAMEN2',
+    name: 'CHENG SHIN TIRE (XIAMEN) CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-CHENGSHIN-TW',
+    name: 'CHENGSHIN RUBBER TAIWAN',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAICHUNG']
+  },
+  {
+    id: 'SHIP-CHINH-DUONG',
+    name: 'CHINH DUONG ONE MEMBER CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-CHUN-XIANG',
+    name: 'CHUN XIANG RUBBER PLASTIC PRODUCT CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-ANTHAI',
+    name: 'CONG TY TNHH CONG NGHE CAO SU ANTHAI VIETNAM',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-CREATIVE-SOURCE',
+    name: 'CONG TY TNHH CREATIVE SOURCE VIET NAM',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-VIET-SIEU',
+    name: 'CONG TY TNHH SX TM VIET SIEU',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-STOECKEN',
+    name: 'CONTINENTAL AG STOECKEN',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HANNOVER', 'DEST-KOPER']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-AACHEN',
+    name: 'CONTINENTAL AG WERK AACHEN',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-AACHEN']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-ROMANIA',
+    name: 'Continental Automotive Products S.R.L.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TIMISOARA']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-BARUM',
+    name: 'Continental Barum s.r.o.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-OTROKOVICE']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-FRANCE',
+    name: 'CONTINENTAL FRANCE SAS',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SARREGUEMINES']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-INDIA',
+    name: 'CONTINENTAL INDIA PRIVATE LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-KORBACH',
+    name: 'CONTINENTAL KORBACH',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KORBACH']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-MABOR',
+    name: 'Continental Mabor Industria de Pneus, S.A.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-LOUSADO']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-AMERICAS',
+    name: 'CONTINENTAL TIRE THE AMERICAS, LLC',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MT-VERNON']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-CHINA',
+    name: 'CONTINENTAL TIRES (CHINA) CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-SLOVAKIA',
+    name: 'CONTINENTAL TIRES SLOVAKIA, S.R.O.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KOPER', 'DEST-PUCHOV']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-MALAYSIA',
+    name: 'CONTINENTAL TYRE AS MALAYSIA SDN. BHD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ALOR-SETAR']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-ZA',
+    name: 'CONTINENTAL TYRE SOUTH AFRICA PTY LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-PORT-ELIZABETH']
+  },
+  {
+    id: 'SHIP-COOPER-SERBIA',
+    name: 'COOPER TIRE AND RUBBER COMPANY SERBIA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KRUSEVAC']
+  },
+  {
+    id: 'SHIP-COOPER-KUNSHAN',
+    name: 'COOPER (KUNSHAN) TIRE CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-DONA-PACIFIC',
+    name: 'DONA PACIFIC (VIETNAM) CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-DONA-VICTOR',
+    name: 'DONA VICTOR FOOTWEAR COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-DG-CHUNXIANG',
+    name: 'Dongguan Chunxiang Rubber and Plastic Product Co., Ltd.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHATIAN']
+  },
+  {
+    id: 'SHIP-DG-YUECHUAN',
+    name: 'DONGGUAN CITY YUECHUAN CHEMICAL CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHATIAN']
+  },
+  {
+    id: 'SHIP-DG-GLUN',
+    name: 'DONGGUAN G-LUN RUBBER & PLASTIC CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: [
+      'DEST-HUANGPU',
+      'DEST-JIAOXIN',
+      'DEST-SHATIAN',
+      'DEST-TAIPING',
+      'DEST-YANTIAN'
+    ]
+  },
+  {
+    id: 'SHIP-DG-HERRY',
+    name: 'DONGGUAN HERRY PLASTIC AND RUBBER TECHNOLOGY CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHATIAN']
+  },
+  {
+    id: 'SHIP-DG-JIAYUE',
+    name: 'DONGGUAN JIAYUE RUBBER AND PLASTIC MATERIAL TECHNOLOGY CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAIPING']
+  },
+  {
+    id: 'SHIP-DG-LAAYOUNE',
+    name: 'DONGGUAN LAAYOUNE CHEMICAL CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HUANGPU', 'DEST-TAIPING', 'DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-DG-QIHANG',
+    name: 'Dongguan Qihang Rubber & Plastic Co., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHATIAN']
+  },
+  {
+    id: 'SHIP-DG-SUNKIU',
+    name: 'DONGGUAN SUN KIU SHOES CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAIPING']
+  },
+  {
+    id: 'SHIP-DG-YINGFENG',
+    name: 'DONGGUAN YINGFENG RUBBER CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAIPING']
+  },
+  {
+    id: 'SHIP-DG-YINGTAI',
+    name: 'DONGGUAN YINGTAI COMMERCE CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAIPING', 'DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-DOUBLESTAR',
+    name: 'DOUBLESTAR DONGFENG TYRE CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-DUONG-PHAT',
+    name: 'DUONG PHAT IMPORT AND EXPORT SERVICES TRADING COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-EAST-WIND-INDIA',
+    name: 'EAST WIND FOOTWEAR COMPANY LIMITED (INDIA)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHENNAI', 'DEST-KATTUPALLI']
+  },
+  {
+    id: 'SHIP-ETERNAL-PROWESS',
+    name: 'ETERNAL PROWESS',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-EVER-POWER',
+    name: 'EVER POWER INTERNATIONAL CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SIHANOUKVILLE']
+  },
+  {
+    id: 'SHIP-FAIRWAY',
+    name: 'FAIRWAY ENTERPRISES COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHENNAI', 'DEST-KATTUPALLI']
+  },
+  {
+    id: 'SHIP-FEET-BIT',
+    name: 'FEET BIT INTERNATIONAL COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HONG-KONG']
+  },
+  {
+    id: 'SHIP-FUJIAN-LIFENG',
+    name: 'FUJIAN LIFENG FOOTWEAR INDUSTRIAL DEVELOPMENT CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MAWEI-FUZHOU']
+  },
+  {
+    id: 'SHIP-FUJIAN-SANFENG',
+    name: 'FUJIAN SAN FENG FOOTWEAR CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MAWEI-FUZHOU', 'DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-FUJIAN-XIEFENG',
+    name: 'FUJIAN XIEFENG FOOTWEAR CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MAWEI-FUZHOU']
+  },
+  {
+    id: 'SHIP-GEE-HORN',
+    name: 'GEE HORN INTERNATIONAL CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KEELUNG']
+  },
+  {
+    id: 'SHIP-GEM-TREADS',
+    name: 'GEM TREADS PRIVATE LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-COCHIN']
+  },
+  {
+    id: 'SHIP-GEMCO',
+    name: 'GEMCO RUBBER PRIVATE LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-COCHIN']
+  },
+  {
+    id: 'SHIP-GOODYEAR-DALIAN',
+    name: 'GOODYEAR DALIAN TIRE CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-DALIAN', 'DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-GOODYEAR-BRASIL',
+    name: 'GOODYEAR DO BRASIL PRODUTOS DE BORRACHA LTDA.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SANTOS']
+  },
+  {
+    id: 'SHIP-GOODYEAR-SAVA',
+    name: 'GOODYEAR DUNLOP SAVA TIRES',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KRANJ']
+  },
+  {
+    id: 'SHIP-GOODYEAR-AMIENS',
+    name: 'GOODYEAR DUNLOP TIRES AMIENS SUD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-AMIENS']
+  },
+  {
+    id: 'SHIP-GOODYEAR-GERMANY',
+    name: 'GOODYEAR DUNLOP TIRES GERMANY GMBH',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: [
+      'DEST-FRANKFURT',
+      'DEST-HAMBURG',
+      'DEST-HANAU',
+      'DEST-FURSTENWALDE'
+    ]
+  },
+  {
+    id: 'SHIP-GOODYEAR-BELGIUM',
+    name: 'GOODYEAR DUNLOP TIRES OPERATIONS s.a.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ANTWERP']
+  },
+  {
+    id: 'SHIP-GOODYEAR-FULDA',
+    name: 'GOODYEAR FULDA TIRES GERMANY',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-FRANKFURT', 'DEST-FULDA']
+  },
+  {
+    id: 'SHIP-GOODYEAR-TURKEY',
+    name: 'GOODYEAR LASTIKLERI T.A.S.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-GEMLIK']
+  },
+  {
+    id: 'SHIP-GOODYEAR-SERBIA',
+    name: 'Goodyear Serbia, d. o. o.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KRUSEVAC']
+  },
+  {
+    id: 'SHIP-GOODYEAR-USA',
+    name: 'GOODYEAR TIRE AND RUBBER COMPANY',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-DALLAS', 'DEST-LAWTON']
+  },
+  {
+    id: 'SHIP-GRAND-GAIN',
+    name: 'GRAND GAIN FOOTWEAR MANUFACTURING CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-GUANGZHOU-ZHANGMOSHI',
+    name: 'GUANGZHOU ZHANGMOSHI INTERNATIONAL TRADING CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HUANGPU']
+  },
+  {
+    id: 'SHIP-GUORONG',
+    name: 'GUORONG (QINGYUAN) RUBBER INDUSTRY CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HUANGPU', 'DEST-QINGYUAN']
+  },
+  {
+    id: 'SHIP-HAIAN',
+    name: 'HAIAN RUBBER GROUP CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-HANSUK',
+    name: 'HANSUK INTERNATIONAL LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-BUSAN']
+  },
+  {
+    id: 'SHIP-HENGDASHENG',
+    name: 'HENGDASHENG TOYO TIRE (ZHANGJIAGANG) CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ZHANGJIAGANG']
+  },
+  {
+    id: 'SHIP-HOA-THANH',
+    name: 'HOA THANH COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-HUA-SHEN',
+    name: 'HUA SHEN VIETNAM COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-HWASEUNG-RACH-GIA',
+    name: 'HWASEUNG RACH GIA COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-JINAN-ZHONGTIAN',
+    name: 'Jinan Zhongtian New Materials Co., Ltd.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-JIUCHENG',
+    name: 'JIUCHENG INDUSTRIAL (VN) LIMITED COMPANY',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-KASAN',
+    name: 'KASAN CORPORATION (MALAYSIA) SDN BHD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KUALA-LUMPUR']
+  },
+  {
+    id: 'SHIP-KENDA-CHINA',
+    name: 'KENDA RUBBER (CHINA) CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-KENDA-INDONESIA',
+    name: 'KENDA RUBBER (INDONESIA)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-KENDA-TIANJIN',
+    name: 'KENDA RUBBER (TIANJIN) CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TIANJIN']
+  },
+  {
+    id: 'SHIP-KENDA-VIETNAM',
+    name: 'KENDA RUBBER (VIETNAM) CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-KENDA-TW',
+    name: 'KENDA RUBBER IND CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAICHUNG']
+  },
+  {
+    id: 'SHIP-LAAYOUNE-IND',
+    name: 'LAAYOUNE INDUSTRIAL CO.,LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAIPING']
+  },
+  {
+    id: 'SHIP-LAC-TY',
+    name: 'LAC TY II COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-LOTUS-FOOTWEAR',
+    name: 'LOTUS FOOTWEAR ENTERPRISES',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHENNAI', 'DEST-KATTUPALLI']
+  },
+  {
+    id: 'SHIP-MFP-SIMASTOCK',
+    name: 'M.F.P. Michelin P/C Simastock',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-LE-HAVRE']
+  },
+  {
+    id: 'SHIP-MFP-THIANT',
+    name: 'M.F.P. Michelin P/C Simastock Thiant',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-LE-HAVRE']
+  },
+  {
+    id: 'SHIP-MAXXIS-INDIA',
+    name: 'MAXXIS RUBBER INDIA PRIVATE LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ICD-SANAND']
+  },
+  {
+    id: 'SHIP-MICHELIN-HOMBURG',
+    name: 'MICHELIN HOMBURG (HBG)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ROTTERDAM']
+  },
+  {
+    id: 'SHIP-MICHELIN-POLAND',
+    name: 'MICHELIN POLAND (OLS)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-WARSAW-AIRPORT']
+  },
+  {
+    id: 'SHIP-MICHELIN-SHENYANG',
+    name: 'MICHELIN SHENYANG TIRE CO.(SHY)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-DALIAN']
+  },
+  {
+    id: 'SHIP-MRF',
+    name: 'MRF TYRE',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHENNAI', 'DEST-KATTUPALLI']
+  },
+  {
+    id: 'SHIP-NANKANG-CHINA',
+    name: 'NANKANG RUBBER TIRE',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ZHANGJIAGANG']
+  },
+  {
+    id: 'SHIP-NANKANG-TW',
+    name: 'NANKANG RUBBER TIRE CORP., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KEELUNG']
+  },
+  {
+    id: 'SHIP-NGU-HAN',
+    name: 'NGU HAN TRANSPORT SERVICE CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-NINH-BINH',
+    name: 'NINH BINH - VIETNAM CHUNGJYE SHOES MANUFA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-INDONESIA',
+    name: 'P.T. BRIDGESTONE TIRE INDONESIA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-PHOENIX',
+    name: 'PHOENIX COMPOUNDING TECHNOLOGY',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAMBURG', 'DEST-WALTERSHAUSEN']
+  },
+  {
+    id: 'SHIP-PIRELLI-GERMANY',
+    name: 'PIRELLI DEUTSCHLAND GMBH',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-OBERNBURG']
+  },
+  {
+    id: 'SHIP-PIRELLI-MEXICO',
+    name: 'Pirelli Neumaticos S.A. de C.V.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MANZANILLO']
+  },
+  {
+    id: 'SHIP-PT-ALNU',
+    name: 'PT. ALNU SPORTING GOODS INDONESIA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SEMARANG']
+  },
+  {
+    id: 'SHIP-PT-BOOSAN',
+    name: 'PT. BOOSAN SARANG',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-PT-GAJAH',
+    name: 'PT. GAJAH TUNGGAL TBK.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-PT-KUMKANG',
+    name: 'PT. KUM KANG TECH INDONESIA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-PT-SEONGSAN',
+    name: 'PT. SEONGSAN INTERNATIONAL',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-PT-HWASEUNG',
+    name: 'PT. HWA SEUNG INDONESIA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-QD-FUHUA',
+    name: 'QINGDAO FREE TRADE ZONE FUHUA INTERNATIONAL TRADING CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: [
+      'DEST-HUANGPU',
+      'DEST-HUMEN',
+      'DEST-NANSHA',
+      'DEST-QINGDAO',
+      'DEST-SHANGHAI',
+      'DEST-TAIPING',
+      'DEST-XIAMEN'
+    ]
+  },
+  {
+    id: 'SHIP-QD-GERUI',
+    name: 'Qingdao Ge Rui Da Rubber Co., Ltd',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-QD-HUAWU',
+    name: 'QINGDAO HUAWU RUBBER & PLASTIC CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-QD-RONGYUE',
+    name: 'Qingdao Rongyue Import And Export Co., Ltd.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-QD-YUEYOU',
+    name: 'QINGDAO YUEYOU INTERNATIONAL TRADE CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-RDC',
+    name: 'RDC Srl',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-GENOA']
+  },
+  {
+    id: 'SHIP-ROLL-SPORT',
+    name: 'ROLL SPORT VIETNAM FOOTWEAR LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-RUBBER-MIX',
+    name: 'RUBBER MIX S.A.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SAN-ANTONIO-CHILE']
+  },
+  {
+    id: 'SHIP-MICHELIN-ITALIANA',
+    name: 'S.P.A. MICHELIN ITALIANA (CNO)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-GENOA']
+  },
+  {
+    id: 'SHIP-SAILUN-VIETNAM',
+    name: 'SAILUN (VIETNAM) CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-SAMIL-TONG',
+    name: 'SAMIL TONG SANG VINA CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-SANTEC',
+    name: 'SANTEC TRADING AGENCY',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHATTOGRAM']
+  },
+  {
+    id: 'SHIP-SHANDONG-DURATTI',
+    name: 'Shandong Duratti Rubber Co., Ltd.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-SHANGHAI-MICHELIN',
+    name: 'SHANGHAI MICHELIN TIRE CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-SHINIMEX',
+    name: 'SHINIMEX II CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-SHYANG-TA',
+    name: 'SHYANG TA CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-SINTEX',
+    name: 'SINTEX CHEMICAL CORP.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-SUCCESS-PROSPERITY',
+    name: 'SUCCESS PROSPERITY SHOE MATERIAL COMPANY',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-SUMITOMO-CHANGSHU',
+    name: 'SUMITOMO RUBBER (CHANGSHU) CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-SUMITOMO-HUNAN',
+    name: 'SUMITOMO RUBBER (HUNAN) CO. LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-SUMITOMO-BRASIL',
+    name: 'SUMITOMO RUBBER DO BRASIL LTDA.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-PARANAGUA']
+  },
+  {
+    id: 'SHIP-SUMITOMO-ZA',
+    name: 'SUMITOMO RUBBER SOUTH AFRICA (PTY) LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-DURBAN']
+  },
+  {
+    id: 'SHIP-SUZHOU-YOKOHAMA',
+    name: 'SUZHOU YOKOHAMA TIRE CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-TAN-HOA-THANH',
+    name: 'TAN HOA THANH COMMERCIAL PRODUCTION CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-TAN-THANH-HOA',
+    name: 'TAN THANH HOA LONG AN TRADING AND MANUFACTURING CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-INHERITANCE-KH',
+    name: 'THE INHERITANCE (CAMBODIA) CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SIHANOUKVILLE']
+  },
+  {
+    id: 'SHIP-THIEN-VINH',
+    name: 'THIEN VINH INTERNATIONAL CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-THUAN-ICH',
+    name: 'THUAN ICH SHOES MATERIAL COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-TIRE-DEBICA',
+    name: 'TIRE COMPANY DEBICA S.A.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-DEBICA']
+  },
+  {
+    id: 'SHIP-TITAN-MANILA',
+    name: 'Titan Rubber Industrial Mfg Corporation',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MANILA']
+  },
+  {
+    id: 'SHIP-TORTUGA',
+    name: 'TORTUGA PRODUTOS DE BORRACHA LTDA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-PARANAGUA']
+  },
+  {
+    id: 'SHIP-TOYO-NA',
+    name: 'TOYO TIRE NORTH AMERICA MANUFACTURING INC.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CRANDALL', 'DEST-SAVANNAH', 'DEST-WHITE']
+  },
+  {
+    id: 'SHIP-TOYO-MALAYSIA',
+    name: 'TOYO TYRE MALAYSIA SDN. BHD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KAMUNTING', 'DEST-PENANG']
+  },
+  {
+    id: 'SHIP-TVS',
+    name: 'TVS SRICHAKRA LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TUTICORIN']
+  },
+  {
+    id: 'SHIP-UBE-ELASTOMER',
+    name: 'UBE Elastomer Co. Ltd.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TOKYO']
+  },
+  {
+    id: 'SHIP-UBE-MEXICO',
+    name: 'UBE MEXICO S. de R.L. de C.V.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MANZANILLO']
+  },
+  {
+    id: 'SHIP-MICHELIN-CHOLET',
+    name: 'USINE MICHELIN DE CHOLET (CHO)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-LE-HAVRE']
+  },
+  {
+    id: 'SHIP-VICTORY-SPORTS-DG',
+    name: 'VICTORY SPORTS GOODS CO.,LTD. (DONGGUAN)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHATIAN']
+  },
+  {
+    id: 'SHIP-VIET-NAM-VICTORY',
+    name: 'VIET NAM VICTORY SPORTS TECHNOLOGY COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-VIETNAM-DONA',
+    name: 'VIETNAM DONA STANDARD FOOTWEAR CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-VIETNAM-NAM-HA',
+    name: 'VIETNAM NAM HA FOOTWEAR COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-VINH-LONG',
+    name: 'VINH LONG FOOTWEAR CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-WEILINA',
+    name: 'WEILINA VIET NAM FOOTWEAR COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-WELLOFF',
+    name: 'WELLOFF INTERNATIONAL TRADING (SHANGHAI) CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-XIAMEN-HUAHE',
+    name: 'XIAMEN HUAHE IMPORT AND EXPORT CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JIAOXIN']
+  },
+  {
+    id: 'SHIP-XIAMEN-KUOCHENG',
+    name: 'XIAMEN KUOCHENG RUBBER CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NINGBO', 'DEST-SHATIAN', 'DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-YOKOHAMA-INDIA',
+    name: 'YOKOHAMA INDIA PRIVATE LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA']
+  },
+  {
+    id: 'SHIP-YOKOHAMA-USA',
+    name: 'YOKOHAMA TIRE MANUFACTURING',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NEW-ORLEANS', 'DEST-WEST-POINT']
+  },
+  {
+    id: 'SHIP-YOKOHAMA-PH',
+    name: 'YOKOHAMA TIRE PHILIPPINES, INC.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SUBIC']
+  },
+  {
+    id: 'SHIP-YOKOHAMA-VN',
+    name: 'YOKOHAMA TYRE VIETNAM INC. (YTVI)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-VSIP']
+  },
+  {
+    id: 'SHIP-YU-QING',
+    name: 'YU QING ENTERPRISE CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-ZW-RUBBER',
+    name: 'Z AND W RUBBER CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HUANGPU']
+  },
+  {
+    id: 'SHIP-ZHONGCE',
+    name: 'ZHONGCE RUBBER GROUP CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NINGBO']
   }
 ];
 ```
@@ -1341,16 +2435,107 @@ export const INITIAL_GROUP_SALE_TYPES: GroupSaleTypeRecord[] = [
 
 ```ts
 export const INITIAL_DESTINATIONS: MasterDataRecord[] = [
-  { id: 'DEST-FRANCE', name: 'France', customerCompanyIds: ['C001'] },
-  { id: 'DEST-USA', name: 'USA', customerCompanyIds: ['C001'] },
-  { id: 'DEST-CHINA', name: 'China', customerCompanyIds: ['C001'] },
-  {
-    id: 'DEST-JAPAN',
-    name: 'Japan',
-    customerCompanyIds: ['C001', 'AG-UBE-JP']
-  },
-  { id: 'DEST-THAILAND', name: 'Thailand', customerCompanyIds: ['C001'] },
-  { id: 'DEST-LATAM', name: 'Latin America', customerCompanyIds: ['C001'] }
+  // Vietnam
+  { id: 'DEST-HAIPHONG', name: 'Haiphong, Vietnam' },
+  { id: 'DEST-CAT-LAI-HCM', name: 'Cat Lai, Ho Chi Minh, Vietnam' },
+  { id: 'DEST-VSIP', name: 'VSIP, Vietnam' },
+  // China
+  { id: 'DEST-SHANGHAI', name: 'Shanghai, China' },
+  { id: 'DEST-XIAMEN', name: 'Xiamen, China' },
+  { id: 'DEST-QINGDAO', name: 'Qingdao, China' },
+  { id: 'DEST-HUANGPU', name: 'Huangpu, China' },
+  { id: 'DEST-TAIPING', name: 'Taiping, China' },
+  { id: 'DEST-SHATIAN', name: 'Shatian, China' },
+  { id: 'DEST-JIAOXIN', name: 'Jiaoxin, China' },
+  { id: 'DEST-YANTIAN', name: 'Yantian, China' },
+  { id: 'DEST-NINGBO', name: 'Ningbo, China' },
+  { id: 'DEST-TIANJIN', name: 'Tianjin, China' },
+  { id: 'DEST-MAWEI-FUZHOU', name: 'Mawei, Fuzhou, China' },
+  { id: 'DEST-DALIAN', name: 'Dalian, China' },
+  { id: 'DEST-ZHANGJIAGANG', name: 'Zhangjiagang, China' },
+  { id: 'DEST-CHONGQING', name: 'Chongqing, China' },
+  { id: 'DEST-QINGYUAN', name: 'Qingyuan, China' },
+  { id: 'DEST-BEIJING-AIRPORT', name: 'Beijing Airport, China' },
+  { id: 'DEST-NANSHA', name: 'Nansha, China' },
+  { id: 'DEST-HUMEN', name: 'Humen, China' },
+  // India
+  { id: 'DEST-NHAVA-SHEVA', name: 'Nhava Sheva, India' },
+  { id: 'DEST-CHENNAI', name: 'Chennai, India' },
+  { id: 'DEST-COCHIN', name: 'Cochin, India' },
+  { id: 'DEST-KATTUPALLI', name: 'Kattupalli, India' },
+  { id: 'DEST-TUTICORIN', name: 'Tuticorin, India' },
+  { id: 'DEST-ICD-SANAND', name: 'ICD Sanand, India' },
+  // Japan
+  { id: 'DEST-TOKYO', name: 'Tokyo, Japan' },
+  // Taiwan
+  { id: 'DEST-TAICHUNG', name: 'Taichung, Taiwan' },
+  { id: 'DEST-KEELUNG', name: 'Keelung, Taiwan' },
+  // Korea
+  { id: 'DEST-BUSAN', name: 'Busan, Korea' },
+  // Southeast Asia
+  { id: 'DEST-JAKARTA', name: 'Jakarta, Indonesia' },
+  { id: 'DEST-SEMARANG', name: 'Semarang, Indonesia' },
+  { id: 'DEST-KUALA-LUMPUR', name: 'Kuala Lumpur, Malaysia' },
+  { id: 'DEST-KAMUNTING', name: 'Kamunting, Perak, Malaysia' },
+  { id: 'DEST-ALOR-SETAR', name: 'Alor Setar, Malaysia' },
+  { id: 'DEST-PENANG', name: 'Penang, Malaysia' },
+  { id: 'DEST-SUBIC', name: 'Subic, Philippines' },
+  { id: 'DEST-MANILA', name: 'North Harbour, Manila, Philippines' },
+  { id: 'DEST-SIHANOUKVILLE', name: 'Sihanoukville, Cambodia' },
+  { id: 'DEST-HONG-KONG', name: 'Hong Kong' },
+  // South Asia
+  { id: 'DEST-COLOMBO', name: 'Colombo, Sri Lanka' },
+  { id: 'DEST-CHATTOGRAM', name: 'Chattogram, Bangladesh' },
+  // Germany
+  { id: 'DEST-HAMBURG', name: 'Hamburg, Germany' },
+  { id: 'DEST-HANNOVER', name: 'Hannover, Germany' },
+  { id: 'DEST-FRANKFURT', name: 'Frankfurt Airport, Germany' },
+  { id: 'DEST-AACHEN', name: 'Aachen, Germany' },
+  { id: 'DEST-KORBACH', name: 'Korbach, Germany' },
+  { id: 'DEST-FULDA', name: 'Fulda, Germany' },
+  { id: 'DEST-OBERNBURG', name: 'Obernburg, Germany' },
+  { id: 'DEST-WALTERSHAUSEN', name: 'Waltershausen, Germany' },
+  { id: 'DEST-FURSTENWALDE', name: 'Fuerstenwalde, Germany' },
+  { id: 'DEST-HANAU', name: 'Hanau, Germany' },
+  // France
+  { id: 'DEST-AMIENS', name: 'Amiens, France' },
+  { id: 'DEST-LE-HAVRE', name: 'Le Havre, France' },
+  { id: 'DEST-SARREGUEMINES', name: 'Sarreguemines, France' },
+  // Other Europe
+  { id: 'DEST-ROTTERDAM', name: 'Rotterdam, Netherlands' },
+  { id: 'DEST-ANTWERP', name: 'Antwerp (Beveren), Belgium' },
+  { id: 'DEST-GENOA', name: 'Genoa, Italy' },
+  { id: 'DEST-GDYNIA', name: 'Gdynia, Poland' },
+  { id: 'DEST-WARSAW-AIRPORT', name: 'Warsaw Airport, Poland' },
+  { id: 'DEST-DEBICA', name: 'Debica, Poland' },
+  { id: 'DEST-TIMISOARA', name: 'Timisoara, Romania' },
+  { id: 'DEST-OTROKOVICE', name: 'Otrokovice, Czech Republic' },
+  { id: 'DEST-PUCHOV', name: 'Puchov, Slovakia' },
+  { id: 'DEST-KOPER', name: 'Koper, Slovenia' },
+  { id: 'DEST-KRANJ', name: 'Kranj, Slovenia' },
+  { id: 'DEST-KRUSEVAC', name: 'Krusevac, Serbia' },
+  { id: 'DEST-GEBZE', name: 'Gebze, Turkey' },
+  { id: 'DEST-GEMLIK', name: 'Gemlik, Turkey' },
+  { id: 'DEST-LOUSADO', name: 'Lousado, Portugal' },
+  // Africa
+  { id: 'DEST-PORT-ELIZABETH', name: 'Port Elizabeth, South Africa' },
+  { id: 'DEST-DURBAN', name: 'Durban, South Africa' },
+  // USA
+  { id: 'DEST-CALUMET-CITY', name: 'Calumet City, IL, USA' },
+  { id: 'DEST-MT-VERNON', name: 'Mt. Vernon, IL, USA' },
+  { id: 'DEST-WILSON', name: 'Wilson, NC, USA' },
+  { id: 'DEST-LAWTON', name: 'Lawton, OK, USA' },
+  { id: 'DEST-DALLAS', name: 'Dallas (DFW), TX, USA' },
+  { id: 'DEST-CRANDALL', name: 'Crandall, GA, USA' },
+  { id: 'DEST-SAVANNAH', name: 'Savannah, GA, USA' },
+  { id: 'DEST-WHITE', name: 'White, GA, USA' },
+  { id: 'DEST-NEW-ORLEANS', name: 'New Orleans, LA, USA' },
+  { id: 'DEST-WEST-POINT', name: 'West Point, USA' },
+  // Mexico & Latin America
+  { id: 'DEST-MANZANILLO', name: 'Manzanillo, Mexico' },
+  { id: 'DEST-SANTOS', name: 'Santos, Brazil' },
+  { id: 'DEST-PARANAGUA', name: 'Paranagua, Brazil' },
+  { id: 'DEST-SAN-ANTONIO-CHILE', name: 'San Antonio, Chile' }
 ];
 ```
 
@@ -1358,11 +2543,16 @@ export const INITIAL_DESTINATIONS: MasterDataRecord[] = [
 
 ```ts
 export const INITIAL_TERMS: MasterDataRecord[] = [
-  { id: 'TERM-FOB', name: 'FOB', customerCompanyIds: ['C001'] },
-  { id: 'TERM-CIF', name: 'CIF', customerCompanyIds: ['C001'] },
-  { id: 'TERM-CFR', name: 'CFR', customerCompanyIds: ['C001'] },
-  { id: 'TERM-EXW', name: 'EXW', customerCompanyIds: ['C001'] },
-  { id: 'TERM-DDP', name: 'DDP', customerCompanyIds: ['C001'] }
+  { id: 'CFR', name: 'CFR' },
+  { id: 'CIF', name: 'CIF' },
+  { id: 'CIP', name: 'CIP' },
+  { id: 'CPT', name: 'CPT' },
+  { id: 'DAP', name: 'DAP' },
+  { id: 'DAT', name: 'DAT' },
+  { id: 'DPU', name: 'DPU' },
+  { id: 'EXW', name: 'EXW' },
+  { id: 'FCA', name: 'FCA' },
+  { id: 'FOB', name: 'FOB' }
 ];
 ```
 
@@ -1370,11 +2560,15 @@ export const INITIAL_TERMS: MasterDataRecord[] = [
 
 ```ts
 export const INITIAL_GRADES: MasterDataRecord[] = [
-  { id: 'GRADE-1001A', name: 'UBE Nylon 1001A', customerCompanyIds: ['C001'] },
-  { id: 'GRADE-1015B', name: 'UBE Nylon 1015B', customerCompanyIds: ['C001'] },
-  { id: 'GRADE-1022B', name: 'UBE Nylon 1022B', customerCompanyIds: ['C001'] },
-  { id: 'GRADE-2020B', name: 'UBE Nylon 2020B', customerCompanyIds: ['C001'] },
-  { id: 'GRADE-5033B', name: 'UBE Nylon 5033B', customerCompanyIds: ['C001'] }
+  { id: 'BR150', name: 'UBEPOL BR150' },
+  { id: 'BR150B', name: 'UBEPOL BR150B' },
+  { id: 'BR150GN', name: 'UBEPOL BR150GN' },
+  { id: 'BR150L', name: 'UBEPOL BR150L' },
+  { id: 'BR150LGN', name: 'UBEPOL BR150LGN' },
+  { id: 'BR360B', name: 'UBEPOL BR360B' },
+  { id: 'VCR412', name: 'UBEPOL VCR412' },
+  { id: 'VCR617', name: 'UBEPOL VCR617' },
+  { id: 'X-200', name: 'X-200' }
 ];
 ```
 
@@ -1563,10 +2757,38 @@ export const INITIAL_ORDERS: Order[] = [
 
 ---
 
-## �️ Store API (`store/index.ts`)
+## 🗄️ Store API (`store/index.ts`)
 
 > Agent instruction: implement all state and actions below in a single Zustand
 > store with `persist` middleware.
+
+### Selector: `getVisibleOrdersForUser`
+
+```ts
+// store/selectors.ts
+export const getVisibleOrdersForUser = (
+  orders: Order[],
+  user: User | null
+): Order[] => {
+  if (!user) return [];
+  if (user.role === Role.ADMIN) return orders;
+
+  return orders
+    .map((order) => {
+      const visibleItems = order.items.filter((item) =>
+        canUserAccessShipTo(user, item.shipToId)
+      );
+      if (visibleItems.length === 0) return null;
+      return {
+        ...order,
+        items: visibleItems,
+        status: deriveOrderProgressStatus(visibleItems)
+      };
+    })
+    .filter((o): o is Order => Boolean(o));
+};
+// ⚠️ No companyId check — ship-to access is the sole visibility gate
+```
 
 ### State Shape
 
