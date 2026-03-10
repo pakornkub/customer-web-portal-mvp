@@ -156,23 +156,15 @@ export const CreateOrder: React.FC = () => {
 
   const shipTos = useMemo(
     () =>
-      masterData.shipTos.filter(
-        (shipTo) =>
-          shipTo.customerCompanyIds.includes(companyId) &&
-          (currentUser ? canUserAccessShipTo(currentUser, shipTo.id) : false)
+      masterData.shipTos.filter((shipTo) =>
+        currentUser ? canUserAccessShipTo(currentUser, shipTo.id) : false
       ),
-    [masterData.shipTos, companyId, currentUser]
+    [masterData.shipTos, currentUser]
   );
 
-  const grades = masterData.grades.filter((row) =>
-    row.customerCompanyIds.includes(companyId)
-  );
-  const destinations = masterData.destinations.filter((row) =>
-    row.customerCompanyIds.includes(companyId)
-  );
-  const terms = masterData.terms.filter((row) =>
-    row.customerCompanyIds.includes(companyId)
-  );
+  const grades = masterData.grades;
+  const destinations = masterData.destinations;
+  const terms = masterData.terms;
 
   const shipToOptions = useMemo<SelectOption[]>(
     () =>
@@ -312,6 +304,8 @@ export const CreateOrder: React.FC = () => {
     control,
     handleSubmit,
     getValues,
+    setValue,
+    watch,
     formState: { errors }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -350,6 +344,8 @@ export const CreateOrder: React.FC = () => {
     control,
     name: 'items'
   });
+
+  const watchedItems = watch('items');
 
   const selectableLineFieldIds = useMemo(
     () =>
@@ -569,9 +565,7 @@ export const CreateOrder: React.FC = () => {
           ? OrderLineStatus.DRAFT
           : isSelected &&
               (previousStatus === OrderLineStatus.DRAFT || !previousStatus)
-            ? currentUser.userGroup === UserGroup.UBE
-              ? OrderLineStatus.UBE_APPROVED
-              : OrderLineStatus.CREATED
+            ? OrderLineStatus.CREATED
             : previousStatus || OrderLineStatus.DRAFT;
 
         return {
@@ -919,7 +913,39 @@ export const CreateOrder: React.FC = () => {
                                   }
                                   onChange={(
                                     option: SingleValue<SelectOption>
-                                  ) => field.onChange(option?.value || '')}
+                                  ) => {
+                                    const selectedId = option?.value || '';
+                                    field.onChange(selectedId);
+                                    const selectedShipTo = shipTos.find(
+                                      (s) => s.id === selectedId
+                                    );
+                                    if (
+                                      selectedShipTo &&
+                                      selectedShipTo.destinationIds.length === 1
+                                    ) {
+                                      setValue(
+                                        `items.${index}.destinationId`,
+                                        selectedShipTo.destinationIds[0]
+                                      );
+                                    } else {
+                                      const currentDestId = getValues(
+                                        `items.${index}.destinationId`
+                                      );
+                                      if (
+                                        !selectedId ||
+                                        (selectedShipTo &&
+                                          currentDestId &&
+                                          !selectedShipTo.destinationIds.includes(
+                                            currentDestId
+                                          ))
+                                      ) {
+                                        setValue(
+                                          `items.${index}.destinationId`,
+                                          ''
+                                        );
+                                      }
+                                    }
+                                  }}
                                   onBlur={field.onBlur}
                                   isDisabled={isLineLocked}
                                   placeholder="Select"
@@ -956,24 +982,40 @@ export const CreateOrder: React.FC = () => {
                             <Controller
                               control={control}
                               name={`items.${index}.destinationId` as const}
-                              render={({ field }) => (
-                                <Select
-                                  options={destinationOptions}
-                                  value={
-                                    destinationOptions.find(
-                                      (option) => option.value === field.value
-                                    ) || null
-                                  }
-                                  onChange={(
-                                    option: SingleValue<SelectOption>
-                                  ) => field.onChange(option?.value || '')}
-                                  onBlur={field.onBlur}
-                                  isDisabled={isLineLocked}
-                                  placeholder="Select"
-                                  classNamePrefix="line-destination"
-                                  {...SELECT_MENU_PROPS}
-                                />
-                              )}
+                              render={({ field }) => {
+                                const currentShipToId =
+                                  watchedItems?.[index]?.shipToId || '';
+                                const currentShipTo = shipTos.find(
+                                  (s) => s.id === currentShipToId
+                                );
+                                const filteredDestinationOptions =
+                                  currentShipTo &&
+                                  currentShipTo.destinationIds.length > 0
+                                    ? destinationOptions.filter((opt) =>
+                                        currentShipTo.destinationIds.includes(
+                                          opt.value
+                                        )
+                                      )
+                                    : destinationOptions;
+                                return (
+                                  <Select
+                                    options={filteredDestinationOptions}
+                                    value={
+                                      filteredDestinationOptions.find(
+                                        (option) => option.value === field.value
+                                      ) || null
+                                    }
+                                    onChange={(
+                                      option: SingleValue<SelectOption>
+                                    ) => field.onChange(option?.value || '')}
+                                    onBlur={field.onBlur}
+                                    isDisabled={isLineLocked}
+                                    placeholder="Select"
+                                    classNamePrefix="line-destination"
+                                    {...SELECT_MENU_PROPS}
+                                  />
+                                );
+                              }}
                             />
                           )}
                           {getFieldErrorMessage(index, 'destinationId') && (

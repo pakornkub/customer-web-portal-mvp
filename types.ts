@@ -3,16 +3,17 @@ export enum Role {
   MAIN_TRADER = 'MAIN_TRADER',
   CS = 'CS',
   SALE = 'SALE',
+  SALE_MANAGER = 'SALE_MANAGER',
   ADMIN = 'ADMIN'
 }
 
 export enum OrderLineStatus {
   DRAFT = 'DRAFT',
   CREATED = 'CREATED',
-  UBE_APPROVED = 'UBE_APPROVED',
   APPROVED = 'APPROVED',
+  WAIT_SALE_UEC_APPROVE_PO = 'WAIT_SALE_UEC_APPROVE_PO',
+  WAIT_MGR_UEC_APPROVE_PO = 'WAIT_MGR_UEC_APPROVE_PO',
   VESSEL_SCHEDULED = 'VESSEL_SCHEDULED',
-  RECEIVED_ACTUAL_PO = 'RECEIVED_ACTUAL_PO',
   VESSEL_DEPARTED = 'VESSEL_DEPARTED'
 }
 
@@ -26,6 +27,7 @@ export enum UserGroup {
   TRADER = 'TRADER',
   UBE = 'UBE',
   SALE = 'SALE',
+  SALE_MANAGER = 'SALE_MANAGER',
   CS = 'CS',
   ADMIN = 'ADMIN'
 }
@@ -37,10 +39,10 @@ export enum GroupSaleType {
 
 export enum LineAction {
   SUBMIT_LINE = 'SUBMIT_LINE',
-  UBE_APPROVE_LINE = 'UBE_APPROVE_LINE',
   APPROVE_LINE = 'APPROVE_LINE',
   SET_ETD = 'SET_ETD',
-  MARK_RECEIVED_PO = 'MARK_RECEIVED_PO',
+  APPROVE_SALE_PO = 'APPROVE_SALE_PO',
+  APPROVE_MGR_PO = 'APPROVE_MGR_PO',
   UPLOAD_FINAL_DOCS = 'UPLOAD_FINAL_DOCS'
 }
 
@@ -73,11 +75,11 @@ export interface User {
 export interface MasterDataRecord {
   id: string;
   name: string;
-  customerCompanyIds: string[];
 }
 
 export interface ShipToRecord extends MasterDataRecord {
   groupSaleType: GroupSaleType;
+  destinationIds: string[];
 }
 
 export interface GroupSaleTypeRecord {

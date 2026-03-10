@@ -72,6 +72,7 @@ const deriveRoleFromGroup = (group: UserGroup): Role => {
   if (group === UserGroup.ADMIN) return Role.ADMIN;
   if (group === UserGroup.CS) return Role.CS;
   if (group === UserGroup.SALE) return Role.SALE;
+  if (group === UserGroup.SALE_MANAGER) return Role.SALE_MANAGER;
   if (group === UserGroup.UBE) return Role.UBE_JAPAN;
   return Role.MAIN_TRADER;
 };
@@ -156,23 +157,7 @@ export const Admin: React.FC = () => {
     [masterData.shipTos]
   );
 
-  const shipTosByCompany = useMemo(
-    () =>
-      masterData.shipTos.filter((shipTo) =>
-        shipTo.customerCompanyIds.includes(newUser.companyId)
-      ),
-    [masterData.shipTos, newUser.companyId]
-  );
-
-  const createShipToOptions = useMemo<ShipToOption[]>(() => {
-    if (shipTosByCompany.length > 0) {
-      return shipTosByCompany.map((shipTo) => ({
-        value: shipTo.id,
-        label: shipTo.name
-      }));
-    }
-    return allShipToOptions;
-  }, [shipTosByCompany, allShipToOptions]);
+  const createShipToOptions = allShipToOptions;
 
   const createSelectedShipToOptions = useMemo(() => {
     const optionById = new Map(
@@ -362,15 +347,7 @@ export const Admin: React.FC = () => {
     [users, editingUserId]
   );
   const editingDraft = editingUserId ? editingUsers[editingUserId] : undefined;
-  const editingUserShipToOptions = useMemo(() => {
-    if (!editingDraft) return [] as ShipToOption[];
-    const filtered = masterData.shipTos
-      .filter((shipTo) =>
-        shipTo.customerCompanyIds.includes(editingDraft.companyId)
-      )
-      .map((shipTo) => ({ value: shipTo.id, label: shipTo.name }));
-    return filtered.length > 0 ? filtered : allShipToOptions;
-  }, [editingDraft, masterData.shipTos, allShipToOptions]);
+  const editingUserShipToOptions = allShipToOptions;
 
   const editingSelectedShipToOptions = useMemo(() => {
     if (!editingDraft) return [] as ShipToOption[];

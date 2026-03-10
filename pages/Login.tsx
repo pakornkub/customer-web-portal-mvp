@@ -82,21 +82,21 @@ export const Login: React.FC = () => {
               </div>
               <div className="text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
                 <span className="font-bold text-slate-700 dark:text-slate-300">
-                  ube1
+                  ubejp1
                 </span>{' '}
                 (UBE Japan)
               </div>
               <div className="text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
                 <span className="font-bold text-slate-700 dark:text-slate-300">
-                  mizutani
+                  sale1
                 </span>{' '}
                 (Sale)
               </div>
               <div className="text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
                 <span className="font-bold text-slate-700 dark:text-slate-300">
-                  sakuma
+                  sale_mgr1
                 </span>{' '}
-                (Sale)
+                (Sale Manager)
               </div>
               <div className="text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
                 <span className="font-bold text-slate-700 dark:text-slate-300">

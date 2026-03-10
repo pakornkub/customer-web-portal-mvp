@@ -48,8 +48,6 @@ export const getVisibleOrdersForUser = (orders: Order[], user: User | null) => {
 
   return orders
     .map((order) => {
-      if (order.companyId !== user.companyId) return null;
-
       const visibleItems = order.items.filter((item) =>
         canUserAccessShipTo(user, item.shipToId)
       );
@@ -161,32 +159,32 @@ export const createStandardLinePermissionMatrix =
       allowedUserGroups: [UserGroup.TRADER, UserGroup.UBE, UserGroup.SALE]
     },
     {
-      action: LineAction.UBE_APPROVE_LINE,
-      fromStatus: OrderLineStatus.CREATED,
-      toStatus: OrderLineStatus.UBE_APPROVED,
-      allowedUserGroups: [UserGroup.UBE]
-    },
-    {
       action: LineAction.APPROVE_LINE,
-      fromStatus: OrderLineStatus.UBE_APPROVED,
+      fromStatus: OrderLineStatus.CREATED,
       toStatus: OrderLineStatus.APPROVED,
       allowedUserGroups: [UserGroup.SALE]
     },
     {
       action: LineAction.SET_ETD,
       fromStatus: OrderLineStatus.APPROVED,
-      toStatus: OrderLineStatus.VESSEL_SCHEDULED,
+      toStatus: OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO,
       allowedUserGroups: [UserGroup.CS]
     },
     {
-      action: LineAction.MARK_RECEIVED_PO,
-      fromStatus: OrderLineStatus.VESSEL_SCHEDULED,
-      toStatus: OrderLineStatus.RECEIVED_ACTUAL_PO,
-      allowedUserGroups: [UserGroup.TRADER]
+      action: LineAction.APPROVE_SALE_PO,
+      fromStatus: OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO,
+      toStatus: OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO,
+      allowedUserGroups: [UserGroup.SALE]
+    },
+    {
+      action: LineAction.APPROVE_MGR_PO,
+      fromStatus: OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO,
+      toStatus: OrderLineStatus.VESSEL_SCHEDULED,
+      allowedUserGroups: [UserGroup.SALE_MANAGER]
     },
     {
       action: LineAction.UPLOAD_FINAL_DOCS,
-      fromStatus: OrderLineStatus.RECEIVED_ACTUAL_PO,
+      fromStatus: OrderLineStatus.VESSEL_SCHEDULED,
       toStatus: OrderLineStatus.VESSEL_DEPARTED,
       allowedUserGroups: [UserGroup.CS]
     }
@@ -200,32 +198,32 @@ export const createStrictLinePermissionMatrix = (): LineActionPermission[] => [
     allowedUserGroups: [UserGroup.TRADER]
   },
   {
-    action: LineAction.UBE_APPROVE_LINE,
-    fromStatus: OrderLineStatus.CREATED,
-    toStatus: OrderLineStatus.UBE_APPROVED,
-    allowedUserGroups: [UserGroup.UBE]
-  },
-  {
     action: LineAction.APPROVE_LINE,
-    fromStatus: OrderLineStatus.UBE_APPROVED,
+    fromStatus: OrderLineStatus.CREATED,
     toStatus: OrderLineStatus.APPROVED,
     allowedUserGroups: [UserGroup.SALE]
   },
   {
     action: LineAction.SET_ETD,
     fromStatus: OrderLineStatus.APPROVED,
-    toStatus: OrderLineStatus.VESSEL_SCHEDULED,
+    toStatus: OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO,
     allowedUserGroups: [UserGroup.CS]
   },
   {
-    action: LineAction.MARK_RECEIVED_PO,
-    fromStatus: OrderLineStatus.VESSEL_SCHEDULED,
-    toStatus: OrderLineStatus.RECEIVED_ACTUAL_PO,
-    allowedUserGroups: [UserGroup.CS]
+    action: LineAction.APPROVE_SALE_PO,
+    fromStatus: OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO,
+    toStatus: OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO,
+    allowedUserGroups: [UserGroup.SALE]
+  },
+  {
+    action: LineAction.APPROVE_MGR_PO,
+    fromStatus: OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO,
+    toStatus: OrderLineStatus.VESSEL_SCHEDULED,
+    allowedUserGroups: [UserGroup.SALE_MANAGER]
   },
   {
     action: LineAction.UPLOAD_FINAL_DOCS,
-    fromStatus: OrderLineStatus.RECEIVED_ACTUAL_PO,
+    fromStatus: OrderLineStatus.VESSEL_SCHEDULED,
     toStatus: OrderLineStatus.VESSEL_DEPARTED,
     allowedUserGroups: [UserGroup.CS]
   }
@@ -234,86 +232,12 @@ export const createStrictLinePermissionMatrix = (): LineActionPermission[] => [
 const INITIAL_LINE_PERMISSION_MATRIX = createStandardLinePermissionMatrix();
 
 const UBE_JAPAN_COMPANY_ID = 'AG-UBE-JP';
-const UBE_JAPAN_DEFAULT_USERNAMES = new Set([
-  'mizutani',
-  'sakuma',
-  'oyamada',
-  'yoshinaga',
-  'miyanami',
-  'kawamori',
-  'kawasaki'
-]);
-
-const normalizeUbeJapanDefaultUser = (user: User): User => {
-  if (!UBE_JAPAN_DEFAULT_USERNAMES.has(user.username.toLowerCase())) {
-    return user;
-  }
-
-  return {
-    ...user,
-    role: Role.UBE_JAPAN,
-    userGroup: UserGroup.UBE,
-    companyId: UBE_JAPAN_COMPANY_ID
-  };
-};
 
 const clonePermissionMatrix = (matrix: LineActionPermission[]) =>
   matrix.map((item) => ({
     ...item,
     allowedUserGroups: [...item.allowedUserGroups]
   }));
-
-const normalizeLinePermissionMatrix = (matrix: LineActionPermission[]) => {
-  const cloned = clonePermissionMatrix(matrix);
-
-  const legacyApproveFromCreated = cloned.find(
-    (item) =>
-      item.action === LineAction.APPROVE_LINE &&
-      item.fromStatus === OrderLineStatus.CREATED
-  );
-
-  const matrixWithoutLegacy = cloned.filter(
-    (item) =>
-      !(
-        item.action === LineAction.APPROVE_LINE &&
-        item.fromStatus === OrderLineStatus.CREATED
-      )
-  );
-
-  const hasUbeApproveStep = matrixWithoutLegacy.some(
-    (item) =>
-      item.action === LineAction.UBE_APPROVE_LINE &&
-      item.fromStatus === OrderLineStatus.CREATED
-  );
-
-  if (!hasUbeApproveStep) {
-    matrixWithoutLegacy.push({
-      action: LineAction.UBE_APPROVE_LINE,
-      fromStatus: OrderLineStatus.CREATED,
-      toStatus: OrderLineStatus.UBE_APPROVED,
-      allowedUserGroups: [UserGroup.UBE]
-    });
-  }
-
-  const hasSaleApproveFromUbe = matrixWithoutLegacy.some(
-    (item) =>
-      item.action === LineAction.APPROVE_LINE &&
-      item.fromStatus === OrderLineStatus.UBE_APPROVED
-  );
-
-  if (!hasSaleApproveFromUbe) {
-    matrixWithoutLegacy.push({
-      action: LineAction.APPROVE_LINE,
-      fromStatus: OrderLineStatus.UBE_APPROVED,
-      toStatus: legacyApproveFromCreated?.toStatus || OrderLineStatus.APPROVED,
-      allowedUserGroups: legacyApproveFromCreated?.allowedUserGroups?.length
-        ? legacyApproveFromCreated.allowedUserGroups
-        : [UserGroup.SALE]
-    });
-  }
-
-  return matrixWithoutLegacy;
-};
 
 const INITIAL_COMPANIES: CustomerCompany[] = [
   { id: 'C001', name: 'UBE Thailand' },
@@ -329,100 +253,922 @@ const INITIAL_COMPANIES: CustomerCompany[] = [
 
 const INITIAL_SHIP_TO_MAPPINGS: ShipToRecord[] = [
   {
-    id: 'SHIP-MICHELIN',
-    name: 'Michelin',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.OVERSEAS
+    id: 'SHIP-AV-THOMAS',
+    name: 'A.V. THOMAS & CO.LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-COCHIN']
   },
   {
-    id: 'SHIP-MICHELIN-GOODYEAR-LATAM',
-    name: 'Michelin, Goodyear, LATAM Local',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.OVERSEAS
+    id: 'SHIP-ALERON-VIETNAM',
+    name: 'ALERON VIETNAM FOOTWEAR LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
   },
   {
-    id: 'SHIP-CHINA-LOCAL-SAILUN-MAXTREK',
-    name: 'China Local / Sailun, Maxtrek',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.OVERSEAS
+    id: 'SHIP-ALLIANCE-TIRE',
+    name: 'ALLIANCE TIRE GROUP',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIFA']
   },
   {
-    id: 'SHIP-OIA-NON-OIA',
-    name: 'OIA, Non OIA',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.OVERSEAS
+    id: 'SHIP-ALPHA-POLYMER',
+    name: 'ALPHA-POLYMER CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
   },
   {
-    id: 'SHIP-VARIOUS',
-    name: 'Various',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.OVERSEAS
+    id: 'SHIP-AMTEX',
+    name: 'AMTEX INTERNATIONAL S.A. DE C.V.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MANZANILLO']
   },
   {
-    id: 'SHIP-HENKEL',
-    name: 'Henkel',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.OVERSEAS
+    id: 'SHIP-APOLLO-TYRES',
+    name: 'APOLLO TYRES LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA', 'DEST-KATTUPALLI']
   },
   {
-    id: 'SHIP-CONTINENTAL',
-    name: 'Continental',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.OVERSEAS
+    id: 'SHIP-BRIDGESTONE-AMERICAS',
+    name: 'BRIDGESTONE AMERICAS TIRE OPERATIONS LLC',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-WILSON', 'DEST-CALUMET-CITY']
   },
   {
-    id: 'SHIP-CHENGSHIN-MAXXIS',
-    name: 'Chengshin, Maxxis',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.OVERSEAS
+    id: 'SHIP-BRIDGESTONE-BANDAG',
+    name: 'BRIDGESTONE BANDAG LLC',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MT-VERNON']
   },
   {
-    id: 'SHIP-OTHER-LOCAL-KENDA',
-    name: 'Other Local / Kenda',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.OVERSEAS
+    id: 'SHIP-BRIDGESTONE-EUROPE',
+    name: 'BRIDGESTONE EUROPE NV/SA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ANTWERP']
   },
   {
-    id: 'SHIP-INDIAN-LOCAL',
-    name: 'Indian Local',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.OVERSEAS
+    id: 'SHIP-BRIDGESTONE-INDIA',
+    name: 'BRIDGESTONE INDIA PRIVATE LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA']
   },
   {
-    id: 'SHIP-BRIDGESTONE',
-    name: 'Bridgestone',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.DOMESTIC
+    id: 'SHIP-CEAT-LTD',
+    name: 'CEAT LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA']
+  },
+  {
+    id: 'SHIP-CHENG-SHIN-CHINA',
+    name: 'CHENG SHIN RUBBER (XIAMEN) IND. CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-CHENG-SHIN-VIETNAM',
+    name: 'CHENG SHIN RUBBER VIETNAM CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-CHINA-RUBBER',
+    name: 'CHINA RUBBER INDUSTRY ASSOCIATION',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-CONFAB',
+    name: 'CONFAB INDUSTRIAL S.A.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SANTOS']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-GERMANY',
+    name: 'CONTINENTAL REIFEN DEUTSCHLAND GMBH',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HANNOVER']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-INDIA',
+    name: 'CONTINENTAL INDIA LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHENNAI']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-ROMANIA',
+    name: 'CONTINENTAL ANVELOPE S.R.L.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TIMISOARA']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-US',
+    name: 'CONTINENTAL TIRE THE AMERICAS LLC',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MT-VERNON', 'DEST-LAWTON']
+  },
+  {
+    id: 'SHIP-COOPER-TIRE',
+    name: 'COOPER TIRE & RUBBER COMPANY',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-WHITE', 'DEST-FINDLAY']
+  },
+  {
+    id: 'SHIP-ENGLEBERT',
+    name: 'ENGLEBERT S.R.O.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-OTROKOVICE']
+  },
+  {
+    id: 'SHIP-EUROMASTER',
+    name: 'EUROMASTER GMBH',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HANAU']
+  },
+  {
+    id: 'SHIP-FALCON-TYRES',
+    name: 'FALCON TYRES LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MYSORE']
+  },
+  {
+    id: 'SHIP-FENNER-INDIA',
+    name: 'FENNER (INDIA) LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHENNAI']
+  },
+  {
+    id: 'SHIP-GOODYEAR-CHINA',
+    name: 'GOODYEAR (CHINA) INVESTMENT CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO', 'DEST-DALIAN']
+  },
+  {
+    id: 'SHIP-GOODYEAR-INDIA',
+    name: 'GOODYEAR INDIA LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA']
+  },
+  {
+    id: 'SHIP-GOODYEAR-LUXEMBOURG',
+    name: 'GOODYEAR OPERATIONS SA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ANTWERP']
+  },
+  {
+    id: 'SHIP-GOODYEAR-POLAND',
+    name: 'GOODYEAR DUNLOP TYRES POLSKA SP. Z O.O.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-GDYNIA']
+  },
+  {
+    id: 'SHIP-GOODYEAR-SLOVENIA',
+    name: 'GOODYEAR DUNLOP SAVA TIRES D.O.O.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KOPER']
+  },
+  {
+    id: 'SHIP-GOODYEAR-TURKEY',
+    name: 'GOODYEAR LASTIKLERI T.A.S.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-GEMLIK']
+  },
+  {
+    id: 'SHIP-GUMOPLAST',
+    name: 'GUMOPLAST SP. Z O.O.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-WARSAW-AIRPORT']
+  },
+  {
+    id: 'SHIP-HANKOOK-HUNGARY',
+    name: 'HANKOOK TIRE HUNGARY KFT.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-BUDAPEST']
+  },
+  {
+    id: 'SHIP-HANKOOK-INDONESIA',
+    name: 'PT. HANKOOK TIRE INDONESIA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-HANKOOK-KOREA',
+    name: 'HANKOOK TIRE & TECHNOLOGY CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-BUSAN']
+  },
+  {
+    id: 'SHIP-HANKOOK-US',
+    name: 'HANKOOK TYRE AMERICA CORP.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SAVANNAH']
+  },
+  {
+    id: 'SHIP-HENKEL-GERMANY',
+    name: 'HENKEL AG & CO. KGAA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAMBURG']
+  },
+  {
+    id: 'SHIP-HUTCHINSON-FRANCE',
+    name: 'HUTCHINSON SA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-LE-HAVRE']
+  },
+  {
+    id: 'SHIP-INOUE-RUBBER',
+    name: 'INOUE RUBBER CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KOBE']
+  },
+  {
+    id: 'SHIP-IRC',
+    name: 'INOUE RUBBER (THAILAND) CO., LTD.',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
+  },
+  {
+    id: 'SHIP-JK-TYRE',
+    name: 'JK TYRE & INDUSTRIES LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA', 'DEST-CHENNAI']
+  },
+  {
+    id: 'SHIP-KENDA-RUBBER',
+    name: 'KENDA RUBBER INDUSTRIAL CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KEELUNG']
+  },
+  {
+    id: 'SHIP-KUMHO-KOREA',
+    name: 'KUMHO TIRE CO., INC.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-BUSAN']
+  },
+  {
+    id: 'SHIP-KUMHO-VIETNAM',
+    name: 'KUMHO TIRE VIETNAM CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-LINGLONG-CHINA',
+    name: 'SHANDONG LINGLONG TYRE CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-MAXXIS-CHINA',
+    name: 'CHENG SHIN RUBBER IND. CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-MAXXIS-INDIA',
+    name: 'MAXXIS INDUSTRIES (INDIA) PVT. LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHENNAI']
+  },
+  {
+    id: 'SHIP-MICHELIN-BRAZIL',
+    name: 'MICHELIN BRASIL LTDA.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SANTOS']
+  },
+  {
+    id: 'SHIP-MICHELIN-CHINA',
+    name: 'MICHELIN (CHINA) INVESTMENT CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI', 'DEST-SHENYANG']
+  },
+  {
+    id: 'SHIP-MICHELIN-FRANCE',
+    name: 'MANUFACTURE FRANCAISE DES PNEUMATIQUES MICHELIN',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-LE-HAVRE']
+  },
+  {
+    id: 'SHIP-MICHELIN-GERMANY',
+    name: 'MICHELIN REIFENWERKE AG & CO. KGAA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAMBURG']
+  },
+  {
+    id: 'SHIP-MICHELIN-INDIA',
+    name: 'MICHELIN INDIA TAMIL NADU TYRES PVT. LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHENNAI']
+  },
+  {
+    id: 'SHIP-MICHELIN-INDONESIA',
+    name: 'PT. MICHELIN INDONESIA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-MICHELIN-KOREA',
+    name: 'MICHELIN KOREA CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-BUSAN']
+  },
+  {
+    id: 'SHIP-MICHELIN-SERBIA',
+    name: 'TIGAR TYRES D.O.O.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KRUSEVAC']
+  },
+  {
+    id: 'SHIP-MICHELIN-THAILAND',
+    name: 'SIAM MICHELIN CO., LTD.',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
+  },
+  {
+    id: 'SHIP-MICHELIN-US',
+    name: 'MICHELIN NORTH AMERICA INC.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SAVANNAH']
+  },
+  {
+    id: 'SHIP-MRF',
+    name: 'MRF LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHENNAI']
+  },
+  {
+    id: 'SHIP-NEXEN-KOREA',
+    name: 'NEXEN TIRE CORPORATION',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-BUSAN']
+  },
+  {
+    id: 'SHIP-NEXEN-CZECHIA',
+    name: 'NEXEN TIRE EUROPE S.R.O.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ZATEC']
+  },
+  {
+    id: 'SHIP-NITTO-JAPAN',
+    name: 'NITTO TIRE CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TOKYO']
+  },
+  {
+    id: 'SHIP-NOKIAN-FINLAND',
+    name: 'NOKIAN TYRES PLC',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HELSINKI']
+  },
+  {
+    id: 'SHIP-OTANI-THAILAND',
+    name: 'OTANI TYRE CO., LTD.',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
+  },
+  {
+    id: 'SHIP-PIRELLI-BRAZIL',
+    name: 'PIRELLI PNEUS LTDA.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SANTOS']
+  },
+  {
+    id: 'SHIP-PIRELLI-ITALY',
+    name: 'PIRELLI TYRE S.P.A.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-GENOA']
+  },
+  {
+    id: 'SHIP-PIRELLI-TURKEY',
+    name: 'PIRELLI LASTIKLERI A.S.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-GEBZE']
+  },
+  {
+    id: 'SHIP-PT-EPN',
+    name: 'PT. ELANGPERDANA TYRE INDUSTRY',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-PT-GAJAH-TUNGGAL',
+    name: 'PT. GAJAH TUNGGAL TBK',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA', 'DEST-SEMARANG']
+  },
+  {
+    id: 'SHIP-PT-IRC-INDONESIA',
+    name: 'PT. IRC INOAC INDONESIA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-PT-MULTISTRADA',
+    name: 'PT. MULTISTRADA ARAH SARANA TBK',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-PT-SURYARAYA',
+    name: 'PT. SURYARAYA RUBBERINDO INDUSTRIES',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-QIANKUN-CHINA',
+    name: 'QIANKUN TIRE & RUBBER CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-SAILUN-CHINA',
+    name: 'SAILUN JINYU GROUP CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-SHANDONG-YONGTAI',
+    name: 'SHANDONG YONGTAI GROUP CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-SHIRAISHI-CALCIUM',
+    name: 'SHIRAISHI CALCIUM KAISHA LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-OSAKA']
+  },
+  {
+    id: 'SHIP-SRI-TRANG',
+    name: 'SRI TRANG AGRO-INDUSTRY PCL',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
+  },
+  {
+    id: 'SHIP-SUMITOMO-JAPAN',
+    name: 'SUMITOMO RUBBER INDUSTRIES LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KOBE']
+  },
+  {
+    id: 'SHIP-SUMITOMO-SOUTH-AFRICA',
+    name: 'SUMITOMO RUBBER SOUTH AFRICA PTY LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-DURBAN']
+  },
+  {
+    id: 'SHIP-SUMITOMO-THAILAND',
+    name: 'FALKEN TYRE (THAILAND) CO., LTD.',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
+  },
+  {
+    id: 'SHIP-SUMITOMO-US',
+    name: 'FALKEN TIRE CORPORATION',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-RANCHO-CUCAMONGA']
+  },
+  {
+    id: 'SHIP-TOYO-CHINA',
+    name: 'TOYO TIRE (ZHANGZHOU) CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-TOYO-JAPAN',
+    name: 'TOYO TIRE CORPORATION',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-OSAKA', 'DEST-KOBE']
   },
   {
     id: 'SHIP-TOYO-MALAYSIA',
-    name: 'Toyo Malaysia',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.DOMESTIC
+    name: 'TOYO TYRE MALAYSIA SDN. BHD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KAMUNTING']
+  },
+  {
+    id: 'SHIP-TOYO-US',
+    name: 'TOYO TIRE U.S.A. CORP.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-WHITE', 'DEST-DALLAS']
+  },
+  {
+    id: 'SHIP-TPR',
+    name: 'THAI PREMIER RUBBER CO., LTD.',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
+  },
+  {
+    id: 'SHIP-TRIANGLE-CHINA',
+    name: 'TRIANGLE TYRE CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-TRINSEO-GERMANY',
+    name: 'TRINSEO DEUTSCHLAND GMBH',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SCHKOPAU']
+  },
+  {
+    id: 'SHIP-TRINSEO-US',
+    name: 'TRINSEO LLC',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CALUMET-CITY']
+  },
+  {
+    id: 'SHIP-TYRE-MAX',
+    name: 'TYRE MAX (AUST) PTY. LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SYDNEY']
+  },
+  {
+    id: 'SHIP-UBE-EU',
+    name: 'UBE ELASTOMERS EUROPE SAS',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ANTWERP']
+  },
+  {
+    id: 'SHIP-UBE-SHANGHAI',
+    name: 'UBE ELASTOMERS SHANGHAI CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-UBE-SINGAPORE',
+    name: 'UBE ELASTOMERS SINGAPORE PTE. LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SINGAPORE']
+  },
+  {
+    id: 'SHIP-UBE-US',
+    name: 'UBE ELASTOMERS AMERICA CORP.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NEW-ORLEANS']
+  },
+  {
+    id: 'SHIP-UNIROYAL-GERMANY',
+    name: 'CONTINENTAL REIFEN DEUTSCHLAND GMBH (UNIROYAL)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-AACHEN']
+  },
+  {
+    id: 'SHIP-VBCF',
+    name: 'VAN BERKEL CHEMICAL SYSTEMS BV',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ROTTERDAM']
+  },
+  {
+    id: 'SHIP-VIMAX',
+    name: 'VIMAX RUBBER (THAILAND) CO., LTD.',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
+  },
+  {
+    id: 'SHIP-YOKOHAMA-JAPAN',
+    name: 'YOKOHAMA RUBBER CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TOKYO', 'DEST-YOKOHAMA']
+  },
+  {
+    id: 'SHIP-YOKOHAMA-PHILIPPINES',
+    name: 'YOKOHAMA TIRE PHILIPPINES INC.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SUBIC']
+  },
+  {
+    id: 'SHIP-YOKOHAMA-THAILAND',
+    name: 'THAI YOKOHAMA TYRE CO., LTD.',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
+  },
+  {
+    id: 'SHIP-YOKOHAMA-US',
+    name: 'YOKOHAMA TIRE CORPORATION',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-WEST-POINT', 'DEST-SALEM']
+  },
+  {
+    id: 'SHIP-ZEON-JAPAN',
+    name: 'ZEON CORPORATION',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TOKYO', 'DEST-OSAKA']
+  },
+  {
+    id: 'SHIP-ZEON-TAIWAN',
+    name: 'ZEON CHEMICALS LP (TAIWAN)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAICHUNG']
+  },
+  {
+    id: 'SHIP-ZC-RUBBER',
+    name: 'ZHONGCE RUBBER GROUP CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI', 'DEST-HANGZHOU']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-THAILAND',
+    name: 'BRIDGESTONE TIRE MANUFACTURING (THAILAND) CO., LTD.',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
+  },
+  {
+    id: 'SHIP-CONTINENTHAL-THAILAND',
+    name: 'CONTINENTAL TYRE (THAILAND) CO., LTD.',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
+  },
+  {
+    id: 'SHIP-GOODYEAR-THAILAND',
+    name: 'GOODYEAR (THAILAND) PUBLIC COMPANY LIMITED',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
+  },
+  {
+    id: 'SHIP-MAXXIS-THAILAND',
+    name: 'CHENG SHIN RUBBER (THAILAND) CO., LTD.',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
+  },
+  {
+    id: 'SHIP-NITTO-THAILAND',
+    name: 'NITTO DENKO (THAILAND) CO., LTD.',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
   },
   {
     id: 'SHIP-YOKOHAMA-INDIA',
-    name: 'Yokohama India',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.DOMESTIC
+    name: 'YOKOHAMA INDIA PVT. LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA']
   },
   {
-    id: 'SHIP-TOYO-TIRE',
-    name: 'Toyo Tire',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.DOMESTIC
+    id: 'SHIP-SUMITOMO-INDIA',
+    name: 'FALKEN TYRE INDIA PVT. LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA']
   },
   {
-    id: 'SHIP-SUMITOMO-RUBBER',
-    name: 'Sumitomo Rubber',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.DOMESTIC
+    id: 'SHIP-VOGUE-TYRE',
+    name: 'VOGUE TYRE AND RUBBER CO.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHICAGO']
   },
   {
-    id: 'SHIP-TOYAMA-TIRE',
-    name: 'Toyama Tire',
-    customerCompanyIds: ['C001'],
-    groupSaleType: GroupSaleType.DOMESTIC
+    id: 'SHIP-WESTLAKE-CHINA',
+    name: 'WESTLAKE CHEMICAL CORPORATION (CHINA)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TIANJIN']
+  },
+  {
+    id: 'SHIP-XINGYUAN-CHINA',
+    name: 'SHANDONG XINGYUAN INTERNATIONAL TYRE CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-ZHONGCE-HANGZHOU',
+    name: 'ZHONGCE RUBBER (HANGZHOU) CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HANGZHOU']
+  },
+  {
+    id: 'SHIP-APOLLO-SOUTH-AFRICA',
+    name: 'APOLLO TYRES SOUTH AFRICA PTY LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-DURBAN']
+  },
+  {
+    id: 'SHIP-BALKRISHNA-INDIA',
+    name: 'BALKRISHNA INDUSTRIES LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA']
+  },
+  {
+    id: 'SHIP-BIRLA-CARBON',
+    name: 'BIRLA CARBON INDIA PVT. LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA']
+  },
+  {
+    id: 'SHIP-BURT-SOLOMONS',
+    name: 'BURT SOLOMONS HOLDINGS (PTY) LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-PORT-ELIZABETH']
+  },
+  {
+    id: 'SHIP-CHEMOURS',
+    name: 'THE CHEMOURS COMPANY FC LLC',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NEW-ORLEANS']
+  },
+  {
+    id: 'SHIP-EVONIK-GERMANY',
+    name: 'EVONIK INDUSTRIES AG',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAMBURG', 'DEST-FRANKFURT']
+  },
+  {
+    id: 'SHIP-FULDA',
+    name: 'CONTINENTAL REIFEN DEUTSCHLAND GMBH (FULDA)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-FULDA']
+  },
+  {
+    id: 'SHIP-CABOT-GERMANY',
+    name: 'CABOT CORP. (GERMANY)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-FRANKFURT']
+  },
+  {
+    id: 'SHIP-HAIMA-CHINA',
+    name: 'HAIMA AUTOMOBILE CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIKOU']
+  },
+  {
+    id: 'SHIP-HNBR-JAPAN',
+    name: 'ZEON CORPORATION (HNBR)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TOKYO']
+  },
+  {
+    id: 'SHIP-JIHUA-CHINA',
+    name: 'JIHUA GROUP CORPORATION LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TIANJIN']
+  },
+  {
+    id: 'SHIP-KANSAI-PAINT',
+    name: 'KANSAI PAINT CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-OSAKA']
+  },
+  {
+    id: 'SHIP-LANXESS-GERMANY',
+    name: 'LANXESS DEUTSCHLAND GMBH',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-FRANKFURT', 'DEST-HAMBURG']
+  },
+  {
+    id: 'SHIP-LATIN-CHEM',
+    name: 'LATINQUIMICA S.A.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-BUENOS-AIRES']
+  },
+  {
+    id: 'SHIP-LG-CHEM',
+    name: 'LG CHEM LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-BUSAN']
+  },
+  {
+    id: 'SHIP-MITSUI-CHEMICALS',
+    name: 'MITSUI CHEMICALS INC.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-OSAKA', 'DEST-TOKYO']
+  },
+  {
+    id: 'SHIP-NANYA-PLASTICS',
+    name: 'NAN YA PLASTICS CORPORATION',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAICHUNG', 'DEST-KEELUNG']
+  },
+  {
+    id: 'SHIP-OMSK-RUSSIA',
+    name: 'OMSK CARBON GROUP',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-VLADIVOSTOK']
+  },
+  {
+    id: 'SHIP-PIRELLI-BRAZIL-2',
+    name: 'PIRELLI PNEUS LTDA (GRAVATAÍ)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-PARANAGUA']
+  },
+  {
+    id: 'SHIP-PT-HANKOOK',
+    name: 'PT. HANKOOK TIRE INDONESIA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SEMARANG']
+  },
+  {
+    id: 'SHIP-REKORD-CZECH',
+    name: 'CONTINENTAL BARUM S.R.O.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-OTROKOVICE']
+  },
+  {
+    id: 'SHIP-SCHLUMBERGER',
+    name: 'SCHLUMBERGER N.V.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ROTTERDAM']
+  },
+  {
+    id: 'SHIP-SINOPEC',
+    name: 'CHINA PETROLEUM & CHEMICAL CORPORATION (SINOPEC)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI', 'DEST-TIANJIN']
+  },
+  {
+    id: 'SHIP-SWISS-RUBBER',
+    name: 'SWISS RUBBER CO.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ANTWERP']
+  },
+  {
+    id: 'SHIP-TAIYA-RUBBER',
+    name: 'TAIYA RUBBER CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAICHUNG']
+  },
+  {
+    id: 'SHIP-THAILAND-RUBBER',
+    name: 'THAI RUBBER & ALLIED PRODUCTS PCL',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
+  },
+  {
+    id: 'SHIP-TIANZHAN-CHINA',
+    name: 'TIANJIN ZHENTIAN RUBBER & PLASTIC CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TIANJIN']
+  },
+  {
+    id: 'SHIP-TITAN-INTL',
+    name: 'TITAN INTERNATIONAL INC.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QUINCY']
+  },
+  {
+    id: 'SHIP-TPI-POLENE',
+    name: 'TPI POLENE PCL',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
+  },
+  {
+    id: 'SHIP-TREDWAY',
+    name: 'TREDWAY COMPANY GMBH',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-FRANKFURT']
+  },
+  {
+    id: 'SHIP-TRONOX',
+    name: 'TRONOX (NETHERLANDS) CO. B.V.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ROTTERDAM']
+  },
+  {
+    id: 'SHIP-TRUCKMASTER',
+    name: 'TRUCKMASTER (EUROPE) B.V.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ROTTERDAM']
+  },
+  {
+    id: 'SHIP-TTR',
+    name: 'THAI TIRE & RUBBER CO., LTD.',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
+  },
+  {
+    id: 'SHIP-TUBA-INDIA',
+    name: 'TUBA EXIM PVT. LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA']
+  },
+  {
+    id: 'SHIP-TYPHOON-UK',
+    name: 'TYPHOON INTERNATIONAL LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SOUTHAMPTON']
+  },
+  {
+    id: 'SHIP-VEYANCE-INDIA',
+    name: 'VEYANCE TECHNOLOGIES INDIA PVT. LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA']
+  },
+  {
+    id: 'SHIP-VIPAL-BRAZIL',
+    name: 'VIPAL BORRACHAS S.A.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-PARANAGUA']
+  },
+  {
+    id: 'SHIP-VITTORIA-ITALY',
+    name: 'VITTORIA INDUSTRY S.R.L.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-GENOA']
+  },
+  {
+    id: 'SHIP-VONG-THONG',
+    name: 'VONG THONG TIRE CO., LTD.',
+    groupSaleType: GroupSaleType.DOMESTIC,
+    destinationIds: []
+  },
+  {
+    id: 'SHIP-VONIN-INDIA',
+    name: 'VONIN POLYMER INDUSTRIES PVT. LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA']
   }
 ];
 
@@ -456,10 +1202,10 @@ const INITIAL_USERS: User[] = [
   },
   {
     id: 'u3',
-    username: 'ube1',
+    username: 'ubejp1',
     role: Role.UBE_JAPAN,
     userGroup: UserGroup.UBE,
-    companyId: 'C001',
+    companyId: UBE_JAPAN_COMPANY_ID,
     canCreateOrder: true,
     shipToAccess: 'ALL',
     allowedShipToIds: [],
@@ -468,6 +1214,28 @@ const INITIAL_USERS: User[] = [
       DocumentType.SHIPPING_INSTRUCTION_PDF,
       DocumentType.INVOICE
     ]
+  },
+  {
+    id: 'u4',
+    username: 'sale1',
+    role: Role.SALE,
+    userGroup: UserGroup.SALE,
+    companyId: 'C001',
+    canCreateOrder: false,
+    shipToAccess: 'ALL',
+    allowedShipToIds: [],
+    allowedDocumentTypes: Object.values(DocumentType)
+  },
+  {
+    id: 'u-sale-mgr',
+    username: 'sale_mgr1',
+    role: Role.SALE_MANAGER,
+    userGroup: UserGroup.SALE_MANAGER,
+    companyId: 'C001',
+    canCreateOrder: false,
+    shipToAccess: 'ALL',
+    allowedShipToIds: [],
+    allowedDocumentTypes: Object.values(DocumentType)
   },
   {
     id: 'u5',
@@ -479,88 +1247,6 @@ const INITIAL_USERS: User[] = [
     shipToAccess: 'ALL',
     allowedShipToIds: [],
     allowedDocumentTypes: Object.values(DocumentType)
-  },
-  {
-    id: 'u-sale-mizutani',
-    username: 'mizutani',
-    role: Role.UBE_JAPAN,
-    userGroup: UserGroup.UBE,
-    companyId: UBE_JAPAN_COMPANY_ID,
-    canCreateOrder: true,
-    shipToAccess: 'SELECTED',
-    allowedShipToIds: ['SHIP-MICHELIN', 'SHIP-MICHELIN-GOODYEAR-LATAM'],
-    allowedDocumentTypes: Object.values(DocumentType)
-  },
-  {
-    id: 'u-sale-sakuma',
-    username: 'sakuma',
-    role: Role.UBE_JAPAN,
-    userGroup: UserGroup.UBE,
-    companyId: UBE_JAPAN_COMPANY_ID,
-    canCreateOrder: false,
-    shipToAccess: 'SELECTED',
-    allowedShipToIds: [
-      'SHIP-CHINA-LOCAL-SAILUN-MAXTREK',
-      'SHIP-CONTINENTAL',
-      'SHIP-CHENGSHIN-MAXXIS',
-      'SHIP-OTHER-LOCAL-KENDA'
-    ],
-    allowedDocumentTypes: Object.values(DocumentType)
-  },
-  {
-    id: 'u-sale-oyamada',
-    username: 'oyamada',
-    role: Role.UBE_JAPAN,
-    userGroup: UserGroup.UBE,
-    companyId: UBE_JAPAN_COMPANY_ID,
-    canCreateOrder: false,
-    shipToAccess: 'SELECTED',
-    allowedShipToIds: ['SHIP-OIA-NON-OIA'],
-    allowedDocumentTypes: Object.values(DocumentType)
-  },
-  {
-    id: 'u-sale-yoshinaga',
-    username: 'yoshinaga',
-    role: Role.UBE_JAPAN,
-    userGroup: UserGroup.UBE,
-    companyId: UBE_JAPAN_COMPANY_ID,
-    canCreateOrder: false,
-    shipToAccess: 'SELECTED',
-    allowedShipToIds: ['SHIP-VARIOUS', 'SHIP-HENKEL', 'SHIP-INDIAN-LOCAL'],
-    allowedDocumentTypes: Object.values(DocumentType)
-  },
-  {
-    id: 'u-sale-miyanami',
-    username: 'miyanami',
-    role: Role.UBE_JAPAN,
-    userGroup: UserGroup.UBE,
-    companyId: UBE_JAPAN_COMPANY_ID,
-    canCreateOrder: true,
-    shipToAccess: 'SELECTED',
-    allowedShipToIds: ['SHIP-BRIDGESTONE', 'SHIP-YOKOHAMA-INDIA'],
-    allowedDocumentTypes: Object.values(DocumentType)
-  },
-  {
-    id: 'u-sale-kawamori',
-    username: 'kawamori',
-    role: Role.UBE_JAPAN,
-    userGroup: UserGroup.UBE,
-    companyId: UBE_JAPAN_COMPANY_ID,
-    canCreateOrder: true,
-    shipToAccess: 'SELECTED',
-    allowedShipToIds: ['SHIP-TOYO-MALAYSIA', 'SHIP-TOYO-TIRE'],
-    allowedDocumentTypes: Object.values(DocumentType)
-  },
-  {
-    id: 'u-sale-kawasaki',
-    username: 'kawasaki',
-    role: Role.UBE_JAPAN,
-    userGroup: UserGroup.UBE,
-    companyId: UBE_JAPAN_COMPANY_ID,
-    canCreateOrder: false,
-    shipToAccess: 'SELECTED',
-    allowedShipToIds: ['SHIP-SUMITOMO-RUBBER', 'SHIP-TOYAMA-TIRE'],
-    allowedDocumentTypes: Object.values(DocumentType)
   }
 ];
 
@@ -570,63 +1256,137 @@ const INITIAL_MASTER: MasterDataState = {
     { id: GroupSaleType.DOMESTIC, name: 'Domestic Sales Group' }
   ],
   destinations: [
-    { id: 'DEST-TKY', name: 'Tokyo Port', customerCompanyIds: ['C001'] },
-    { id: 'DEST-SH', name: 'Shanghai Port', customerCompanyIds: ['C001'] },
-    {
-      id: 'DEST-OSA',
-      name: 'Osaka Port',
-      customerCompanyIds: ['C001']
-    }
+    { id: 'DEST-HAIPHONG', name: 'Haiphong, Vietnam' },
+    { id: 'DEST-CAT-LAI-HCM', name: 'Cat Lai (Ho Chi Minh), Vietnam' },
+    { id: 'DEST-VSIP', name: 'VSIP, Vietnam' },
+    { id: 'DEST-SHANGHAI', name: 'Shanghai, China' },
+    { id: 'DEST-XIAMEN', name: 'Xiamen, China' },
+    { id: 'DEST-QINGDAO', name: 'Qingdao, China' },
+    { id: 'DEST-TIANJIN', name: 'Tianjin, China' },
+    { id: 'DEST-DALIAN', name: 'Dalian, China' },
+    { id: 'DEST-NINGBO', name: 'Ningbo, China' },
+    { id: 'DEST-MAWEI-FUZHOU', name: 'Mawei (Fuzhou), China' },
+    { id: 'DEST-HUANGPU', name: 'Huangpu, China' },
+    { id: 'DEST-NANSHA', name: 'Nansha, China' },
+    { id: 'DEST-TAIPING', name: 'Taiping, China' },
+    { id: 'DEST-SHATIAN', name: 'Shatian, China' },
+    { id: 'DEST-YANTIAN', name: 'Yantian, China' },
+    { id: 'DEST-ZHANGJIAGANG', name: 'Zhangjiagang, China' },
+    { id: 'DEST-CHONGQING', name: 'Chongqing, China' },
+    { id: 'DEST-QINGYUAN', name: 'Qingyuan, China' },
+    { id: 'DEST-BEIJING-AIRPORT', name: 'Beijing Airport, China' },
+    { id: 'DEST-HUMEN', name: 'Humen, China' },
+    { id: 'DEST-HANGZHOU', name: 'Hangzhou, China' },
+    { id: 'DEST-SHENYANG', name: 'Shenyang, China' },
+    { id: 'DEST-HAIKOU', name: 'Haikou, China' },
+    { id: 'DEST-NHAVA-SHEVA', name: 'Nhava Sheva (Mumbai), India' },
+    { id: 'DEST-CHENNAI', name: 'Chennai, India' },
+    { id: 'DEST-COCHIN', name: 'Cochin, India' },
+    { id: 'DEST-KATTUPALLI', name: 'Kattupalli, India' },
+    { id: 'DEST-TUTICORIN', name: 'Tuticorin, India' },
+    { id: 'DEST-ICD-SANAND', name: 'ICD Sanand, India' },
+    { id: 'DEST-MYSORE', name: 'Mysore, India' },
+    { id: 'DEST-TOKYO', name: 'Tokyo, Japan' },
+    { id: 'DEST-OSAKA', name: 'Osaka, Japan' },
+    { id: 'DEST-KOBE', name: 'Kobe, Japan' },
+    { id: 'DEST-YOKOHAMA', name: 'Yokohama, Japan' },
+    { id: 'DEST-TAICHUNG', name: 'Taichung, Taiwan' },
+    { id: 'DEST-KEELUNG', name: 'Keelung, Taiwan' },
+    { id: 'DEST-BUSAN', name: 'Busan, South Korea' },
+    { id: 'DEST-JAKARTA', name: 'Jakarta, Indonesia' },
+    { id: 'DEST-SEMARANG', name: 'Semarang, Indonesia' },
+    { id: 'DEST-KUALA-LUMPUR', name: 'Kuala Lumpur, Malaysia' },
+    { id: 'DEST-KAMUNTING', name: 'Kamunting, Malaysia' },
+    { id: 'DEST-ALOR-SETAR', name: 'Alor Setar, Malaysia' },
+    { id: 'DEST-PENANG', name: 'Penang, Malaysia' },
+    { id: 'DEST-SUBIC', name: 'Subic Bay, Philippines' },
+    { id: 'DEST-MANILA', name: 'Manila, Philippines' },
+    { id: 'DEST-SIHANOUKVILLE', name: 'Sihanoukville, Cambodia' },
+    { id: 'DEST-HONG-KONG', name: 'Hong Kong' },
+    { id: 'DEST-COLOMBO', name: 'Colombo, Sri Lanka' },
+    { id: 'DEST-CHATTOGRAM', name: 'Chattogram, Bangladesh' },
+    { id: 'DEST-SINGAPORE', name: 'Singapore' },
+    { id: 'DEST-HAIFA', name: 'Haifa, Israel' },
+    { id: 'DEST-HAMBURG', name: 'Hamburg, Germany' },
+    { id: 'DEST-HANNOVER', name: 'Hannover, Germany' },
+    { id: 'DEST-FRANKFURT', name: 'Frankfurt, Germany' },
+    { id: 'DEST-AACHEN', name: 'Aachen, Germany' },
+    { id: 'DEST-KORBACH', name: 'Korbach, Germany' },
+    { id: 'DEST-FULDA', name: 'Fulda, Germany' },
+    { id: 'DEST-OBERNBURG', name: 'Obernburg, Germany' },
+    { id: 'DEST-WALTERSHAUSEN', name: 'Waltershausen, Germany' },
+    { id: 'DEST-FURSTENWALDE', name: 'Fürstenwalde, Germany' },
+    { id: 'DEST-HANAU', name: 'Hanau, Germany' },
+    { id: 'DEST-SCHKOPAU', name: 'Schkopau, Germany' },
+    { id: 'DEST-AMIENS', name: 'Amiens, France' },
+    { id: 'DEST-LE-HAVRE', name: 'Le Havre, France' },
+    { id: 'DEST-SARREGUEMINES', name: 'Sarreguemines, France' },
+    { id: 'DEST-ROTTERDAM', name: 'Rotterdam, Netherlands' },
+    { id: 'DEST-ANTWERP', name: 'Antwerp, Belgium' },
+    { id: 'DEST-GENOA', name: 'Genoa, Italy' },
+    { id: 'DEST-GDYNIA', name: 'Gdynia, Poland' },
+    { id: 'DEST-WARSAW-AIRPORT', name: 'Warsaw Airport, Poland' },
+    { id: 'DEST-DEBICA', name: 'Dębica, Poland' },
+    { id: 'DEST-TIMISOARA', name: 'Timișoara, Romania' },
+    { id: 'DEST-OTROKOVICE', name: 'Otrokovice, Czech Republic' },
+    { id: 'DEST-PUCHOV', name: 'Púchov, Slovakia' },
+    { id: 'DEST-KOPER', name: 'Koper, Slovenia' },
+    { id: 'DEST-KRANJ', name: 'Kranj, Slovenia' },
+    { id: 'DEST-KRUSEVAC', name: 'Kruševac, Serbia' },
+    { id: 'DEST-GEBZE', name: 'Gebze, Turkey' },
+    { id: 'DEST-GEMLIK', name: 'Gemlik, Turkey' },
+    { id: 'DEST-LOUSADO', name: 'Lousado, Portugal' },
+    { id: 'DEST-PORT-ELIZABETH', name: 'Port Elizabeth, South Africa' },
+    { id: 'DEST-DURBAN', name: 'Durban, South Africa' },
+    { id: 'DEST-CALUMET-CITY', name: 'Calumet City, IL, USA' },
+    { id: 'DEST-MT-VERNON', name: 'Mt. Vernon, IL, USA' },
+    { id: 'DEST-WILSON', name: 'Wilson, NC, USA' },
+    { id: 'DEST-LAWTON', name: 'Lawton, OK, USA' },
+    { id: 'DEST-DALLAS', name: 'Dallas, TX, USA' },
+    { id: 'DEST-CRANDALL', name: 'Crandall, TX, USA' },
+    { id: 'DEST-SAVANNAH', name: 'Savannah, GA, USA' },
+    { id: 'DEST-WHITE', name: 'White, GA, USA' },
+    { id: 'DEST-NEW-ORLEANS', name: 'New Orleans, LA, USA' },
+    { id: 'DEST-WEST-POINT', name: 'West Point, MS, USA' },
+    { id: 'DEST-RANCHO-CUCAMONGA', name: 'Rancho Cucamonga, CA, USA' },
+    { id: 'DEST-CHICAGO', name: 'Chicago, IL, USA' },
+    { id: 'DEST-FINDLAY', name: 'Findlay, OH, USA' },
+    { id: 'DEST-QUINCY', name: 'Quincy, IL, USA' },
+    { id: 'DEST-SALEM', name: 'Salem, VA, USA' },
+    { id: 'DEST-MANZANILLO', name: 'Manzanillo, Mexico' },
+    { id: 'DEST-SANTOS', name: 'Santos, Brazil' },
+    { id: 'DEST-PARANAGUA', name: 'Paranaguá, Brazil' },
+    { id: 'DEST-SAN-ANTONIO-CHILE', name: 'San Antonio, Chile' },
+    { id: 'DEST-BUENOS-AIRES', name: 'Buenos Aires, Argentina' },
+    { id: 'DEST-HELSINKI', name: 'Helsinki, Finland' },
+    { id: 'DEST-ZATEC', name: 'Žatec, Czech Republic' },
+    { id: 'DEST-BUDAPEST', name: 'Budapest, Hungary' },
+    { id: 'DEST-VLADIVOSTOK', name: 'Vladivostok, Russia' },
+    { id: 'DEST-SYDNEY', name: 'Sydney, Australia' },
+    { id: 'DEST-SOUTHAMPTON', name: 'Southampton, UK' }
   ],
   terms: [
-    {
-      id: 'CIF',
-      name: 'CIF (Cost, Insurance, Freight)',
-      customerCompanyIds: ['C001']
-    },
-    { id: 'FOB', name: 'FOB (Free on Board)', customerCompanyIds: ['C001'] },
-    {
-      id: 'EXW',
-      name: 'EXW (Ex Works)',
-      customerCompanyIds: ['C001']
-    }
+    { id: 'CFR', name: 'CFR' },
+    { id: 'CIF', name: 'CIF' },
+    { id: 'CIP', name: 'CIP' },
+    { id: 'CPT', name: 'CPT' },
+    { id: 'DAP', name: 'DAP' },
+    { id: 'DAT', name: 'DAT' },
+    { id: 'DPU', name: 'DPU' },
+    { id: 'EXW', name: 'EXW' },
+    { id: 'FCA', name: 'FCA' },
+    { id: 'FOB', name: 'FOB' }
   ],
   grades: [
-    {
-      id: 'BR150',
-      name: 'BR150',
-      customerCompanyIds: ['C001']
-    },
-    {
-      id: 'BR150B',
-      name: 'BR150B',
-      customerCompanyIds: ['C001']
-    },
-    {
-      id: 'BR150L',
-      name: 'BR150L',
-      customerCompanyIds: ['C001']
-    },
-    {
-      id: 'BR360',
-      name: 'BR360',
-      customerCompanyIds: ['C001']
-    },
-    {
-      id: 'BR360B',
-      name: 'BR360B',
-      customerCompanyIds: ['C001']
-    },
-    {
-      id: 'VCR-412',
-      name: 'VCR-412',
-      customerCompanyIds: ['C001']
-    },
-    {
-      id: 'VCR-617',
-      name: 'VCR-617',
-      customerCompanyIds: ['C001']
-    }
+    { id: 'BR150', name: 'UBEPOL BR150' },
+    { id: 'BR150B', name: 'UBEPOL BR150B' },
+    { id: 'BR150GN', name: 'UBEPOL BR150GN' },
+    { id: 'BR150L', name: 'UBEPOL BR150L' },
+    { id: 'BR150LGN', name: 'UBEPOL BR150LGN' },
+    { id: 'BR360B', name: 'UBEPOL BR360B' },
+    { id: 'VCR412', name: 'UBEPOL VCR412' },
+    { id: 'VCR617', name: 'UBEPOL VCR617' },
+    { id: 'X-200', name: 'X-200' }
   ],
   shipTos: INITIAL_SHIP_TO_MAPPINGS
 };
@@ -645,89 +1405,11 @@ const mergeById = <T extends { id: string }>(
   return Array.from(map.values());
 };
 
-const splitShipToRecords = (shipTos: ShipToRecord[]) => {
-  const normalizedRows: ShipToRecord[] = [];
-  const splitIdMap = new Map<string, string[]>();
-  const usedIds = new Set<string>();
-
-  const allocateId = (baseId: string) => {
-    let nextId = baseId;
-    let index = 2;
-    while (usedIds.has(nextId)) {
-      nextId = `${baseId}-${index}`;
-      index += 1;
-    }
-    usedIds.add(nextId);
-    return nextId;
-  };
-
-  shipTos.forEach((row) => {
-    const parts = row.name
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean);
-
-    if (parts.length <= 1) {
-      normalizedRows.push({
-        ...row,
-        id: allocateId(row.id),
-        name: row.name.trim()
-      });
-      return;
-    }
-
-    const splitIds: string[] = [];
-    parts.forEach((part, index) => {
-      const splitId = allocateId(`${row.id}-S${index + 1}`);
-      splitIds.push(splitId);
-      normalizedRows.push({
-        ...row,
-        id: splitId,
-        name: part
-      });
-    });
-
-    splitIdMap.set(row.id, splitIds);
-  });
-
-  return { shipTos: normalizedRows, splitIdMap };
-};
-
-const normalizeUsersBySplitShipToIds = (
-  users: User[],
-  splitIdMap: Map<string, string[]>
-) =>
-  users.map((user) => {
-    if (
-      !Array.isArray(user.allowedShipToIds) ||
-      user.allowedShipToIds.length === 0
-    ) {
-      return user;
-    }
-
-    const expandedIds = user.allowedShipToIds.flatMap((shipToId) => {
-      const splitIds = splitIdMap.get(shipToId);
-      return splitIds && splitIds.length > 0 ? splitIds : [shipToId];
-    });
-
-    const uniqueIds = Array.from(new Set(expandedIds));
-    return {
-      ...user,
-      allowedShipToIds: uniqueIds
-    };
-  });
-
 const getInitialDataState = () => {
-  const splitInitialShipTos = splitShipToRecords(INITIAL_MASTER.shipTos);
-  const normalizedInitialUsers = normalizeUsersBySplitShipToIds(
-    INITIAL_USERS.map(normalizeUbeJapanDefaultUser),
-    splitInitialShipTos.splitIdMap
-  );
-
   return {
     theme: 'light' as const,
     currentUser: null as User | null,
-    users: [...normalizedInitialUsers],
+    users: [...INITIAL_USERS],
     companies: [...INITIAL_COMPANIES],
     orders: [] as Order[],
     integrationLogs: [] as IntegrationLog[],
@@ -736,7 +1418,7 @@ const getInitialDataState = () => {
       destinations: [...INITIAL_MASTER.destinations],
       terms: [...INITIAL_MASTER.terms],
       grades: [...INITIAL_MASTER.grades],
-      shipTos: [...splitInitialShipTos.shipTos]
+      shipTos: [...INITIAL_MASTER.shipTos]
     },
     linePermissionMatrix: clonePermissionMatrix(INITIAL_LINE_PERMISSION_MATRIX),
     linePermissionLocked: false,
@@ -975,7 +1657,7 @@ export const useStore = create<AppState>()(
 
       resetLinePermissionMatrix: () => {
         set({
-          linePermissionMatrix: normalizeLinePermissionMatrix(
+          linePermissionMatrix: clonePermissionMatrix(
             createStandardLinePermissionMatrix()
           )
         });
@@ -983,7 +1665,7 @@ export const useStore = create<AppState>()(
 
       applyLinePermissionPreset: (preset) => {
         set({
-          linePermissionMatrix: normalizeLinePermissionMatrix(
+          linePermissionMatrix: clonePermissionMatrix(
             preset === 'STRICT'
               ? createStrictLinePermissionMatrix()
               : createStandardLinePermissionMatrix()
@@ -1034,7 +1716,7 @@ export const useStore = create<AppState>()(
       }
     }),
     {
-      name: 'ube-portal-storage-v4',
+      name: 'ube-portal-storage-v5',
       merge: (persistedState, currentState) => {
         const persisted = persistedState as Partial<AppState> | undefined;
         const persistedMaster = persisted?.masterData;
@@ -1062,16 +1744,11 @@ export const useStore = create<AppState>()(
             ? (persisted.users as User[])
             : undefined
         );
-        const normalizedShipToResult = splitShipToRecords(safeShipTos);
-        const normalizedUsersByShipTo = normalizeUsersBySplitShipToIds(
-          safeUsers.map(normalizeUbeJapanDefaultUser),
-          normalizedShipToResult.splitIdMap
-        );
 
         return {
           ...currentState,
           ...persisted,
-          users: normalizedUsersByShipTo,
+          users: safeUsers,
           companies: safeCompanies,
           linePermissionLocked:
             typeof persisted?.linePermissionLocked === 'boolean'
@@ -1082,17 +1759,17 @@ export const useStore = create<AppState>()(
           )
             ? persisted.linePermissionCustomPresets.map((preset) => ({
                 ...preset,
-                matrix: normalizeLinePermissionMatrix(preset.matrix || [])
+                matrix: clonePermissionMatrix(preset.matrix || [])
               }))
             : currentState.linePermissionCustomPresets,
           linePermissionMatrix: Array.isArray(persisted?.linePermissionMatrix)
-            ? normalizeLinePermissionMatrix(persisted.linePermissionMatrix)
-            : normalizeLinePermissionMatrix(currentState.linePermissionMatrix),
+            ? clonePermissionMatrix(persisted.linePermissionMatrix)
+            : clonePermissionMatrix(currentState.linePermissionMatrix),
           masterData: {
             ...currentState.masterData,
             ...(persistedMaster || {}),
             groupSaleTypes: safeGroupSaleTypes,
-            shipTos: normalizedShipToResult.shipTos
+            shipTos: safeShipTos
           }
         } as AppState;
       }

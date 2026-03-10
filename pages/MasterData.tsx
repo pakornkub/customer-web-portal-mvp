@@ -20,11 +20,6 @@ type TabKey =
   | 'shipTos'
   | 'groupSaleTypes';
 
-type CompanyOption = {
-  value: string;
-  label: string;
-};
-
 type SingleOption = {
   value: string;
   label: string;
@@ -32,7 +27,7 @@ type SingleOption = {
 
 type EditDraft = {
   name: string;
-  customerCompanyIds: string[];
+  destinationIds: string[];
   groupSaleType: GroupSaleType;
 };
 
@@ -49,7 +44,7 @@ export const MasterData: React.FC = () => {
 
   const [tab, setTab] = useState<TabKey>('shipTos');
   const [name, setName] = useState('');
-  const [companyIds, setCompanyIds] = useState<string[]>([]);
+  const [destinationIds, setDestinationIds] = useState<string[]>([]);
   const [groupSaleType, setGroupSaleType] = useState<GroupSaleType>(
     GroupSaleType.OVERSEAS
   );
@@ -59,22 +54,25 @@ export const MasterData: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [editDraft, setEditDraft] = useState<EditDraft>({
     name: '',
-    customerCompanyIds: [],
+    destinationIds: [],
     groupSaleType: GroupSaleType.OVERSEAS
   });
 
-  const getCompanyName = (companyId: string) =>
-    companies.find((company) => company.id === companyId)?.name || companyId;
+  const getDestinationName = (destinationId: string) =>
+    masterData.destinations.find((d) => d.id === destinationId)?.name ||
+    destinationId;
 
-  const companyOptions = useMemo<CompanyOption[]>(
-    () =>
-      companies.map((company) => ({ value: company.id, label: company.name })),
-    [companies]
+  const destinationSelectOptions = useMemo<SingleOption[]>(
+    () => masterData.destinations.map((d) => ({ value: d.id, label: d.name })),
+    [masterData.destinations]
   );
 
-  const selectedCompanyOptions = useMemo(
-    () => companyOptions.filter((option) => companyIds.includes(option.value)),
-    [companyOptions, companyIds]
+  const selectedDestinationSelectOptions = useMemo(
+    () =>
+      destinationSelectOptions.filter((option) =>
+        destinationIds.includes(option.value)
+      ),
+    [destinationSelectOptions, destinationIds]
   );
 
   const saleGroupOptions = useMemo<SingleOption[]>(
@@ -195,17 +193,17 @@ export const MasterData: React.FC = () => {
 
   const isMasterRecordTab =
     tab === 'destinations' || tab === 'terms' || tab === 'grades';
-  const showScopeColumn = tab !== 'groupSaleTypes' && tab !== 'companies';
+  const showScopeColumn = tab === 'shipTos';
   const showGroupSaleTypeColumn = tab === 'shipTos';
 
   const resetForm = () => {
     setName('');
-    setCompanyIds([]);
+    setDestinationIds([]);
     setGroupSaleType(GroupSaleType.OVERSEAS);
   };
 
-  const onCompanyScopeChange = (selected: MultiValue<CompanyOption>) => {
-    setCompanyIds(selected.map((option) => option.value));
+  const onDestinationIdsChange = (selected: MultiValue<SingleOption>) => {
+    setDestinationIds(selected.map((option) => option.value));
   };
 
   const tabRows = useMemo(() => {
@@ -220,11 +218,12 @@ export const MasterData: React.FC = () => {
     if (!keyword) return tabRows;
 
     return tabRows.filter((row: any) => {
-      const scopeText = Array.isArray(row.customerCompanyIds)
-        ? row.customerCompanyIds
-            .map((companyId: string) => getCompanyName(companyId))
-            .join(' ')
-        : '';
+      const scopeText =
+        tab === 'shipTos' && Array.isArray(row.destinationIds)
+          ? row.destinationIds
+              .map((dId: string) => getDestinationName(dId))
+              .join(' ')
+          : '';
 
       const searchable = [row.id, row.name, row.groupSaleType || '', scopeText]
         .join(' ')
@@ -232,7 +231,7 @@ export const MasterData: React.FC = () => {
 
       return searchable.includes(keyword);
     });
-  }, [getCompanyName, searchTerm, tabRows]);
+  }, [getDestinationName, searchTerm, tabRows]);
 
   const PAGE_SIZE = 10;
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
@@ -315,8 +314,8 @@ export const MasterData: React.FC = () => {
       return;
     }
 
-    if (companyIds.length === 0) {
-      Swal.fire({ icon: 'error', title: 'Select Company/Agent scope' });
+    if (tab === 'shipTos' && destinationIds.length === 0) {
+      Swal.fire({ icon: 'error', title: 'Select Destination scope' });
       return;
     }
 
@@ -325,7 +324,7 @@ export const MasterData: React.FC = () => {
       const row: ShipToRecord = {
         id: `SHIP-${String(nextNo).padStart(3, '0')}`,
         name: name.trim(),
-        customerCompanyIds: companyIds,
+        destinationIds,
         groupSaleType
       };
       updateShipTos([...masterData.shipTos, row]);
@@ -343,8 +342,7 @@ export const MasterData: React.FC = () => {
       const nextNo = nextRunningNo(masterData[tab].map((row) => row.id));
       const row: MasterDataRecord = {
         id: `${prefixMap[tab]}-${String(nextNo).padStart(3, '0')}`,
-        name: name.trim(),
-        customerCompanyIds: companyIds
+        name: name.trim()
       };
       updateMasterData(tab, [...masterData[tab], row]);
       resetForm();
@@ -382,8 +380,8 @@ export const MasterData: React.FC = () => {
     setEditingRowId(row.id);
     setEditDraft({
       name: row.name || '',
-      customerCompanyIds: Array.isArray(row.customerCompanyIds)
-        ? [...row.customerCompanyIds]
+      destinationIds: Array.isArray(row.destinationIds)
+        ? [...row.destinationIds]
         : [],
       groupSaleType:
         (row.groupSaleType as GroupSaleType) || GroupSaleType.OVERSEAS
@@ -394,7 +392,7 @@ export const MasterData: React.FC = () => {
     setEditingRowId(null);
     setEditDraft({
       name: '',
-      customerCompanyIds: [],
+      destinationIds: [],
       groupSaleType: GroupSaleType.OVERSEAS
     });
   };
@@ -407,12 +405,8 @@ export const MasterData: React.FC = () => {
       return;
     }
 
-    if (
-      tab !== 'groupSaleTypes' &&
-      tab !== 'companies' &&
-      editDraft.customerCompanyIds.length === 0
-    ) {
-      Swal.fire({ icon: 'error', title: 'Select Company/Agent scope' });
+    if (tab === 'shipTos' && editDraft.destinationIds.length === 0) {
+      Swal.fire({ icon: 'error', title: 'Select Destination scope' });
       return;
     }
 
@@ -457,7 +451,7 @@ export const MasterData: React.FC = () => {
             ? {
                 ...row,
                 name: editDraft.name.trim(),
-                customerCompanyIds: editDraft.customerCompanyIds,
+                destinationIds: editDraft.destinationIds,
                 groupSaleType: editDraft.groupSaleType
               }
             : row
@@ -474,8 +468,7 @@ export const MasterData: React.FC = () => {
           row.id === editingRowId
             ? {
                 ...row,
-                name: editDraft.name.trim(),
-                customerCompanyIds: editDraft.customerCompanyIds
+                name: editDraft.name.trim()
               }
             : row
         )
@@ -579,16 +572,18 @@ export const MasterData: React.FC = () => {
                 )}
               </div>
 
-              {tab !== 'groupSaleTypes' && tab !== 'companies' && (
+              {tab === 'shipTos' && (
                 <div className="space-y-2">
-                  <label className="ui-form-label">Company / Agent</label>
+                  <label className="ui-form-label">
+                    Destinations (select multiple)
+                  </label>
                   <Select
                     isMulti
-                    options={companyOptions}
-                    value={selectedCompanyOptions}
-                    onChange={onCompanyScopeChange}
-                    placeholder="Select Company / Agent scope"
-                    classNamePrefix="company-scope"
+                    options={destinationSelectOptions}
+                    value={selectedDestinationSelectOptions}
+                    onChange={onDestinationIdsChange}
+                    placeholder="Select Destinations"
+                    classNamePrefix="destination-scope"
                     {...selectMenuProps}
                   />
                 </div>
@@ -673,27 +668,25 @@ export const MasterData: React.FC = () => {
                 )}
               </div>
 
-              {tab !== 'groupSaleTypes' && tab !== 'companies' && (
+              {tab === 'shipTos' && (
                 <div className="space-y-2">
                   <label className="ui-form-label">
-                    Company / Agent Scope (select multiple)
+                    Destinations (select multiple)
                   </label>
                   <Select
                     isMulti
-                    options={companyOptions}
-                    value={companyOptions.filter((option) =>
-                      editDraft.customerCompanyIds.includes(option.value)
+                    options={destinationSelectOptions}
+                    value={destinationSelectOptions.filter((option) =>
+                      editDraft.destinationIds.includes(option.value)
                     )}
-                    onChange={(selected: MultiValue<CompanyOption>) =>
+                    onChange={(selected: MultiValue<SingleOption>) =>
                       setEditDraft((prev) => ({
                         ...prev,
-                        customerCompanyIds: selected.map(
-                          (option) => option.value
-                        )
+                        destinationIds: selected.map((option) => option.value)
                       }))
                     }
-                    placeholder="Select Company / Agent scope"
-                    classNamePrefix="company-scope"
+                    placeholder="Select Destinations"
+                    classNamePrefix="destination-scope"
                     {...selectMenuProps}
                   />
                 </div>
@@ -746,7 +739,7 @@ export const MasterData: React.FC = () => {
               <th className="px-4 py-3 text-left">Running No</th>
               <th className="px-4 py-3 text-left">Name</th>
               {showScopeColumn && (
-                <th className="px-4 py-3 text-left">Company / Agent</th>
+                <th className="px-4 py-3 text-left">Destinations</th>
               )}
               {showGroupSaleTypeColumn && (
                 <th className="px-4 py-3 text-left">Sale Group</th>
@@ -768,11 +761,9 @@ export const MasterData: React.FC = () => {
                   </td>
                   {showScopeColumn && (
                     <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-400">
-                      {Array.isArray(row.customerCompanyIds)
-                        ? row.customerCompanyIds
-                            .map((companyId: string) =>
-                              getCompanyName(companyId)
-                            )
+                      {Array.isArray(row.destinationIds)
+                        ? row.destinationIds
+                            .map((dId: string) => getDestinationName(dId))
                             .join(', ')
                         : '-'}
                     </td>

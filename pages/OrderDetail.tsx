@@ -4,17 +4,16 @@ import {
   ArrowLeft,
   Send,
   Download,
-  ShieldCheck,
   AlertCircle,
   FileEdit,
   BadgeCheck,
   CalendarCheck,
-  FileCheck,
-  Ship,
   FileText,
+  Ship,
   FileWarning,
   CheckCircle2,
-  Circle
+  Circle,
+  ShieldCheck
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -34,14 +33,22 @@ import {
   DocumentType,
   OrderLineStatus,
   OrderProgressStatus,
+  Role,
   UserGroup
 } from '../types';
 
 export const OrderDetail: React.FC = () => {
   const { orderNo } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { orders, companies, currentUser, linePermissionMatrix, updateOrder } =
-    useStore();
+  const {
+    orders,
+    companies,
+    currentUser,
+    linePermissionMatrix,
+    updateOrder,
+    addActivity,
+    addNotification
+  } = useStore();
 
   const order = orders.find((item) => item.orderNo === orderNo);
 
@@ -118,13 +125,21 @@ export const OrderDetail: React.FC = () => {
       timelineClassName:
         'border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300'
     },
-    [OrderLineStatus.UBE_APPROVED]: {
-      label: 'UBE APPROVED',
-      Icon: ShieldCheck,
+    [OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO]: {
+      label: 'WAIT SALE APPROVE PO',
+      Icon: FileText,
       badgeClassName:
-        'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-950 dark:border-cyan-800 dark:text-cyan-300',
+        'bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-950 dark:border-orange-800 dark:text-orange-300',
       timelineClassName:
-        'border-cyan-300 dark:border-cyan-700 bg-cyan-50 dark:bg-cyan-950 text-cyan-600 dark:text-cyan-300'
+        'border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-300'
+    },
+    [OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO]: {
+      label: 'WAIT MGR APPROVE PO',
+      Icon: BadgeCheck,
+      badgeClassName:
+        'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-950 dark:border-purple-800 dark:text-purple-300',
+      timelineClassName:
+        'border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-300'
     },
     [OrderLineStatus.APPROVED]: {
       label: 'CONFIRMED',
@@ -141,14 +156,6 @@ export const OrderDetail: React.FC = () => {
         'bg-sky-50 border-sky-200 text-sky-700 dark:bg-sky-950 dark:border-sky-800 dark:text-sky-300',
       timelineClassName:
         'border-sky-300 dark:border-sky-700 bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-300'
-    },
-    [OrderLineStatus.RECEIVED_ACTUAL_PO]: {
-      label: 'RECEIVED ACTUAL PO',
-      Icon: FileCheck,
-      badgeClassName:
-        'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-300',
-      timelineClassName:
-        'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-300'
     },
     [OrderLineStatus.VESSEL_DEPARTED]: {
       label: 'DEPARTED',
@@ -192,15 +199,15 @@ export const OrderDetail: React.FC = () => {
 
   const requiredGroup = linePermission?.allowedUserGroups[0] || UserGroup.ADMIN;
 
-  const ownerByToStatus = new Map<OrderLineStatus, UserGroup>(
+  const ownerByFromStatus = new Map<OrderLineStatus, UserGroup>(
     linePermissionMatrix.map((item) => [
-      item.toStatus,
+      item.fromStatus,
       item.allowedUserGroups[0]
     ])
   );
 
   const getTimelineOwner = (status: OrderLineStatus, fallback: UserGroup) =>
-    ownerByToStatus.get(status) || fallback;
+    ownerByFromStatus.get(status) || fallback;
 
   const timelineSteps = [
     {
@@ -216,15 +223,27 @@ export const OrderDetail: React.FC = () => {
       icon: Send as LucideIcon
     },
     {
-      status: OrderLineStatus.UBE_APPROVED,
-      label: 'UBE APPROVED',
-      owner: getTimelineOwner(OrderLineStatus.UBE_APPROVED, UserGroup.UBE),
-      icon: ShieldCheck as LucideIcon
-    },
-    {
       status: OrderLineStatus.APPROVED,
       label: 'CONFIRMED',
       owner: getTimelineOwner(OrderLineStatus.APPROVED, UserGroup.SALE),
+      icon: BadgeCheck as LucideIcon
+    },
+    {
+      status: OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO,
+      label: 'WAIT SALE APPROVE PO',
+      owner: getTimelineOwner(
+        OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO,
+        UserGroup.SALE
+      ),
+      icon: FileText as LucideIcon
+    },
+    {
+      status: OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO,
+      label: 'WAIT MGR APPROVE PO',
+      owner: getTimelineOwner(
+        OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO,
+        UserGroup.SALE_MANAGER
+      ),
       icon: BadgeCheck as LucideIcon
     },
     {
@@ -232,12 +251,6 @@ export const OrderDetail: React.FC = () => {
       label: 'VESSEL SCHEDULED',
       owner: getTimelineOwner(OrderLineStatus.VESSEL_SCHEDULED, UserGroup.CS),
       icon: CalendarCheck as LucideIcon
-    },
-    {
-      status: OrderLineStatus.RECEIVED_ACTUAL_PO,
-      label: 'RECEIVED ACTUAL PO',
-      owner: getTimelineOwner(OrderLineStatus.RECEIVED_ACTUAL_PO, UserGroup.CS),
-      icon: FileCheck as LucideIcon
     },
     {
       status: OrderLineStatus.VESSEL_DEPARTED,
@@ -270,28 +283,29 @@ export const OrderDetail: React.FC = () => {
         'This line is in draft status. You can edit in order form or submit for sale review.'
     },
     [OrderLineStatus.CREATED]: {
-      title: 'Awaiting UBE Japan Approval',
-      description:
-        'This line was submitted by Trader and requires UBE Japan approval first.'
-    },
-    [OrderLineStatus.UBE_APPROVED]: {
       title: 'Awaiting Sale Confirmation',
       description:
-        'UBE Japan approved this line. Sale team can now confirm and send.'
+        'This line was submitted and requires Sale team to confirm price and send.'
     },
     [OrderLineStatus.APPROVED]: {
       title: 'Waiting Vessel Schedule',
-      description: 'CS should set ETD to move this line to scheduled state.'
+      description:
+        'CS should set ETD to generate PO and move this line forward.'
+    },
+    [OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO]: {
+      title: 'Waiting Sale Approval on PO',
+      description:
+        'PO/SI generated. Sale team must review and approve the PO document.'
+    },
+    [OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO]: {
+      title: 'Waiting Manager Final Approval',
+      description:
+        'Sale approved. Sale Manager must give final approval to schedule vessel.'
     },
     [OrderLineStatus.VESSEL_SCHEDULED]: {
-      title: 'Generate Official PO Document',
+      title: 'Vessel Scheduled - Upload Final Documents',
       description:
-        'Logistics confirmed. Finalize the order by generating the formal PO PDF.'
-    },
-    [OrderLineStatus.RECEIVED_ACTUAL_PO]: {
-      title: 'Waiting Final Documents',
-      description:
-        'Upload final shipping documents to complete this logistics line.'
+        'Vessel is confirmed. CS should upload final shipping documents to complete.'
     },
     [OrderLineStatus.VESSEL_DEPARTED]: {
       title: 'Line Completed',
@@ -318,10 +332,10 @@ export const OrderDetail: React.FC = () => {
 
   const actionLabelByLineAction: Record<LineAction, string> = {
     [LineAction.SUBMIT_LINE]: 'Submit to Sale',
-    [LineAction.UBE_APPROVE_LINE]: 'Approve',
     [LineAction.APPROVE_LINE]: 'Confirm & Send',
-    [LineAction.SET_ETD]: 'Mark Vessel Scheduled',
-    [LineAction.MARK_RECEIVED_PO]: 'Generate PO & Mark Received',
+    [LineAction.SET_ETD]: 'Set ETD & Generate PO',
+    [LineAction.APPROVE_SALE_PO]: 'Approve PO (Sale)',
+    [LineAction.APPROVE_MGR_PO]: 'Approve PO (Manager)',
     [LineAction.UPLOAD_FINAL_DOCS]: 'Complete Line'
   };
 
@@ -522,7 +536,7 @@ export const OrderDetail: React.FC = () => {
 
     const generatedPoFilename = `PO_${order.orderNo}_${selectedLine.poNo}.pdf`;
     const generatedPoDataUrl =
-      linePermission.action === LineAction.MARK_RECEIVED_PO
+      linePermission.action === LineAction.SET_ETD
         ? createOfficialPoPdfDataUrl({
             orderNo: order.orderNo,
             orderDate: order.orderDate,
@@ -535,12 +549,12 @@ export const OrderDetail: React.FC = () => {
             price: selectedLine.price,
             currency: selectedLine.currency,
             requestETD: selectedLine.requestETD,
-            actualETD: selectedLine.actualETD
+            actualETD: actualEtdInput
           })
         : '';
     const generatedSiFilename = `SI_${order.orderNo}_${selectedLine.poNo}.pdf`;
     const generatedSiDataUrl =
-      linePermission.action === LineAction.MARK_RECEIVED_PO
+      linePermission.action === LineAction.SET_ETD
         ? createShippingInstructionPdfDataUrl({
             orderNo: order.orderNo,
             orderDate: order.orderDate,
@@ -553,7 +567,7 @@ export const OrderDetail: React.FC = () => {
             price: selectedLine.price,
             currency: selectedLine.currency,
             requestETD: selectedLine.requestETD,
-            actualETD: selectedLine.actualETD
+            actualETD: actualEtdInput
           })
         : '';
 
@@ -606,13 +620,6 @@ export const OrderDetail: React.FC = () => {
         return {
           ...line,
           actualETD: actualEtdInput,
-          status: linePermission.toStatus
-        };
-      }
-
-      if (linePermission.action === LineAction.MARK_RECEIVED_PO) {
-        return {
-          ...line,
           status: linePermission.toStatus,
           documents: [
             ...line.documents.filter(
@@ -673,13 +680,13 @@ export const OrderDetail: React.FC = () => {
     });
 
     if (
-      linePermission.action === LineAction.MARK_RECEIVED_PO &&
+      linePermission.action === LineAction.SET_ETD &&
       canAccessDocumentType(DocumentType.PO_PDF)
     ) {
       triggerDownload(generatedPoDataUrl, generatedPoFilename);
     }
     if (
-      linePermission.action === LineAction.MARK_RECEIVED_PO &&
+      linePermission.action === LineAction.SET_ETD &&
       canAccessDocumentType(DocumentType.SHIPPING_INSTRUCTION_PDF)
     ) {
       triggerDownload(generatedSiDataUrl, generatedSiFilename);
@@ -687,6 +694,19 @@ export const OrderDetail: React.FC = () => {
 
     if (linePermission.action === LineAction.UPLOAD_FINAL_DOCS) {
       setDraftDocFiles({});
+    }
+
+    if (linePermission.action === LineAction.APPROVE_SALE_PO) {
+      addActivity(
+        'Approve PO (Sale)',
+        currentUser?.username || 'system',
+        `${order.orderNo} / ${selectedLine.poNo}`
+      );
+      addNotification(
+        `PO reviewed by Sale for ${order.orderNo} / ${selectedLine.poNo}. Awaiting manager approval.`,
+        Role.SALE_MANAGER,
+        'email'
+      );
     }
   };
 
@@ -862,14 +882,14 @@ export const OrderDetail: React.FC = () => {
 
         <div className="relative mt-3 px-2">
           <div
-            className="absolute top-5 h-1 rounded-full bg-slate-200 dark:bg-slate-800"
+            className="absolute top-5 h-1 rounded-full bg-emerald-500/20 dark:bg-emerald-800/30"
             style={{
               left: `${100 / (timelineSteps.length * 2)}%`,
               right: `${100 / (timelineSteps.length * 2)}%`
             }}
           />
           <div
-            className="absolute top-5 h-1 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all"
+            className="absolute top-5 h-1 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all"
             style={{
               left: `${100 / (timelineSteps.length * 2)}%`,
               width: `${Math.max(
@@ -1128,6 +1148,14 @@ export const OrderDetail: React.FC = () => {
                   onClick={runSelectedLineAction}
                   disabled={!canRunSelectedLineAction || !isActionPayloadValid}
                   className={`px-4 py-2.5 ui-radius-control text-sm font-bold inline-flex items-center justify-center gap-2 ${
+                    ![
+                      LineAction.APPROVE_LINE,
+                      LineAction.SET_ETD,
+                      LineAction.UPLOAD_FINAL_DOCS
+                    ].includes(linePermission.action)
+                      ? 'col-span-2'
+                      : ''
+                  } ${
                     canRunSelectedLineAction && isActionPayloadValid
                       ? 'bg-indigo-600 text-white hover:bg-indigo-700'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'

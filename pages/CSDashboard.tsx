@@ -9,6 +9,10 @@ import {
 } from 'lucide-react';
 import Swal from '../utils/swal';
 import {
+  createOfficialPoPdfDataUrl,
+  createShippingInstructionPdfDataUrl
+} from '../utils/poPdf';
+import {
   useStore,
   canUserAccessShipTo,
   canUserRunLineAction,
@@ -51,11 +55,7 @@ export const CSDashboard: React.FC = () => {
 
     return orders.flatMap((order) =>
       order.items
-        .filter(
-          (line) =>
-            order.companyId === currentUser.companyId &&
-            canUserAccessShipTo(currentUser, line.shipToId)
-        )
+        .filter((line) => canUserAccessShipTo(currentUser, line.shipToId))
         .map((line) => ({ orderNo: order.orderNo, lineId: line.id }))
     );
   }, [orders, currentUser]);
@@ -86,7 +86,7 @@ export const CSDashboard: React.FC = () => {
     });
   };
 
-  const submitETD = (orderNo: string, lineId: string) => {
+  const submitETD = async (orderNo: string, lineId: string) => {
     const date = etdDates[lineId];
     if (!date) return;
     if (!currentUser) return;
@@ -104,11 +104,92 @@ export const CSDashboard: React.FC = () => {
       return;
     }
 
-    updateLine(orderNo, lineId, (line) => ({
-      ...line,
+    const confirmed = await Swal.fire({
+      icon: 'question',
+      title: 'Mark Vessel Scheduled',
+      text: `Set ETD for ${line.poNo} as ${date}? PO and SI documents will be generated.`,
+      showCancelButton: true,
+      confirmButtonText: 'Confirm',
+      cancelButtonText: 'Cancel'
+    });
+    if (!confirmed.isConfirmed) return;
+
+    const generatedPoFilename = `PO_${orderNo}_${line.poNo}.pdf`;
+    const generatedPoDataUrl = createOfficialPoPdfDataUrl({
+      orderNo,
+      orderDate: order.orderDate,
+      poNo: line.poNo,
+      shipToId: line.shipToId,
+      destinationId: line.destinationId,
+      termId: line.termId,
+      gradeId: line.gradeId,
+      qty: line.qty,
+      price: line.price,
+      currency: line.currency,
+      requestETD: line.requestETD,
+      actualETD: date
+    });
+    const generatedSiFilename = `SI_${orderNo}_${line.poNo}.pdf`;
+    const generatedSiDataUrl = createShippingInstructionPdfDataUrl({
+      orderNo,
+      orderDate: order.orderDate,
+      poNo: line.poNo,
+      shipToId: line.shipToId,
+      destinationId: line.destinationId,
+      termId: line.termId,
+      gradeId: line.gradeId,
+      qty: line.qty,
+      price: line.price,
+      currency: line.currency,
+      requestETD: line.requestETD,
+      actualETD: date
+    });
+
+    updateLine(orderNo, lineId, (item) => ({
+      ...item,
       actualETD: date,
-      status: OrderLineStatus.VESSEL_SCHEDULED
+      status: OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO,
+      documents: [
+        ...item.documents.filter(
+          (doc) =>
+            doc.type !== DocumentType.PO_PDF &&
+            doc.type !== DocumentType.SHIPPING_INSTRUCTION_PDF
+        ),
+        {
+          id: `doc-${Math.random().toString(36).slice(2, 8)}`,
+          type: DocumentType.PO_PDF,
+          filename: generatedPoFilename,
+          dataUrl: generatedPoDataUrl,
+          uploadedBy: currentUser?.username || 'cs',
+          uploadedAt: new Date().toISOString()
+        },
+        {
+          id: `doc-${Math.random().toString(36).slice(2, 8)}`,
+          type: DocumentType.SHIPPING_INSTRUCTION_PDF,
+          filename: generatedSiFilename,
+          dataUrl: generatedSiDataUrl,
+          uploadedBy: currentUser?.username || 'cs',
+          uploadedAt: new Date().toISOString()
+        }
+      ]
     }));
+
+    if (canAccessDocumentType(DocumentType.PO_PDF)) {
+      const link = document.createElement('a');
+      link.href = generatedPoDataUrl;
+      link.download = generatedPoFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    if (canAccessDocumentType(DocumentType.SHIPPING_INSTRUCTION_PDF)) {
+      const link = document.createElement('a');
+      link.href = generatedSiDataUrl;
+      link.download = generatedSiFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
 
     addActivity(
       'Set ETD (line)',
@@ -116,8 +197,8 @@ export const CSDashboard: React.FC = () => {
       `${orderNo} / ${lineId}`
     );
     addNotification(
-      `ETD set for ${orderNo} / ${line.poNo}: ${date}`,
-      Role.UBE_JAPAN,
+      `ETD set for ${orderNo} / ${line.poNo}: ${date}. PO/SI generated, waiting Sale approval.`,
+      Role.SALE,
       'email'
     );
   };
@@ -240,7 +321,7 @@ export const CSDashboard: React.FC = () => {
     );
     addNotification(
       `Documents uploaded (${pendingUploads.length}) for ${orderNo} / line ${lineId}`,
-      Role.UBE_JAPAN,
+      Role.CS,
       'system'
     );
 
@@ -306,7 +387,7 @@ export const CSDashboard: React.FC = () => {
     );
     addNotification(
       `Line departed: ${orderNo} / ${line.poNo}`,
-      Role.UBE_JAPAN,
+      Role.SALE,
       'email'
     );
   };
@@ -318,7 +399,7 @@ export const CSDashboard: React.FC = () => {
 
   const receivedPoLines = visibleLines.filter((row) => {
     const { line } = getLine(row.orderNo, row.lineId);
-    return line?.status === OrderLineStatus.RECEIVED_ACTUAL_PO;
+    return line?.status === OrderLineStatus.VESSEL_SCHEDULED;
   });
 
   return (

@@ -253,23 +253,15 @@ export const Orders: React.FC = () => {
 
   const shipTos = useMemo(
     () =>
-      masterData.shipTos.filter(
-        (shipTo) =>
-          shipTo.customerCompanyIds.includes(companyId) &&
-          (currentUser ? canUserAccessShipTo(currentUser, shipTo.id) : false)
+      masterData.shipTos.filter((shipTo) =>
+        currentUser ? canUserAccessShipTo(currentUser, shipTo.id) : false
       ),
-    [masterData.shipTos, companyId, currentUser]
+    [masterData.shipTos, currentUser]
   );
 
-  const grades = masterData.grades.filter((row) =>
-    row.customerCompanyIds.includes(companyId)
-  );
-  const destinations = masterData.destinations.filter((row) =>
-    row.customerCompanyIds.includes(companyId)
-  );
-  const terms = masterData.terms.filter((row) =>
-    row.customerCompanyIds.includes(companyId)
-  );
+  const grades = masterData.grades;
+  const destinations = masterData.destinations;
+  const terms = masterData.terms;
 
   const handleDownloadSample = () => {
     const blob = new Blob([SAMPLE_CSV], { type: 'text/csv;charset=utf-8;' });
@@ -582,7 +574,14 @@ export const Orders: React.FC = () => {
                             <ActionIconButton
                               onClick={() => handleDeleteOrder(order.orderNo)}
                               tone="rose"
-                              title="Delete"
+                              title={
+                                order.status !== OrderProgressStatus.CREATE
+                                  ? 'Cannot delete order in progress'
+                                  : 'Delete'
+                              }
+                              disabled={
+                                order.status !== OrderProgressStatus.CREATE
+                              }
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </ActionIconButton>

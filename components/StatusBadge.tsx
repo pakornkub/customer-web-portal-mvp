@@ -6,8 +6,8 @@ import {
   CheckCircle2,
   FileCheck,
   FileEdit,
+  FileText,
   Send,
-  ShieldCheck,
   Ship
 } from 'lucide-react';
 import { OrderLineStatus, OrderProgressStatus } from '../types';
@@ -53,11 +53,11 @@ const lineStatusMeta: Record<OrderLineStatus, BadgeMeta> = {
     className:
       'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-300'
   },
-  [OrderLineStatus.UBE_APPROVED]: {
-    label: 'UBE APPROVED',
-    Icon: ShieldCheck,
+  [OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO]: {
+    label: 'WAIT SALE APPROVE PO',
+    Icon: FileText,
     className:
-      'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-900/30 dark:border-cyan-800 dark:text-cyan-300'
+      'bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-300'
   },
   [OrderLineStatus.APPROVED]: {
     label: 'CONFIRMED',
@@ -71,11 +71,11 @@ const lineStatusMeta: Record<OrderLineStatus, BadgeMeta> = {
     className:
       'bg-sky-50 border-sky-200 text-sky-700 dark:bg-sky-900/30 dark:border-sky-800 dark:text-sky-300'
   },
-  [OrderLineStatus.RECEIVED_ACTUAL_PO]: {
-    label: 'RECEIVED ACTUAL PO',
-    Icon: FileCheck,
+  [OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO]: {
+    label: 'WAIT MGR APPROVE PO',
+    Icon: BadgeCheck,
     className:
-      'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-300'
+      'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-300'
   },
   [OrderLineStatus.VESSEL_DEPARTED]: {
     label: 'DEPARTED',

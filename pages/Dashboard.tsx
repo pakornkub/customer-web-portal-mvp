@@ -5,9 +5,8 @@ import {
   Send,
   BadgeCheck,
   CalendarCheck,
-  FileCheck,
+  FileText,
   Ship,
-  ShieldCheck,
   Plus,
   Package,
   AlertCircle,
@@ -86,15 +85,21 @@ export const Dashboard: React.FC = () => {
       Icon: Send
     },
     {
-      status: OrderLineStatus.UBE_APPROVED,
-      label: 'UBE APPROVED',
-      tone: 'cyan',
-      Icon: ShieldCheck
-    },
-    {
       status: OrderLineStatus.APPROVED,
       label: 'CONFIRMED',
       tone: 'violet',
+      Icon: BadgeCheck
+    },
+    {
+      status: OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO,
+      label: 'WAIT SALE APPROVE PO',
+      tone: 'orange',
+      Icon: FileText
+    },
+    {
+      status: OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO,
+      label: 'WAIT MGR APPROVE PO',
+      tone: 'purple',
       Icon: BadgeCheck
     },
     {
@@ -102,12 +107,6 @@ export const Dashboard: React.FC = () => {
       label: 'VESSEL SCHEDULED',
       tone: 'sky',
       Icon: CalendarCheck
-    },
-    {
-      status: OrderLineStatus.RECEIVED_ACTUAL_PO,
-      label: 'RECEIVED ACTUAL PO',
-      tone: 'amber',
-      Icon: FileCheck
     },
     {
       status: OrderLineStatus.VESSEL_DEPARTED,
@@ -125,14 +124,17 @@ export const Dashboard: React.FC = () => {
       'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300',
     indigo:
       'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-300',
+    orange:
+      'bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-300',
+    purple:
+      'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-300',
+    violet:
+      'bg-violet-50 border-violet-200 text-violet-700 dark:bg-violet-900/30 dark:border-violet-800 dark:text-violet-300',
+    sky: 'bg-sky-50 border-sky-200 text-sky-700 dark:bg-sky-900/30 dark:border-sky-800 dark:text-sky-300',
     amber:
       'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-300',
     emerald:
-      'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-300',
-    cyan: 'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-900/30 dark:border-cyan-800 dark:text-cyan-300',
-    violet:
-      'bg-violet-50 border-violet-200 text-violet-700 dark:bg-violet-900/30 dark:border-violet-800 dark:text-violet-300',
-    sky: 'bg-sky-50 border-sky-200 text-sky-700 dark:bg-sky-900/30 dark:border-sky-800 dark:text-sky-300'
+      'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-300'
   };
 
   return (

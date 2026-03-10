@@ -18,6 +18,7 @@ import { Logs } from './pages/Logs';
 import { Admin } from './pages/Admin';
 import { MasterData } from './pages/MasterData';
 import { ClearData } from './pages/ClearData';
+import { MgrApprove } from './pages/MgrApprove';
 import { Role } from './types';
 
 // Protected Route Component
@@ -88,7 +89,7 @@ const App: React.FC = () => {
         <Route
           path="/review"
           element={
-            <Protected roles={[Role.SALE, Role.ADMIN]}>
+            <Protected roles={[Role.SALE, Role.SALE_MANAGER, Role.ADMIN]}>
               <SaleReview />
             </Protected>
           }
@@ -98,6 +99,15 @@ const App: React.FC = () => {
           element={
             <Protected roles={[Role.CS, Role.ADMIN]}>
               <CSDashboard />
+            </Protected>
+          }
+        />
+
+        <Route
+          path="/mgr-approve"
+          element={
+            <Protected roles={[Role.SALE_MANAGER, Role.ADMIN]}>
+              <MgrApprove />
             </Protected>
           }
         />
@@ -121,7 +131,7 @@ const App: React.FC = () => {
         <Route
           path="/logs"
           element={
-            <Protected roles={[Role.ADMIN, Role.CS]}>
+            <Protected roles={[Role.ADMIN]}>
               <Logs />
             </Protected>
           }

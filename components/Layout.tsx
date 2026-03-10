@@ -18,7 +18,8 @@ import {
   Command,
   Sun,
   Moon,
-  Database
+  Database,
+  BadgeCheck
 } from 'lucide-react';
 import { Role } from '../types';
 
@@ -93,19 +94,39 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({
       to: '/',
       icon: LayoutDashboard,
       label: 'Dashboard',
-      roles: [Role.UBE_JAPAN, Role.MAIN_TRADER, Role.CS, Role.SALE, Role.ADMIN]
+      roles: [
+        Role.UBE_JAPAN,
+        Role.MAIN_TRADER,
+        Role.CS,
+        Role.SALE,
+        Role.SALE_MANAGER,
+        Role.ADMIN
+      ]
     },
     {
       to: '/orders',
       icon: ShoppingCart,
       label: 'Orders',
-      roles: [Role.UBE_JAPAN, Role.MAIN_TRADER, Role.CS, Role.SALE, Role.ADMIN]
+      roles: [
+        Role.UBE_JAPAN,
+        Role.MAIN_TRADER,
+        Role.CS,
+        Role.SALE,
+        Role.SALE_MANAGER,
+        Role.ADMIN
+      ]
     },
     {
       to: '/review',
       icon: FileCheck,
       label: 'Sale Review',
-      roles: [Role.SALE, Role.ADMIN]
+      roles: [Role.SALE, Role.SALE_MANAGER, Role.ADMIN]
+    },
+    {
+      to: '/mgr-approve',
+      icon: BadgeCheck,
+      label: 'Mgr Approve',
+      roles: [Role.SALE_MANAGER, Role.ADMIN]
     },
     { to: '/cs', icon: Truck, label: 'CS Hub', roles: [Role.CS, Role.ADMIN] },
     {
@@ -124,7 +145,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({
       to: '/logs',
       icon: ClipboardList,
       label: 'System Logs',
-      roles: [Role.ADMIN, Role.CS]
+      roles: [Role.ADMIN]
     },
     {
       to: '/clear-data',
