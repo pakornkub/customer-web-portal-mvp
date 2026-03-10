@@ -30,38 +30,46 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ## Test Credentials
 
-| Username  | Password   | Role                          |
-| --------- | ---------- | ----------------------------- |
-| `trader1` | `password` | Main Trader (creates orders)  |
-| `ubejp1`  | `password` | UBE Japan (first approval)    |
-| `sale1`   | `password` | Sale (price + final approval) |
-| `cs1`     | `password` | Customer Service (ETD + docs) |
-| `admin`   | `password` | Admin (full access)           |
+| Username    | Password   | Role                              |
+| ----------- | ---------- | --------------------------------- |
+| `trader1`   | `password` | Main Trader (creates orders)      |
+| `ubejp1`    | `password` | UBE Japan (submit lines)          |
+| `sale1`     | `password` | Sale (price approval + PO review) |
+| `sale_mgr1` | `password` | Sale Manager (final PO approval)  |
+| `cs1`       | `password` | Customer Service (ETD + docs)     |
+| `admin`     | `password` | Admin (full access)               |
 
 ## Features
 
 ### Order Workflow (Line-Level)
 
-Each order line independently progresses through:
+Each order line independently progresses through a **7-step workflow**:
 
 ```
-DRAFT → CREATED → UBE_APPROVED → APPROVED → VESSEL_SCHEDULED → RECEIVED_ACTUAL_PO → VESSEL_DEPARTED
+DRAFT
+  └─[SUBMIT_LINE: TRADER / UBE / SALE]──▶ CREATED
+       └─[APPROVE_LINE: SALE + price input]──▶ APPROVED
+            └─[SET_ETD: CS] + Gen PO PDF + SI PDF──▶ WAIT_SALE_UEC_APPROVE_PO
+                 └─[APPROVE_SALE_PO: SALE] review PDF + confirm──▶ WAIT_MGR_UEC_APPROVE_PO
+                      └─[APPROVE_MGR_PO: SALE_MANAGER]──▶ VESSEL_SCHEDULED
+                           └─[UPLOAD_FINAL_DOCS: CS]──▶ VESSEL_DEPARTED
 ```
 
 ### Pages
 
-| Page         | Route               | Access          |
-| ------------ | ------------------- | --------------- |
-| Login        | `/login`            | All             |
-| Dashboard    | `/`                 | All             |
-| Orders       | `/orders`           | All             |
-| Create Order | `/orders/create`    | Permitted users |
-| Order Detail | `/orders/[orderNo]` | All             |
-| Sale Review  | `/review`           | SALE, ADMIN     |
-| CS Dashboard | `/cs`               | CS, ADMIN       |
-| Admin        | `/admin`            | ADMIN           |
-| Master Data  | `/master-data`      | ADMIN           |
-| Logs         | `/logs`             | ADMIN           |
+| Page         | Route               | Access                                                      |
+| ------------ | ------------------- | ----------------------------------------------------------- |
+| Login        | `/login`            | All                                                         |
+| Dashboard    | `/`                 | All                                                         |
+| Orders       | `/orders`           | All                                                         |
+| Create Order | `/orders/create`    | Permitted users (not in sidebar; accessed from Orders page) |
+| Order Detail | `/orders/[orderNo]` | All                                                         |
+| Sale Review  | `/review`           | SALE, SALE_MANAGER, ADMIN                                   |
+| Mgr Approve  | `/mgr-approve`      | SALE_MANAGER, ADMIN                                         |
+| CS Dashboard | `/cs`               | CS, ADMIN                                                   |
+| Admin        | `/admin`            | ADMIN                                                       |
+| Master Data  | `/master-data`      | ADMIN                                                       |
+| Logs         | `/logs`             | ADMIN                                                       |
 
 ### Key Capabilities
 
@@ -84,7 +92,8 @@ app/
   (portal)/              ← protected pages with sidebar layout
     page.tsx             ← dashboard
     orders/...
-    review/
+    review/              ← sale review (line confirm + PO review)
+    mgr-approve/         ← manager PO approval
     cs/
     admin/
     master-data/
@@ -111,6 +120,8 @@ utils/
 - Actual ETD required before marking vessel scheduled
 - `Shipping Document` + `BL` both required before completing a line
 - Lines past DRAFT are locked for editing
+- **Orders can only be deleted when `OrderProgressStatus === CREATE`** (all
+  lines still DRAFT)
 - All actions require passing `canUserRunLineAction()` permission check
 - All workflow actions are logged to activity log
 

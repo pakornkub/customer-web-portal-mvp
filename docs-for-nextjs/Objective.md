@@ -601,29 +601,28 @@ DRAFT
 
 **Sidebar menu per role:**
 
-| Menu Item    | Route            | Icon              | Show condition                  |
-| ------------ | ---------------- | ----------------- | ------------------------------- |
-| Dashboard    | `/`              | `LayoutDashboard` | Always                          |
-| Orders       | `/orders`        | `Package`         | Always                          |
-| Create Order | `/orders/create` | `PlusCircle`      | `canCreateOrder === true`       |
-| Sale Review  | `/review`        | `ClipboardCheck`  | Role: SALE, SALE_MANAGER, ADMIN |
-| Mgr Approve  | `/mgr-approve`   | `BadgeCheck`      | Role: SALE_MANAGER, ADMIN       |
-| CS Dashboard | `/cs`            | `Ship`            | Role: CS, ADMIN                 |
-| Admin        | `/admin`         | `ShieldCheck`     | Role: ADMIN                     |
-| Master Data  | `/master-data`   | `Database`        | Role: ADMIN                     |
-| Logs         | `/logs`          | `ScrollText`      | Role: ADMIN                     |
-| Clear Data   | `/clear-data`    | `Trash2`          | Always (dev/demo tool)          |
+| Menu Item    | Route          | Icon              | Show condition                  |
+| ------------ | -------------- | ----------------- | ------------------------------- |
+| Dashboard    | `/`            | `LayoutDashboard` | Always                          |
+| Orders       | `/orders`      | `Package`         | Always                          |
+| Sale Review  | `/review`      | `ClipboardCheck`  | Role: SALE, SALE_MANAGER, ADMIN |
+| Mgr Approve  | `/mgr-approve` | `BadgeCheck`      | Role: SALE_MANAGER, ADMIN       |
+| CS Dashboard | `/cs`          | `Ship`            | Role: CS, ADMIN                 |
+| Admin        | `/admin`       | `ShieldCheck`     | Role: ADMIN                     |
+| Master Data  | `/master-data` | `Database`        | Role: ADMIN                     |
+| Logs         | `/logs`        | `ScrollText`      | Role: ADMIN                     |
+| Clear Data   | `/clear-data`  | `Trash2`          | Always (dev/demo tool)          |
 
 **Role → visible menu summary:**
 
-| Role         | Visible menus                                  |
-| ------------ | ---------------------------------------------- |
-| MAIN_TRADER  | Dashboard, Orders, Create Order (if permitted) |
-| UBE_JAPAN    | Dashboard, Orders                              |
-| SALE         | Dashboard, Orders, Sale Review                 |
-| SALE_MANAGER | Dashboard, Orders, Sale Review, Mgr Approve    |
-| CS           | Dashboard, Orders, CS Dashboard                |
-| ADMIN        | All menus                                      |
+| Role         | Visible menus                               |
+| ------------ | ------------------------------------------- |
+| MAIN_TRADER  | Dashboard, Orders                           |
+| UBE_JAPAN    | Dashboard, Orders                           |
+| SALE         | Dashboard, Orders, Sale Review              |
+| SALE_MANAGER | Dashboard, Orders, Sale Review, Mgr Approve |
+| CS           | Dashboard, Orders, CS Dashboard             |
+| ADMIN        | All menus                                   |
 
 ### TASK-04: Dashboard (`/`)
 
@@ -634,8 +633,9 @@ DRAFT
 - [ ] Quick link to Create Order (if permitted)
 - [ ] All data scoped to `getVisibleOrdersForUser`
 
-**Status cards** (7 cards): DRAFT, CREATED, UBE_APPROVED, APPROVED (label:
-"CONFIRMED"), VESSEL_SCHEDULED, RECEIVED_ACTUAL_PO, VESSEL_DEPARTED
+**Status cards** (7 cards): DRAFT, CREATED, APPROVED (label: "Confirmed"),
+WAIT_SALE_UEC_APPROVE_PO, WAIT_MGR_UEC_APPROVE_PO, VESSEL_SCHEDULED,
+VESSEL_DEPARTED
 
 ### TASK-05: Orders List (`/orders`)
 
@@ -644,7 +644,10 @@ DRAFT
 - [ ] Search by order no / company
 - [ ] Filter by `OrderProgressStatus`
 - [ ] Row click → order detail
-- [ ] Create New Order button (if permitted)
+- [ ] Create New Order button (if permitted, accessible from this page — **not**
+      via sidebar)
+- [ ] **Delete order** only allowed when `OrderProgressStatus === CREATE` (all
+      lines still DRAFT); button disabled with tooltip otherwise
 
 ### TASK-06: Create / Edit Order (`/orders/create`, `/orders/[orderNo]/edit`)
 
@@ -694,8 +697,14 @@ DRAFT
 
 ### TASK-08: Sale Review (`/review`)
 
+Page has two distinct sections, each with its own section header and item count
+badge:
+
+**Section 1 — Line Confirm** (indigo theme)
+
 - [ ] List all lines with status `CREATED` across all orders (for visible
       orders)
+- [ ] Section header: "Line Confirm — Waiting Sale Review" + count badge
 - [ ] Per line: PO No, Order No, Ship-To, Grade, Qty, Request ETD/ETA
 - [ ] Inline price + currency input per line
 - [ ] Sale note input per line
@@ -706,7 +715,19 @@ DRAFT
 - [ ] Show spinner/disabled state on Approve button during the 1.8s wait
 - [ ] **Save Draft** button (per line): persists price, currency, saleNote
       WITHOUT changing line status
+
+**Section 2 — PO Review** (amber theme)
+
+- [ ] List all lines with status `WAIT_SALE_UEC_APPROVE_PO` across all visible
+      orders
+- [ ] Section header: "PO Review — Waiting Sale Approval" + count badge
+- [ ] Per line: PO No, Ship-To, Qty, Price, ETD, link to download PO PDF
+- [ ] **Approve PO** button with confirm dialog → line →
+      `WAIT_MGR_UEC_APPROVE_PO`; notify `SALE_MANAGER` (email); activity log
+- [ ] Show spinner/disabled state on Approve button during processing
+
 - [ ] Restrict page to SALE + SALE_MANAGER + ADMIN
+- [ ] Empty state shows when **both** sections have no items
 
 ### TASK-09: CS Dashboard (`/cs`)
 
