@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
   Role,
@@ -156,37 +156,41 @@ export const createStandardLinePermissionMatrix =
       action: LineAction.SUBMIT_LINE,
       fromStatus: OrderLineStatus.DRAFT,
       toStatus: OrderLineStatus.CREATED,
-      allowedUserGroups: [UserGroup.TRADER, UserGroup.UBE, UserGroup.SALE]
+      allowedUserGroups: [
+        UserGroup.TRADER,
+        UserGroup.UEC_SALE,
+        UserGroup.TSL_SALE
+      ]
     },
     {
       action: LineAction.APPROVE_LINE,
       fromStatus: OrderLineStatus.CREATED,
       toStatus: OrderLineStatus.APPROVED,
-      allowedUserGroups: [UserGroup.SALE]
+      allowedUserGroups: [UserGroup.TSL_SALE]
     },
     {
       action: LineAction.SET_ETD,
       fromStatus: OrderLineStatus.APPROVED,
       toStatus: OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO,
-      allowedUserGroups: [UserGroup.CS]
+      allowedUserGroups: [UserGroup.TSL_CS]
     },
     {
       action: LineAction.APPROVE_SALE_PO,
       fromStatus: OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO,
       toStatus: OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO,
-      allowedUserGroups: [UserGroup.SALE]
+      allowedUserGroups: [UserGroup.UEC_SALE]
     },
     {
       action: LineAction.APPROVE_MGR_PO,
       fromStatus: OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO,
       toStatus: OrderLineStatus.VESSEL_SCHEDULED,
-      allowedUserGroups: [UserGroup.SALE_MANAGER]
+      allowedUserGroups: [UserGroup.UEC_MANAGER]
     },
     {
       action: LineAction.UPLOAD_FINAL_DOCS,
       fromStatus: OrderLineStatus.VESSEL_SCHEDULED,
       toStatus: OrderLineStatus.VESSEL_DEPARTED,
-      allowedUserGroups: [UserGroup.CS]
+      allowedUserGroups: [UserGroup.TSL_CS]
     }
   ];
 
@@ -201,31 +205,31 @@ export const createStrictLinePermissionMatrix = (): LineActionPermission[] => [
     action: LineAction.APPROVE_LINE,
     fromStatus: OrderLineStatus.CREATED,
     toStatus: OrderLineStatus.APPROVED,
-    allowedUserGroups: [UserGroup.SALE]
+    allowedUserGroups: [UserGroup.TSL_SALE]
   },
   {
     action: LineAction.SET_ETD,
     fromStatus: OrderLineStatus.APPROVED,
     toStatus: OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO,
-    allowedUserGroups: [UserGroup.CS]
+    allowedUserGroups: [UserGroup.TSL_CS]
   },
   {
     action: LineAction.APPROVE_SALE_PO,
     fromStatus: OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO,
     toStatus: OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO,
-    allowedUserGroups: [UserGroup.SALE]
+    allowedUserGroups: [UserGroup.UEC_SALE]
   },
   {
     action: LineAction.APPROVE_MGR_PO,
     fromStatus: OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO,
     toStatus: OrderLineStatus.VESSEL_SCHEDULED,
-    allowedUserGroups: [UserGroup.SALE_MANAGER]
+    allowedUserGroups: [UserGroup.UEC_MANAGER]
   },
   {
     action: LineAction.UPLOAD_FINAL_DOCS,
     fromStatus: OrderLineStatus.VESSEL_SCHEDULED,
     toStatus: OrderLineStatus.VESSEL_DEPARTED,
-    allowedUserGroups: [UserGroup.CS]
+    allowedUserGroups: [UserGroup.TSL_CS]
   }
 ];
 
@@ -1204,7 +1208,7 @@ const INITIAL_USERS: User[] = [
     id: 'u3',
     username: 'ubejp1',
     role: Role.UBE_JAPAN,
-    userGroup: UserGroup.UBE,
+    userGroup: UserGroup.UEC_SALE,
     companyId: UBE_JAPAN_COMPANY_ID,
     canCreateOrder: true,
     shipToAccess: 'ALL',
@@ -1219,7 +1223,7 @@ const INITIAL_USERS: User[] = [
     id: 'u4',
     username: 'sale1',
     role: Role.SALE,
-    userGroup: UserGroup.SALE,
+    userGroup: UserGroup.TSL_SALE,
     companyId: 'C001',
     canCreateOrder: false,
     shipToAccess: 'ALL',
@@ -1230,7 +1234,7 @@ const INITIAL_USERS: User[] = [
     id: 'u-sale-mgr',
     username: 'sale_mgr1',
     role: Role.SALE_MANAGER,
-    userGroup: UserGroup.SALE_MANAGER,
+    userGroup: UserGroup.UEC_MANAGER,
     companyId: 'C001',
     canCreateOrder: false,
     shipToAccess: 'ALL',
@@ -1241,7 +1245,7 @@ const INITIAL_USERS: User[] = [
     id: 'u5',
     username: 'cs1',
     role: Role.CS,
-    userGroup: UserGroup.CS,
+    userGroup: UserGroup.TSL_CS,
     companyId: 'C001',
     canCreateOrder: false,
     shipToAccess: 'ALL',

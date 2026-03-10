@@ -120,7 +120,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({
       to: '/review',
       icon: FileCheck,
       label: 'Sale Review',
-      roles: [Role.SALE, Role.SALE_MANAGER, Role.ADMIN]
+      roles: [Role.UBE_JAPAN, Role.SALE, Role.SALE_MANAGER, Role.ADMIN]
     },
     {
       to: '/mgr-approve',

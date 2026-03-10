@@ -66,7 +66,7 @@ const lineStatusMeta: Record<OrderLineStatus, BadgeMeta> = {
       'bg-violet-50 border-violet-200 text-violet-700 dark:bg-violet-900/30 dark:border-violet-800 dark:text-violet-300'
   },
   [OrderLineStatus.VESSEL_SCHEDULED]: {
-    label: 'VESSEL SCHEDULED',
+    label: 'WAIT VESSEL DEPARTURE',
     Icon: CalendarCheck,
     className:
       'bg-sky-50 border-sky-200 text-sky-700 dark:bg-sky-900/30 dark:border-sky-800 dark:text-sky-300'

@@ -89,7 +89,9 @@ const App: React.FC = () => {
         <Route
           path="/review"
           element={
-            <Protected roles={[Role.SALE, Role.SALE_MANAGER, Role.ADMIN]}>
+            <Protected
+              roles={[Role.UBE_JAPAN, Role.SALE, Role.SALE_MANAGER, Role.ADMIN]}
+            >
               <SaleReview />
             </Protected>
           }

@@ -1,4 +1,4 @@
-# Objective.md — Customer Web Portal (Next.js)
+﻿# Objective.md — Customer Web Portal (Next.js)
 
 > เอกสารนี้คือ source of truth สำหรับสร้างโปรเจค **Customer Web Portal** ใหม่
 > ด้วย Next.js โดยใช้กับ GitHub Copilot coding agent
@@ -180,20 +180,20 @@ utils/
 | `ADMIN`        | Full access to all pages and data          |
 | `MAIN_TRADER`  | Customer/Trader — creates orders           |
 | `UBE_JAPAN`    | UBE Japan — can submit lines               |
-| `SALE`         | Sale team — approve + price, review PO     |
+| `TSL_SALE`     | SALE team — approve + price, review PO     |
 | `SALE_MANAGER` | Sale Manager — final PO approval before CS |
 | `CS`           | Customer Service — ETD + final docs        |
 
 ### User Groups (Action-level permission)
 
-| UserGroup      | Maps to Roles |
-| -------------- | ------------- |
-| `TRADER`       | MAIN_TRADER   |
-| `UBE`          | UBE_JAPAN     |
-| `SALE`         | SALE          |
-| `SALE_MANAGER` | SALE_MANAGER  |
-| `CS`           | CS            |
-| `ADMIN`        | ADMIN         |
+| UserGroup     | Maps to Roles |
+| ------------- | ------------- |
+| `TRADER`      | MAIN_TRADER   |
+| `UEC_SALE`    | UBE_JAPAN     |
+| `TSL_SALE`    | SALE          |
+| `UEC_MANAGER` | SALE_MANAGER  |
+| `TSL_CS`      | CS            |
+| `ADMIN`       | ADMIN         |
 
 ---
 
@@ -326,18 +326,18 @@ interface LineActionPermission {
 enum Role {
   UBE_JAPAN,
   MAIN_TRADER,
-  CS,
-  SALE,
-  SALE_MANAGER,
+  TSL_CS,
+  TSL_SALE,
+  UEC_MANAGER,
   ADMIN
 }
 
 enum UserGroup {
   TRADER,
-  UBE,
-  SALE,
-  SALE_MANAGER,
-  CS,
+  UEC_SALE,
+  TSL_SALE,
+  UEC_MANAGER,
+  TSL_CS,
   ADMIN
 }
 
@@ -396,7 +396,7 @@ export const LINE_STATUS_LABELS: Record<OrderLineStatus, string> = {
   [OrderLineStatus.APPROVED]: 'Confirmed',
   [OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO]: 'Wait Sale UEC Approve PO',
   [OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO]: 'Wait Mgr UEC Approve PO',
-  [OrderLineStatus.VESSEL_SCHEDULED]: 'Vessel Scheduled',
+  [OrderLineStatus.VESSEL_SCHEDULED]: 'Wait Vessel Departure',
   [OrderLineStatus.VESSEL_DEPARTED]: 'Vessel Departed'
 };
 ```
@@ -449,12 +449,12 @@ export const UPLOADABLE_DOC_TYPES: DocumentType[] = [
 
 ```
 DRAFT
-  └─[SUBMIT_LINE by TRADER/UBE/SALE]──▶ CREATED
-       └─[APPROVE_LINE by SALE + price]──▶ APPROVED
-            └─[SET_ETD by CS] + Gen PO PDF + SI PDF──▶ WAIT_SALE_UEC_APPROVE_PO
-                 └─[APPROVE_SALE_PO by SALE] review PDF + confirm──▶ WAIT_MGR_UEC_APPROVE_PO
-                      └─[APPROVE_MGR_PO by SALE_MANAGER]──▶ VESSEL_SCHEDULED
-                           └─[UPLOAD_FINAL_DOCS by CS]──▶ VESSEL_DEPARTED
+  └─[SUBMIT_LINE by TRADER/UEC_SALE/TSL_SALE]──▶ CREATED
+       └─[APPROVE_LINE by TSL_SALE + price]──▶ APPROVED
+            └─[SET_ETD by TSL_CS] + Gen PO PDF + SI PDF──▶ WAIT_SALE_UEC_APPROVE_PO
+                 └─[APPROVE_SALE_PO by UEC_SALE] review PDF + confirm──▶ WAIT_MGR_UEC_APPROVE_PO
+                      └─[APPROVE_MGR_PO by UEC_MANAGER]──▶ VESSEL_SCHEDULED
+                           └─[UPLOAD_FINAL_DOCS by TSL_CS]──▶ VESSEL_DEPARTED
 ```
 
 **OrderProgressStatus** (computed):
@@ -489,21 +489,21 @@ DRAFT
 
 **STANDARD preset** (default):
 
-- SUBMIT_LINE: TRADER + UBE + SALE
-- APPROVE_LINE: SALE
-- SET_ETD: CS
-- APPROVE_SALE_PO: SALE
-- APPROVE_MGR_PO: SALE_MANAGER
-- UPLOAD_FINAL_DOCS: CS
+- SUBMIT_LINE: TRADER + UEC_SALE + TSL_SALE
+- APPROVE_LINE: TSL_SALE
+- SET_ETD: TSL_CS
+- APPROVE_SALE_PO: UEC_SALE
+- APPROVE_MGR_PO: UEC_MANAGER
+- UPLOAD_FINAL_DOCS: TSL_CS
 
 **STRICT preset**:
 
 - SUBMIT_LINE: TRADER only
-- APPROVE_LINE: SALE
-- SET_ETD: CS
-- APPROVE_SALE_PO: SALE
-- APPROVE_MGR_PO: SALE_MANAGER
-- UPLOAD_FINAL_DOCS: CS
+- APPROVE_LINE: TSL_SALE
+- SET_ETD: TSL_CS
+- APPROVE_SALE_PO: UEC_SALE
+- APPROVE_MGR_PO: UEC_MANAGER
+- UPLOAD_FINAL_DOCS: TSL_CS
 
 ### Data Visibility Rules
 
@@ -667,7 +667,7 @@ VESSEL_DEPARTED
       selectable. User must select ≥1 line to submit. Unselected DRAFT lines
       remain DRAFT.
 - [ ] **UBE shortcut**: when submitting, if
-      `currentUser.userGroup === UserGroup.UBE`, selected lines go to
+      `currentUser.userGroup === UserGroup.UEC_SALE`, selected lines go to
       `UBE_APPROVED` (not `CREATED`)
 - [ ] **Save Draft button**: saves all lines as DRAFT with no status change. No
       lines need to be selected.
@@ -2620,7 +2620,7 @@ export const INITIAL_USERS: User[] = [
     id: 'user-002',
     username: 'ubejp1',
     role: Role.UBE_JAPAN,
-    userGroup: UserGroup.UBE,
+    userGroup: UserGroup.UEC_SALE,
     companyId: 'AG-UBE-JP',
     canCreateOrder: false,
     shipToAccess: 'ALL',
@@ -2631,7 +2631,7 @@ export const INITIAL_USERS: User[] = [
     id: 'user-003',
     username: 'sale1',
     role: Role.SALE,
-    userGroup: UserGroup.SALE,
+    userGroup: UserGroup.TSL_SALE,
     companyId: 'C001',
     canCreateOrder: false,
     shipToAccess: 'ALL',
@@ -2647,7 +2647,7 @@ export const INITIAL_USERS: User[] = [
     id: 'user-004',
     username: 'cs1',
     role: Role.CS,
-    userGroup: UserGroup.CS,
+    userGroup: UserGroup.TSL_CS,
     companyId: 'C001',
     canCreateOrder: false,
     shipToAccess: 'ALL',
@@ -2676,7 +2676,7 @@ export const INITIAL_USERS: User[] = [
     id: 'user-006',
     username: 'mizutani',
     role: Role.UBE_JAPAN,
-    userGroup: UserGroup.UBE,
+    userGroup: UserGroup.UEC_SALE,
     companyId: 'AG-UBE-JP',
     canCreateOrder: false,
     shipToAccess: 'ALL',

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Select, { MultiValue, SingleValue } from 'react-select';
 import {
@@ -70,10 +70,10 @@ const normalizeMatrix = (matrix: LineActionPermission[]) =>
 
 const deriveRoleFromGroup = (group: UserGroup): Role => {
   if (group === UserGroup.ADMIN) return Role.ADMIN;
-  if (group === UserGroup.CS) return Role.CS;
-  if (group === UserGroup.SALE) return Role.SALE;
-  if (group === UserGroup.SALE_MANAGER) return Role.SALE_MANAGER;
-  if (group === UserGroup.UBE) return Role.UBE_JAPAN;
+  if (group === UserGroup.TSL_CS) return Role.CS;
+  if (group === UserGroup.TSL_SALE) return Role.SALE;
+  if (group === UserGroup.UEC_MANAGER) return Role.SALE_MANAGER;
+  if (group === UserGroup.UEC_SALE) return Role.UBE_JAPAN;
   return Role.MAIN_TRADER;
 };
 
@@ -135,8 +135,8 @@ export const Admin: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [newUser, setNewUser] = useState({
     username: '',
-    role: deriveRoleFromGroup(UserGroup.UBE),
-    userGroup: UserGroup.UBE,
+    role: deriveRoleFromGroup(UserGroup.UEC_SALE),
+    userGroup: UserGroup.UEC_SALE,
     companyId:
       companies.find((company) => company.id === DEFAULT_UBE_JAPAN_COMPANY_ID)
         ?.id ||
@@ -500,8 +500,8 @@ export const Admin: React.FC = () => {
     setShowAddModal(false);
     setNewUser({
       username: '',
-      role: deriveRoleFromGroup(UserGroup.UBE),
-      userGroup: UserGroup.UBE,
+      role: deriveRoleFromGroup(UserGroup.UEC_SALE),
+      userGroup: UserGroup.UEC_SALE,
       companyId:
         companies.find((company) => company.id === DEFAULT_UBE_JAPAN_COMPANY_ID)
           ?.id ||

@@ -1,4 +1,4 @@
-export enum Role {
+﻿export enum Role {
   UBE_JAPAN = 'UBE_JAPAN',
   MAIN_TRADER = 'MAIN_TRADER',
   CS = 'CS',
@@ -25,10 +25,10 @@ export enum OrderProgressStatus {
 
 export enum UserGroup {
   TRADER = 'TRADER',
-  UBE = 'UBE',
-  SALE = 'SALE',
-  SALE_MANAGER = 'SALE_MANAGER',
-  CS = 'CS',
+  UEC_SALE = 'UEC_SALE',
+  TSL_SALE = 'TSL_SALE',
+  UEC_MANAGER = 'UEC_MANAGER',
+  TSL_CS = 'TSL_CS',
   ADMIN = 'ADMIN'
 }
 

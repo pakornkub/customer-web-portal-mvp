@@ -75,42 +75,49 @@ export const Dashboard: React.FC = () => {
     {
       status: OrderLineStatus.DRAFT,
       label: 'DRAFT',
+      responsible: 'TRADER',
       tone: 'slate',
       Icon: FileEdit
     },
     {
       status: OrderLineStatus.CREATED,
       label: 'CREATED',
+      responsible: 'TSL_SALE',
       tone: 'indigo',
       Icon: Send
     },
     {
       status: OrderLineStatus.APPROVED,
       label: 'CONFIRMED',
+      responsible: 'TSL_CS',
       tone: 'violet',
       Icon: BadgeCheck
     },
     {
       status: OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO,
       label: 'WAIT SALE APPROVE PO',
+      responsible: 'UEC_SALE',
       tone: 'orange',
       Icon: FileText
     },
     {
       status: OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO,
       label: 'WAIT MGR APPROVE PO',
+      responsible: 'UEC_MANAGER',
       tone: 'purple',
       Icon: BadgeCheck
     },
     {
       status: OrderLineStatus.VESSEL_SCHEDULED,
-      label: 'VESSEL SCHEDULED',
+      label: 'WAIT VESSEL DEPARTURE',
+      responsible: 'TSL_CS',
       tone: 'sky',
       Icon: CalendarCheck
     },
     {
       status: OrderLineStatus.VESSEL_DEPARTED,
       label: 'DEPARTED',
+      responsible: 'TSL_CS',
       tone: 'emerald',
       Icon: Ship
     }
@@ -169,6 +176,9 @@ export const Dashboard: React.FC = () => {
                 <p className="ui-kicker text-slate-500">{stat.label}</p>
                 <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-2">
                   {stat.value}
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 font-medium tracking-wide">
+                  {stat.responsible}
                 </p>
               </div>
               <span

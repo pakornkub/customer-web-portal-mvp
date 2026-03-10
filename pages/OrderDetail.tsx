@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -213,7 +213,7 @@ export const OrderDetail: React.FC = () => {
     {
       status: OrderLineStatus.DRAFT,
       label: 'DRAFT',
-      owner: 'TRADER',
+      owner: getTimelineOwner(OrderLineStatus.DRAFT, UserGroup.TRADER),
       icon: FileEdit as LucideIcon
     },
     {
@@ -225,7 +225,7 @@ export const OrderDetail: React.FC = () => {
     {
       status: OrderLineStatus.APPROVED,
       label: 'CONFIRMED',
-      owner: getTimelineOwner(OrderLineStatus.APPROVED, UserGroup.SALE),
+      owner: getTimelineOwner(OrderLineStatus.APPROVED, UserGroup.TSL_SALE),
       icon: BadgeCheck as LucideIcon
     },
     {
@@ -233,7 +233,7 @@ export const OrderDetail: React.FC = () => {
       label: 'WAIT SALE APPROVE PO',
       owner: getTimelineOwner(
         OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO,
-        UserGroup.SALE
+        UserGroup.UEC_SALE
       ),
       icon: FileText as LucideIcon
     },
@@ -242,20 +242,26 @@ export const OrderDetail: React.FC = () => {
       label: 'WAIT MGR APPROVE PO',
       owner: getTimelineOwner(
         OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO,
-        UserGroup.SALE_MANAGER
+        UserGroup.UEC_MANAGER
       ),
       icon: BadgeCheck as LucideIcon
     },
     {
       status: OrderLineStatus.VESSEL_SCHEDULED,
-      label: 'VESSEL SCHEDULED',
-      owner: getTimelineOwner(OrderLineStatus.VESSEL_SCHEDULED, UserGroup.CS),
+      label: 'WAIT VESSEL DEPARTURE',
+      owner: getTimelineOwner(
+        OrderLineStatus.VESSEL_SCHEDULED,
+        UserGroup.TSL_CS
+      ),
       icon: CalendarCheck as LucideIcon
     },
     {
       status: OrderLineStatus.VESSEL_DEPARTED,
       label: 'DEPARTED',
-      owner: getTimelineOwner(OrderLineStatus.VESSEL_DEPARTED, UserGroup.CS),
+      owner: getTimelineOwner(
+        OrderLineStatus.VESSEL_DEPARTED,
+        UserGroup.TSL_CS
+      ),
       icon: Ship as LucideIcon
     }
   ];

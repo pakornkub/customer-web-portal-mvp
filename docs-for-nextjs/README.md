@@ -47,12 +47,12 @@ Each order line independently progresses through a **7-step workflow**:
 
 ```
 DRAFT
-  └─[SUBMIT_LINE: TRADER / UBE / SALE]──▶ CREATED
-       └─[APPROVE_LINE: SALE + price input]──▶ APPROVED
-            └─[SET_ETD: CS] + Gen PO PDF + SI PDF──▶ WAIT_SALE_UEC_APPROVE_PO
-                 └─[APPROVE_SALE_PO: SALE] review PDF + confirm──▶ WAIT_MGR_UEC_APPROVE_PO
-                      └─[APPROVE_MGR_PO: SALE_MANAGER]──▶ VESSEL_SCHEDULED
-                           └─[UPLOAD_FINAL_DOCS: CS]──▶ VESSEL_DEPARTED
+  └─[SUBMIT_LINE: TRADER / UEC_SALE / TSL_SALE]──▶ CREATED
+       └─[APPROVE_LINE: TSL_SALE + price input]──▶ APPROVED
+            └─[SET_ETD: TSL_CS] + Gen PO PDF + SI PDF──▶ WAIT_SALE_UEC_APPROVE_PO
+                 └─[APPROVE_SALE_PO: UEC_SALE] review PDF + confirm──▶ WAIT_MGR_UEC_APPROVE_PO
+                      └─[APPROVE_MGR_PO: UEC_MANAGER]──▶ VESSEL_SCHEDULED
+                           └─[UPLOAD_FINAL_DOCS: TSL_CS]──▶ VESSEL_DEPARTED
 ```
 
 ### Pages
