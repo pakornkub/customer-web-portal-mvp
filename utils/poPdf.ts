@@ -312,14 +312,18 @@ export const createOfficialPoPdfDataUrl = (input: PoPdfInput) => {
   drawLine(pbLeft, 252, pbRight, 252, 0.85);
   drawLine(pbLeft, 234, pbRight, 234, 0.85);
 
+  const discountRate = 0.04;
+  const discountAmount = unitPrice * discountRate;
+  const contractAfterDiscount = unitPrice - discountAmount;
+
   drawText(44, 257, 'CONTRACT PRICE', 10.5);
   drawText(174, 257, 'CIF base US$ / MT', 10.5);
-  drawTextRight(pbRight - 4, 257, formatNumber(unitPrice + 59.8), 10.5);
+  drawTextRight(pbRight - 4, 257, formatNumber(unitPrice), 10.5);
   drawText(44, 239, 'DISCOUNT', 10.5);
   drawText(174, 239, '4% on CIF VALUE', 10.5);
-  drawTextRight(pbRight - 4, 239, '59.80', 10.5);
+  drawTextRight(pbRight - 4, 239, formatNumber(discountAmount), 10.5);
   drawText(44, 221, '(A) CONTRACT -DISCOUNT', 10.5);
-  drawTextRight(pbRight - 4, 221, formatNumber(unitPrice), 10.5);
+  drawTextRight(pbRight - 4, 221, formatNumber(contractAfterDiscount), 10.5);
 
   drawText(42, 200, 'PLEASE SIGN AND RETURN CONFIRMATION', 11);
   drawText(42, 160, 'Issued by :', 11);

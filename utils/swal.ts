@@ -7,7 +7,8 @@ const getThemedSwal = () => {
   return SwalLib.mixin({
     background: dark ? '#0f172a' : '#ffffff',
     color: dark ? '#e2e8f0' : '#0f172a',
-    backdrop: dark ? 'rgba(15, 23, 42, 0.75)' : 'rgba(15, 23, 42, 0.3)'
+    backdrop: dark ? 'rgba(15, 23, 42, 0.75)' : 'rgba(15, 23, 42, 0.3)',
+    customClass: { container: 'swal-on-top' }
   });
 };
 

@@ -78,15 +78,18 @@ const deriveRoleFromGroup = (group: UserGroup): Role => {
 };
 
 type UserEditDraft = {
+  username: string;
   userGroup: UserGroup;
   companyId: string;
   canCreateOrder: boolean;
   shipToAccess: ShipToAccess;
   allowedShipToIds: string[];
   allowedDocumentTypes: DocumentType[];
+  usernameError?: string;
 };
 
 const createDraftFromUser = (user: User): UserEditDraft => ({
+  username: user.username,
   userGroup: user.userGroup,
   companyId: user.companyId,
   canCreateOrder: user.canCreateOrder,
@@ -96,6 +99,7 @@ const createDraftFromUser = (user: User): UserEditDraft => ({
 });
 
 const isUserDraftDirty = (user: User, draft: UserEditDraft) =>
+  user.username !== draft.username ||
   user.userGroup !== draft.userGroup ||
   user.companyId !== draft.companyId ||
   user.canCreateOrder !== draft.canCreateOrder ||
@@ -563,6 +567,30 @@ export const Admin: React.FC = () => {
   };
 
   const handleSaveUserEdit = (user: User, draft: UserEditDraft) => {
+    if (!draft.username.trim()) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Username required',
+        text: 'Please enter a username'
+      });
+      return;
+    }
+
+    if (
+      users.some(
+        (u) =>
+          u.id !== user.id &&
+          u.username.toLowerCase() === draft.username.trim().toLowerCase()
+      )
+    ) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Username already exists',
+        text: 'Please use another username'
+      });
+      return;
+    }
+
     if (
       draft.shipToAccess === 'SELECTED' &&
       draft.allowedShipToIds.length === 0
@@ -576,6 +604,7 @@ export const Admin: React.FC = () => {
     }
 
     updateUser(user.id, {
+      username: draft.username.trim(),
       userGroup: draft.userGroup,
       role: deriveRoleFromGroup(draft.userGroup),
       companyId: draft.companyId,
@@ -789,10 +818,36 @@ export const Admin: React.FC = () => {
                 <div className="space-y-1">
                   <label className="ui-form-label">Username</label>
                   <input
-                    value={editingUser.username}
-                    disabled
-                    className="shadcn-input h-10 text-sm w-full bg-slate-100 dark:bg-slate-800"
+                    value={editingDraft.username}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const duplicate = users.some(
+                        (u) =>
+                          u.id !== editingUser.id &&
+                          u.username.toLowerCase() === val.trim().toLowerCase()
+                      );
+                      updateDraftForUser(editingUser, (current) => ({
+                        ...current,
+                        username: val,
+                        usernameError: !val.trim()
+                          ? 'Username is required'
+                          : duplicate
+                            ? 'Username already exists'
+                            : undefined
+                      }));
+                    }}
+                    className={`shadcn-input h-10 text-sm w-full ${
+                      editingDraft.usernameError
+                        ? 'border-rose-400 focus:ring-rose-300'
+                        : ''
+                    }`}
+                    placeholder="Username"
                   />
+                  {editingDraft.usernameError && (
+                    <p className="ui-form-error">
+                      {editingDraft.usernameError}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1">

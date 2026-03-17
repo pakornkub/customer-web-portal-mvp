@@ -148,6 +148,7 @@ interface AppState {
   applyLinePermissionPreset: (preset: 'STANDARD' | 'STRICT') => void;
   runScheduledChecks: () => void;
   resetStore: () => void;
+  clearTransactionalData: () => void;
 }
 
 export const createStandardLinePermissionMatrix =
@@ -452,7 +453,7 @@ const INITIAL_SHIP_TO_MAPPINGS: ShipToRecord[] = [
     id: 'SHIP-HANKOOK-INDONESIA',
     name: 'PT. HANKOOK TIRE INDONESIA',
     groupSaleType: GroupSaleType.OVERSEAS,
-    destinationIds: ['DEST-JAKARTA']
+    destinationIds: ['DEST-JAKARTA', 'DEST-SEMARANG']
   },
   {
     id: 'SHIP-HANKOOK-KOREA',
@@ -524,7 +525,7 @@ const INITIAL_SHIP_TO_MAPPINGS: ShipToRecord[] = [
     id: 'SHIP-MAXXIS-CHINA',
     name: 'CHENG SHIN RUBBER IND. CO., LTD.',
     groupSaleType: GroupSaleType.OVERSEAS,
-    destinationIds: ['DEST-XIAMEN']
+    destinationIds: ['DEST-XIAMEN', 'DEST-TAICHUNG']
   },
   {
     id: 'SHIP-MAXXIS-INDIA',
@@ -866,7 +867,7 @@ const INITIAL_SHIP_TO_MAPPINGS: ShipToRecord[] = [
     id: 'SHIP-ZC-RUBBER',
     name: 'ZHONGCE RUBBER GROUP CO., LTD.',
     groupSaleType: GroupSaleType.OVERSEAS,
-    destinationIds: ['DEST-SHANGHAI', 'DEST-HANGZHOU']
+    destinationIds: ['DEST-SHANGHAI', 'DEST-HANGZHOU', 'DEST-NINGBO']
   },
   {
     id: 'SHIP-BRIDGESTONE-THAILAND',
@@ -1049,12 +1050,6 @@ const INITIAL_SHIP_TO_MAPPINGS: ShipToRecord[] = [
     destinationIds: ['DEST-PARANAGUA']
   },
   {
-    id: 'SHIP-PT-HANKOOK',
-    name: 'PT. HANKOOK TIRE INDONESIA',
-    groupSaleType: GroupSaleType.OVERSEAS,
-    destinationIds: ['DEST-SEMARANG']
-  },
-  {
     id: 'SHIP-REKORD-CZECH',
     name: 'CONTINENTAL BARUM S.R.O.',
     groupSaleType: GroupSaleType.OVERSEAS,
@@ -1173,6 +1168,1017 @@ const INITIAL_SHIP_TO_MAPPINGS: ShipToRecord[] = [
     name: 'VONIN POLYMER INDUSTRIES PVT. LTD.',
     groupSaleType: GroupSaleType.OVERSEAS,
     destinationIds: ['DEST-NHAVA-SHEVA']
+  },
+  // --- Entries added from reconciliation against official ShipTo master list ---
+  {
+    id: 'SHIP-ALL-WELLS-INTL',
+    name: 'ALL WELLS INTERNATIONAL CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-ALPHA-POLYMER-DONGHAI',
+    name: 'ALPHA-POLYMER CO., LTD. C/O DONG NAI PORT BONDED WAREHOUSE',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-ALPHA-POLYMER-WHALESHIP',
+    name: 'ALPHA-POLYMER CO.,LTD C/O WHALESHIP LOGISTICS LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAICHUNG']
+  },
+  {
+    id: 'SHIP-ANNORA-VIETNAM',
+    name: 'ANNORA VIETNAM FOOTWEAR LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-AURORA-VIETNAM',
+    name: 'AURORA VIETNAM INDUSTRIAL FOOTWEAR CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-BOEHLE-CHEMICALS',
+    name: 'BOEHLE CHEMICALS',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CALUMET-CITY']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-TIANJIN',
+    name: 'BRIDGESTONE (TIANJIN) TIRE CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-BEIJING-AIRPORT']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-WUXI',
+    name: 'BRIDGESTONE (WUXI) TIRE CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-CORP',
+    name: 'Bridgestone Corporation',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TOKYO']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-MEXICO',
+    name: 'BRIDGESTONE DE MEXICO, S.A. DE C.V.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MANZANILLO']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-BRASIL',
+    name: 'BRIDGESTONE DO BRASIL',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SANTOS']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-FIRESTONE-WILSON',
+    name: 'BRIDGESTONE FIRESTONE NT WILSON PLANT',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-WILSON']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-POZNAN',
+    name: 'BRIDGESTONE POZNAN SP/ZO.O.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-GDYNIA']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-SA',
+    name: 'BRIDGESTONE SA (PTY) LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-PORT-ELIZABETH']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-TAIWAN',
+    name: 'BRIDGESTONE TAIWAN CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KEELUNG']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-TATABANYA',
+    name: 'BRIDGESTONE TATABANYA MANUFACTURING LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAMBURG']
+  },
+  {
+    id: 'SHIP-BRIDGESTONE-VIETNAM',
+    name: 'BRIDGESTONE VIETNAM',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-BRISA-TURKEY',
+    name: 'BRISA BRIDGESTONE SABANCI LASTIK SANAYI VE TICARET A.S.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-GEBZE']
+  },
+  {
+    id: 'SHIP-CEAT-KELANI',
+    name: 'CEAT KELANI INTERNATIONAL TYRES PVT LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-COLOMBO']
+  },
+  {
+    id: 'SHIP-CEAT-CHENNAI',
+    name: 'CEAT LIMITED CHENNAI',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHENNAI']
+  },
+  {
+    id: 'SHIP-CHENGSHIN-TAIWAN',
+    name: 'CHENGSHIN RUBBER TAIWAN',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAICHUNG']
+  },
+  {
+    id: 'SHIP-CHENG-SHIN-TIRE-SHANGHAI',
+    name: 'CHENG SHIN TIRE & RUBBER (CHINA) CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-CHENG-SHIN-CHONGQING',
+    name: 'CHENG SHIN TIRE & RUBBER (CHONGQING) CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHONGQING']
+  },
+  {
+    id: 'SHIP-CHENG-SHIN-TIRE-XIAMEN',
+    name: 'CHENG SHIN TIRE (XIAMEN) CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-CHINH-DUONG',
+    name: 'CHINH DUONG ONE MEMBER CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-CHUN-XIANG-RUBBER',
+    name: 'CHUN XIANG RUBBER PLASTIC PRODUCT CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-CONG-TY-ANTHAI',
+    name: 'CONG TY TNHH CONG NGHE CAO SU ANTHAI VIETNAM',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-CREATIVE-SOURCE-VN',
+    name: 'CONG TY TNHH CREATIVE SOURCE VIET NAM',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-VIET-SIEU',
+    name: 'CONG TY TNHH SX TM VIET SIEU',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-STOECKEN',
+    name: 'CONTINENTAL AG STOECKEN',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HANNOVER', 'DEST-KOPER']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-AACHEN',
+    name: 'CONTINENTAL AG WERK AACHEN',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-AACHEN']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-AUTO-ROMANIA',
+    name: 'Continental Automotive Products S.R.L.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TIMISOARA']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-FRANCE',
+    name: 'CONTINENTAL FRANCE SAS',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SARREGUEMINES']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-INDIA-PRIVATE',
+    name: 'CONTINENTAL INDIA PRIVATE LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NHAVA-SHEVA']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-KORBACH',
+    name: 'CONTINENTAL KORBACH',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KORBACH']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-MABOR',
+    name: 'Continental Mabor Industria de Pneus, S.A.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-LOUSADO']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-TIRE-AMERICAS',
+    name: 'CONTINENTAL TIRE THE AMERICAS, LLC',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MT-VERNON']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-TIRES-CHINA',
+    name: 'CONTINENTAL TIRES (CHINA) CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-TIRES-SLOVAKIA',
+    name: 'CONTINENTAL TIRES SLOVAKIA, S.R.O.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KOPER', 'DEST-PUCHOV']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-TYRE-MALAYSIA',
+    name: 'CONTINENTAL TYRE AS MALAYSIA SDN. BHD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ALOR-SETAR']
+  },
+  {
+    id: 'SHIP-CONTINENTAL-TYRE-SA',
+    name: 'CONTINENTAL TYRE SOUTH AFRICA PTY LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-PORT-ELIZABETH']
+  },
+  {
+    id: 'SHIP-COOPER-SERBIA',
+    name: 'COOPER TIRE AND RUBBER COMPANY SERBIA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KRUSEVAC']
+  },
+  {
+    id: 'SHIP-COOPER-KUNSHAN',
+    name: 'COOPER(KUNSHAN)TIRE CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-DONA-PACIFIC-VN',
+    name: 'DONA PACIFIC (VIETNAM) CO.,LTD/FT',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-DONA-VICTOR',
+    name: 'DONA VICTOR FOOTWEAR COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-DONGGUAN-CHUNXIANG',
+    name: 'Dongguan Chunxiang Rubber and Plastic Product Co., Ltd.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHATIAN']
+  },
+  {
+    id: 'SHIP-DONGGUAN-YUECHUAN',
+    name: 'DONGGUAN CITY YUECHUAN CHEMICAL CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHATIAN']
+  },
+  {
+    id: 'SHIP-DONGGUAN-GLUN',
+    name: 'DONGGUAN G-LUN RUBBER & PLASTIC CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: [
+      'DEST-HUANGPU',
+      'DEST-SHATIAN',
+      'DEST-TAIPING',
+      'DEST-YANTIAN',
+      'DEST-JIAOXIN'
+    ]
+  },
+  {
+    id: 'SHIP-DONGGUAN-HERRY',
+    name: 'DONGGUAN HERRY PLASTIC AND RUBBER TECHNOLOGY CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHATIAN']
+  },
+  {
+    id: 'SHIP-DONGGUAN-JIAYUE',
+    name: 'DONGGUAN JIAYUE RUBBER AND PLASTIC MATERIAL TECHNOLOGY CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAIPING']
+  },
+  {
+    id: 'SHIP-DONGGUAN-LAAYOUNE',
+    name: 'DONGGUAN LAAYOUNE CHEMICAL CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HUANGPU', 'DEST-TAIPING', 'DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-DONGGUAN-QIHANG',
+    name: 'Dongguan Qihang Rubber & Plastic Co.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHATIAN']
+  },
+  {
+    id: 'SHIP-DONGGUAN-SUN-KIU',
+    name: 'DONGGUAN SUN KIU SHOES CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAIPING']
+  },
+  {
+    id: 'SHIP-DONGGUAN-YINGFENG',
+    name: 'DONGGUAN YINGFENG RUBBER CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAIPING']
+  },
+  {
+    id: 'SHIP-DONGGUAN-YINGTAI',
+    name: 'DONGGUAN YINGTAI COMMERCE CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAIPING', 'DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-DOUBLESTAR-DONGFENG',
+    name: 'DOUBLESTAR DONGFENG TYRE CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-DUONG-PHAT',
+    name: 'DUONG PHAT IMPORT AND EXPORT SERVICES TRADING COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-EAST-WIND-FOOTWEAR',
+    name: 'EAST WIND FOOTWEAR COMPANY LIMITED (INDIA)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHENNAI', 'DEST-KATTUPALLI']
+  },
+  {
+    id: 'SHIP-ETERNAL-PROWESS',
+    name: 'ETERNAL PROWESS',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-EVER-POWER',
+    name: 'EVER POWER INTERNATIONAL CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SIHANOUKVILLE']
+  },
+  {
+    id: 'SHIP-FAIRWAY-ENTERPRISES',
+    name: 'FAIRWAY ENTERPRISES COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHENNAI', 'DEST-KATTUPALLI']
+  },
+  {
+    id: 'SHIP-FEET-BIT',
+    name: 'FEET BIT INTERNATIONAL COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HONG-KONG']
+  },
+  {
+    id: 'SHIP-FUJIAN-LIFENG',
+    name: 'FUJIAN LIFENG FOOTWEAR INDUSTRIAL DEVELOPMENT CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MAWEI-FUZHOU', 'DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-FUJIAN-SANFENG',
+    name: 'FUJIAN SAN FENG FOOTWEAR CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MAWEI-FUZHOU', 'DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-FUJIAN-XIEFENG',
+    name: 'FUJIAN XIEFENG FOOTWEAR CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MAWEI-FUZHOU', 'DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-GEE-HORN',
+    name: 'GEE HORN INTERNATIONAL CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KEELUNG']
+  },
+  {
+    id: 'SHIP-GEM-TREADS',
+    name: 'GEM TREADS PRIVATE LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-COCHIN']
+  },
+  {
+    id: 'SHIP-GEMCO-RUBBER',
+    name: 'GEMCO RUBBER PRIVATE LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-COCHIN']
+  },
+  {
+    id: 'SHIP-GOODYEAR-DALIAN',
+    name: 'GOODYEAR DALIAN TIRE CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-DALIAN', 'DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-GOODYEAR-BRASIL',
+    name: 'GOODYEAR DO BRASIL PRODUTOS DE BORRACHA LTDA.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SANTOS']
+  },
+  {
+    id: 'SHIP-GOODYEAR-DUNLOP-SAVA',
+    name: 'GOODYEAR DUNLOP SAVA TIRES',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KRANJ']
+  },
+  {
+    id: 'SHIP-GOODYEAR-DUNLOP-AMIENS',
+    name: 'GOODYEAR DUNLOP TIRES AMIENS SUD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-AMIENS']
+  },
+  {
+    id: 'SHIP-GOODYEAR-DUNLOP-GERMANY',
+    name: 'GOODYEAR DUNLOP TIRES GERMANY',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-FRANKFURT', 'DEST-FURSTENWALDE', 'DEST-HAMBURG']
+  },
+  {
+    id: 'SHIP-GOODYEAR-DUNLOP-GERMANY-GMBH',
+    name: 'GOODYEAR DUNLOP TIRES GERMANY GMBH',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-FRANKFURT', 'DEST-HAMBURG', 'DEST-HANAU']
+  },
+  {
+    id: 'SHIP-GOODYEAR-DUNLOP-OPS',
+    name: 'GOODYEAR DUNLOP TIRES OPERATIONS s.a.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-BERVEREN']
+  },
+  {
+    id: 'SHIP-GOODYEAR-FULDA',
+    name: 'GOODYEAR FULDA TIRES GERMANY',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-FRANKFURT', 'DEST-FULDA']
+  },
+  {
+    id: 'SHIP-GOODYEAR-LASTIKLERI',
+    name: 'GOODYEAR LASTIKLERI T.A.S. GYTURKEY',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-GEMLIK']
+  },
+  {
+    id: 'SHIP-GOODYEAR-SERBIA',
+    name: 'Goodyear Serbia, d. o. o.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KRUSEVAC']
+  },
+  {
+    id: 'SHIP-GOODYEAR-TIRE-RUBBER',
+    name: 'GOODYEAR TIRE AND RUBBER COMPANY',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-DALLAS', 'DEST-LAWTON']
+  },
+  {
+    id: 'SHIP-GRAND-GAIN-FOOTWEAR',
+    name: 'GRAND GAIN FOOTWEAR MANUFACTURING CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-GUANGZHOU-ZHANGMOSHI',
+    name: 'GUANGZHOU ZHANGMOSHI INTERNATIONAL TRADING CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HUANGPU']
+  },
+  {
+    id: 'SHIP-GUORONG-QINGYUAN',
+    name: 'GUORONG (QINGYUAN) RUBBER INDUSTRY CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HUANGPU', 'DEST-QINGYUAN']
+  },
+  {
+    id: 'SHIP-HAIAN-RUBBER',
+    name: 'HAIAN RUBBER GROUP CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-HANSUK-INTL',
+    name: 'HANSUK INTERNATIONAL LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-BUSAN']
+  },
+  {
+    id: 'SHIP-HENGDASHENG-TOYO',
+    name: 'HENGDASHENG TOYO TIRE (ZHANGJIAGANG) CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ZHANGJIAGANG']
+  },
+  {
+    id: 'SHIP-HOA-THANH',
+    name: 'HOA THANH COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-HUA-SHEN-VN',
+    name: 'HUA SHEN VIETNAM COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-HWASEUNG-RACH-GIA',
+    name: 'HWASEUNG RACH GIA COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-JINAN-ZHONGTIAN',
+    name: 'Jinan Zhongtian New Materials Co., Ltd.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-JIUCHENG-VN',
+    name: 'JIUCHENG INDUSTRIAL (VN) LIMITED COMPANY',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-KASAN-MALAYSIA',
+    name: 'KASAN CORPORATION (MALAYSIA) SDN BHD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KUALA-LUMPUR']
+  },
+  {
+    id: 'SHIP-KENDA-CHINA',
+    name: 'KENDA RUBBER (CHINA) CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-KENDA-INDONESIA',
+    name: 'KENDA RUBBER (INDONESIA)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-KENDA-TIANJIN',
+    name: 'KENDA RUBBER (TIANJIN) CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TIANJIN']
+  },
+  {
+    id: 'SHIP-KENDA-VIETNAM',
+    name: 'KENDA RUBBER (VIETNAM) CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-LAAYOUNE-INDUSTRIAL',
+    name: 'LAAYOUNE INDUSTRIAL CO.,LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TAIPING']
+  },
+  {
+    id: 'SHIP-LAC-TY-II',
+    name: 'LAC TY II COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-LOTUS-FOOTWEAR',
+    name: 'LOTUS FOOTWEAR ENTERPRISES',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHENNAI', 'DEST-KATTUPALLI']
+  },
+  {
+    id: 'SHIP-MFP-MICHELIN',
+    name: 'M.F.P. Michelin P/C Simastock',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-LE-HAVRE']
+  },
+  {
+    id: 'SHIP-MFP-MICHELIN-THIANT',
+    name: 'M.F.P. Michelin P/C Simastock Thiant',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-LE-HAVRE']
+  },
+  {
+    id: 'SHIP-MAXXIS-RUBBER-INDIA',
+    name: 'MAXXIS RUBBER INDIA PRIVATE LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ICD-SANAND']
+  },
+  {
+    id: 'SHIP-MICHELIN-HOMBURG',
+    name: 'MICHELIN HOMBURG. (HBG)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ROTTERDAM']
+  },
+  {
+    id: 'SHIP-MICHELIN-POLAND',
+    name: 'MICHELIN POLAND (OLS)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-WARSAW-AIRPORT']
+  },
+  {
+    id: 'SHIP-MICHELIN-SHENYANG',
+    name: 'MICHELIN SHENYANG TIRE CO.(SHY)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-DALIAN']
+  },
+  {
+    id: 'SHIP-MRF-TYRE',
+    name: 'MRF TYRE',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHENNAI', 'DEST-KATTUPALLI']
+  },
+  {
+    id: 'SHIP-NANKANG-RUBBER',
+    name: 'NANKANG RUBBER TIRE',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-ZHANGJIAGANG']
+  },
+  {
+    id: 'SHIP-NANKANG-KEELUNG',
+    name: 'NANKANG RUBBER TIRE CORP., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-KEELUNG']
+  },
+  {
+    id: 'SHIP-NGU-HAN',
+    name: 'NGU HAN TRANSPORT SERVICE CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-NINH-BINH-VN',
+    name: 'NINH BINH -VIETNAM CHUNG JYE SHOES MANUFA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-PT-BRIDGESTONE',
+    name: 'P.T. BRIDGESTONE TIRE INDONESIA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-PHOENIX-COMPOUNDING',
+    name: 'PHOENIX COMPOUNDING TECHNOLOGY',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAMBURG', 'DEST-WALTERSHAUSEN']
+  },
+  {
+    id: 'SHIP-PIRELLI-DEUTSCHLAND',
+    name: 'PIRELLI DEUTSCHLAND GMBH',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-OBERNBURG']
+  },
+  {
+    id: 'SHIP-PIRELLI-MEXICO',
+    name: 'Pirelli Neumaticos S.A. de C.V.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MANZANILLO']
+  },
+  {
+    id: 'SHIP-PT-ALNU',
+    name: 'PT. ALNU SPORTING GOODS INDONESIA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SEMARANG']
+  },
+  {
+    id: 'SHIP-PT-BOOSAN',
+    name: 'PT. BOOSAN SARANG',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-PT-KUM-KANG',
+    name: 'PT. KUM KANG TECH INDONESIA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-PT-SEONGSAN',
+    name: 'PT. SEONGSAN INTERNATIONAL',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-PT-HWA-SEUNG',
+    name: 'PT.HWA SEUNG INDONESIA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JAKARTA']
+  },
+  {
+    id: 'SHIP-QINGDAO-FUHUA',
+    name: 'QINGDAO FREE TRADE ZONE FUHUA INTERNATIONAL TRADING CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: [
+      'DEST-HUANGPU',
+      'DEST-HUMEN',
+      'DEST-NANSHA',
+      'DEST-QINGDAO',
+      'DEST-SHANGHAI',
+      'DEST-TAIPING',
+      'DEST-XIAMEN'
+    ]
+  },
+  {
+    id: 'SHIP-QINGDAO-GERUIDА',
+    name: 'Qingdao Ge Rui Da Rubber Co., Ltd',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-QINGDAO-HUAWU',
+    name: 'QINGDAO HUAWU RUBBER & PLASTIC CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-QINGDAO-RONGYUE',
+    name: 'Qingdao Rongyue Import And Export Co., Ltd.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-QINGDAO-YUEYOU',
+    name: 'QINGDAO YUEYOU INTERNATIONAL TRADE CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-RDC-ITALY',
+    name: 'RDC Srl',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-GENOA']
+  },
+  {
+    id: 'SHIP-ROLL-SPORT-VN',
+    name: 'ROLL SPORT VIETNAM FOOTWEAR LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-RUBBER-MIX-CHILE',
+    name: 'RUBBER MIX S.A.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SAN-ANTONIO-CHILE']
+  },
+  {
+    id: 'SHIP-SPA-MICHELIN-ITALIANA',
+    name: 'S.P.A. MICHELIN ITALIANA (CNO)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-GENOA']
+  },
+  {
+    id: 'SHIP-SAILUN-VIETNAM',
+    name: 'SAILUN (VIETNAM) CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-SAMIL-TONG-SANG',
+    name: 'SAMIL TONG SANG VINA CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-SANTEC-TRADING',
+    name: 'SANTEC TRADING AGENCY',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CHATTOGRAM']
+  },
+  {
+    id: 'SHIP-SHANDONG-DURATTI',
+    name: 'Shandong Duratti Rubber Co., Ltd.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-QINGDAO']
+  },
+  {
+    id: 'SHIP-SHANGHAI-MICHELIN',
+    name: 'SHANGHAI MICHELIN TIRE CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-SHINIMEX-II',
+    name: 'SHINIMEX II CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-SHYANG-TA',
+    name: 'SHYANG TA CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-SINTEX-CHEMICAL',
+    name: 'SINTEX CHEMICAL CORP. C/O ICD TAN CANG-LONG BINH JOINT STOCK BONDED WAREHOUSE',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-SUCCESS-PROSPERITY',
+    name: 'SUCCESS PROSPERITY SHOE MATERIAL COMPANY',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-SUMITOMO-CHANGSHU',
+    name: 'SUMITOMO RUBBER (CHANGSHU) CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-SUMITOMO-HUNAN',
+    name: 'SUMITOMO RUBBER (HUNAN) CO. LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-SUMITOMO-BRASIL',
+    name: 'SUMITOMO RUBBER DO BRASIL LTDA.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-PARANAGUA']
+  },
+  {
+    id: 'SHIP-SUZHOU-YOKOHAMA',
+    name: 'SUZHOU YOKOHAMA TIRE CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHANGHAI']
+  },
+  {
+    id: 'SHIP-TAN-HOA-THANH',
+    name: 'TAN HOA THANH COMMERCIAL PRODUCTION CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-TAN-THANH-HOA-LONG-AN',
+    name: 'TAN THANH HOA LONG AN TRADING AND MANUFACTURING CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-THE-INHERITANCE-CAMBODIA',
+    name: 'THE INHERITANCE (CAMBODIA) CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SIHANOUKVILLE']
+  },
+  {
+    id: 'SHIP-THIEN-VINH',
+    name: 'THIEN VINH INTERNATIONAL CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-THUAN-ICH',
+    name: 'THUAN ICH SHOES MATERIAL COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-TIRE-COMPANY-DEBICA',
+    name: 'TIRE COMPANY DEBICA S.A.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-DEBICA']
+  },
+  {
+    id: 'SHIP-TITAN-RUBBER-MANILA',
+    name: 'Titan rubber Industrial Mfg Corporation',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MANILA']
+  },
+  {
+    id: 'SHIP-TORTUGA-BRASIL',
+    name: 'TORTUGA PRODUTOS DE BORRACHA LTDA',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-PARANAGUA']
+  },
+  {
+    id: 'SHIP-TOYO-TIRE-NA',
+    name: 'TOYO TIRE NORTH AMERICA MANUFACTURING INC.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CRANDALL', 'DEST-SAVANNAH', 'DEST-WHITE']
+  },
+  {
+    id: 'SHIP-TVS-SRICHAKRA',
+    name: 'TVS SRICHAKRA LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TUTICORIN']
+  },
+  {
+    id: 'SHIP-UBE-ELASTOMER',
+    name: 'UBE Elastomer Co. Ltd.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-TOKYO']
+  },
+  {
+    id: 'SHIP-UBE-MEXICO',
+    name: 'UBE MEXICO S. de R.L. de C.V.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-MANZANILLO']
+  },
+  {
+    id: 'SHIP-USINE-MICHELIN-CHOLET',
+    name: 'USINE MICHELIN DE CHOLET (CHO)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-LE-HAVRE']
+  },
+  {
+    id: 'SHIP-VICTORY-SPORTS-DG',
+    name: 'VICTORY SPORTS GOODS CO.,LTD.(DONGGUAN)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-SHATIAN']
+  },
+  {
+    id: 'SHIP-VIET-NAM-VICTORY-SPORTS',
+    name: 'VIET NAM VICTORY SPORTS TECHNOLOGY COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-VIETNAM-DONA-STANDARD',
+    name: 'VIETNAM DONA STANDARD FOOTWEAR CO., LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-VIETNAM-NAM-HA',
+    name: 'VIETNAM NAM HA FOOTWEAR COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-VINH-LONG-FOOTWEAR',
+    name: 'VINH LONG FOOTWEAR CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-WEILINA-VN',
+    name: 'WEILINA VIET NAM FOOTWEAR COMPANY LIMITED',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HAIPHONG']
+  },
+  {
+    id: 'SHIP-WELLOFF-SHANGHAI',
+    name: 'WELLOFF INTERNATIONAL TRADING (SHANGHAI) CO.,LTD.',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-XIAMEN-HUAHE',
+    name: 'XIAMEN HUAHE IMPORT AND EXPORT CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-JIAOXIN']
+  },
+  {
+    id: 'SHIP-XIAMEN-KUOCHENG',
+    name: 'XIAMEN KUOCHENG RUBBER CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NINGBO', 'DEST-SHATIAN', 'DEST-XIAMEN']
+  },
+  {
+    id: 'SHIP-YOKOHAMA-TIRE-MFG',
+    name: 'YOKOHAMA TIRE MANUFACTURING',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-NEW-ORLEANS', 'DEST-WEST-POINT']
+  },
+  {
+    id: 'SHIP-YOKOHAMA-TYRE-VIETNAM',
+    name: 'YOKOHAMA TYRE VIETNAM INC. (YTVI)',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-VSIP']
+  },
+  {
+    id: 'SHIP-YU-QING',
+    name: 'YU QING ENTERPRISE CO.,LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-CAT-LAI-HCM']
+  },
+  {
+    id: 'SHIP-Z-AND-W-RUBBER',
+    name: 'Z AND W RUBBER CO., LTD',
+    groupSaleType: GroupSaleType.OVERSEAS,
+    destinationIds: ['DEST-HUANGPU']
   }
 ];
 
@@ -1367,7 +2373,9 @@ const INITIAL_MASTER: MasterDataState = {
     { id: 'DEST-BUDAPEST', name: 'Budapest, Hungary' },
     { id: 'DEST-VLADIVOSTOK', name: 'Vladivostok, Russia' },
     { id: 'DEST-SYDNEY', name: 'Sydney, Australia' },
-    { id: 'DEST-SOUTHAMPTON', name: 'Southampton, UK' }
+    { id: 'DEST-SOUTHAMPTON', name: 'Southampton, UK' },
+    { id: 'DEST-JIAOXIN', name: 'Jiaoxin, China' },
+    { id: 'DEST-BERVEREN', name: 'Beveren, Belgium' }
   ],
   terms: [
     { id: 'CFR', name: 'CFR' },
@@ -1717,6 +2725,16 @@ export const useStore = create<AppState>()(
 
       resetStore: () => {
         set(getInitialDataState());
+      },
+
+      clearTransactionalData: () => {
+        set({
+          currentUser: null,
+          orders: [],
+          integrationLogs: [],
+          notifications: [],
+          activities: []
+        });
       }
     }),
     {

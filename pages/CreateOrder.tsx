@@ -359,17 +359,21 @@ export const CreateOrder: React.FC = () => {
   );
 
   const [selectedLineIds, setSelectedLineIds] = useState<Set<string>>(
-    new Set()
+    () => new Set(selectableLineFieldIds)
   );
 
   useEffect(() => {
     setSelectedLineIds((prev) => {
-      const retained = new Set(
-        Array.from(prev).filter((lineId) =>
-          selectableLineFieldIds.includes(lineId)
-        )
-      );
-      return retained;
+      // Auto-select any newly added lines; preserve manual deselections for existing lines
+      const next = new Set(prev);
+      selectableLineFieldIds.forEach((id) => {
+        if (!next.has(id)) next.add(id);
+      });
+      // Remove IDs that are no longer selectable
+      Array.from(next).forEach((id) => {
+        if (!selectableLineFieldIds.includes(id)) next.delete(id);
+      });
+      return next;
     });
   }, [selectableLineFieldIds]);
 

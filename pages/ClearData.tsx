@@ -7,22 +7,29 @@ import { useStore } from '../store';
 export const ClearData: React.FC = () => {
   const navigate = useNavigate();
   const [clearing, setClearing] = useState(false);
-  const resetStore = useStore((state) => state.resetStore);
+  const clearTransactionalData = useStore(
+    (state) => state.clearTransactionalData
+  );
 
   const handleClearStorage = async () => {
     const result = await Swal.fire({
       icon: 'warning',
       title: 'Clear All Data?',
       html: `
-        <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
-          This will permanently delete all data from localStorage including:
+        <p class="text-sm text-slate-600 dark:text-slate-400 mb-3">
+          The following data will be permanently deleted:
         </p>
-        <ul class="text-left text-sm text-slate-600 dark:text-slate-400 space-y-1 mb-4">
+        <ul class="text-left text-sm text-rose-600 dark:text-rose-400 space-y-1 mb-3">
           <li>• All orders and documents</li>
-          <li>• Master data configurations</li>
-          <li>• User accounts (except defaults)</li>
           <li>• Activity logs and notifications</li>
           <li>• Integration logs</li>
+        </ul>
+        <p class="text-sm text-slate-600 dark:text-slate-400 mb-3">
+          The following data will <strong>NOT</strong> be affected:
+        </p>
+        <ul class="text-left text-sm text-emerald-600 dark:text-emerald-400 space-y-1 mb-4">
+          <li>• User accounts &amp; permissions</li>
+          <li>• Master data configurations</li>
         </ul>
         <p class="text-sm font-bold text-rose-600">This action cannot be undone!</p>
       `,
@@ -36,10 +43,9 @@ export const ClearData: React.FC = () => {
     if (result.isConfirmed) {
       setClearing(true);
 
-      // Clear persisted state and reset in-memory store
+      // Clear only transactional data — users and master data are preserved
       await new Promise((resolve) => setTimeout(resolve, 1500));
-      useStore.persist.clearStorage();
-      resetStore();
+      clearTransactionalData();
 
       Swal.fire({
         icon: 'success',
@@ -112,11 +118,11 @@ export const ClearData: React.FC = () => {
           <div className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-800 ui-radius-control bg-slate-50/50 dark:bg-slate-950/50">
             <div className="flex-1">
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">
-                Clear All Data
+                Clear Transactional Data
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Remove all orders, configurations, users, and logs from
-                localStorage. The application will reset to factory defaults.
+                Remove all orders, activity logs, integration logs, and
+                notifications. User accounts and master data will be preserved.
               </p>
             </div>
             <button
@@ -132,7 +138,7 @@ export const ClearData: React.FC = () => {
               ) : (
                 <>
                   <Trash2 size={16} />
-                  Clear Storage
+                  Clear Data
                 </>
               )}
             </button>
@@ -146,9 +152,8 @@ export const ClearData: React.FC = () => {
               />
               <div className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
                 <span className="font-bold">Note:</span> After clearing data,
-                you will be logged out and redirected to the login page. The
-                application will reinitialize with default seed data on next
-                login.
+                you will be logged out and redirected to the login page. User
+                accounts and master data will remain intact.
               </div>
             </div>
           </div>
@@ -170,7 +175,7 @@ export const ClearData: React.FC = () => {
               This application uses browser localStorage to persist data. The
               storage key is{' '}
               <code className="px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/50 rounded text-indigo-700 dark:text-indigo-300 font-mono">
-                ube-portal-storage-v3
+                ube-portal-storage-v5
               </code>
               . Data is stored locally in your browser and is not sent to any
               server.
