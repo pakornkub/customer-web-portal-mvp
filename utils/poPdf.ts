@@ -199,39 +199,39 @@ export const createOfficialPoPdfDataUrl = (input: PoPdfInput) => {
   TC(400, 765, 'CONFIDENTIAL', 155, 13);
 
   // ── PO NUMBER + DATE (right column) ─────────────────────────────────
-  // y=752: PO No label + value
-  T(295, 752, 'Purchase Order No. :', 9.5);
-  T(410, 752, input.poNo || input.orderNo, 11);
-  T(295, 738, 'Date of Order :', 9.5);
-  T(395, 738, toPdfDate(input.orderDate), 9.5);
+  // y=742: PO No (20pt gap below CONFIDENTIAL box bottom at y=761 → more breathing room)
+  T(295, 742, 'Purchase Order No. :', 9.5);
+  T(410, 742, input.poNo || input.orderNo, 11);
+  T(295, 728, 'Date of Order :', 9.5);
+  T(395, 728, toPdfDate(input.orderDate), 9.5);
 
   // ── HORIZONTAL DIVIDER ───────────────────────────────────────────────
-  line(L, 728, R, 728, 1.1);
+  line(L, 716, R, 716, 1.1);
 
   // ── VERTICAL DIVIDER left|right in address block ─────────────────────
-  // Address block: y=728 down to y=620
-  line(293, 728, 293, 620, 1);
+  // Address block: y=716 down to y=620
+  line(293, 716, 293, 620, 1);
 
   // ── TO: block ────────────────────────────────────────────────────────
-  // Label at y=718, content starts at y=705, step=13, max 6 lines → lowest=705-5×13=640 > 620 ✓
-  T(L, 718, 'TO:', 9.5);
+  // Label at y=706, content starts at y=693, step=13, max 6 lines → lowest=693-5×13=628 > 620 ✓
+  T(L, 706, 'TO:', 9.5);
   const toLines = (
     input.poToBlock ||
     'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP'
   ).split('\n');
   toLines
     .slice(0, 6)
-    .forEach((ln, i) => TFit(L, 705 - i * 13, ln, 245, 9.5, 7.5));
+    .forEach((ln, i) => TFit(L, 693 - i * 13, ln, 245, 9.5, 7.5));
 
   // ── CONSIGNEE & NOTIFY block ─────────────────────────────────────────
-  T(298, 718, 'CONSIGNEE & NOTIFY :', 9.5);
+  T(298, 706, 'CONSIGNEE & NOTIFY :', 9.5);
   const consLines = (
     input.poConsigneeNotify ||
     'Consignee Company Name\nAddress Line 1\nAddress Line 2\nCity, Country\nContact Person: ...\nTel / Fax: ...'
   ).split('\n');
   consLines
     .slice(0, 6)
-    .forEach((ln, i) => TFit(298, 705 - i * 13, ln, 252, 9.5, 7.5));
+    .forEach((ln, i) => TFit(298, 693 - i * 13, ln, 252, 9.5, 7.5));
 
   // ── DIVIDER under address block ──────────────────────────────────────
   line(L, 620, R, 620, 1.1);
@@ -286,13 +286,13 @@ export const createOfficialPoPdfDataUrl = (input: PoPdfInput) => {
   T(298, 538, 'CUSTOMER PO No. :', 9.5);
   TC2(390, 538, input.poNo, 165, 9.5);
 
-  line(L, 530, R, 530, 1.1);
+  line(L, 530, R, 530, 1.3);
 
   // ── PRODUCT TABLE ─────────────────────────────────────────────────────
-  // Table: y=530 top → y=460 bottom  (70pt tall)
+  // Table: y=516 top → y=446 bottom  (70pt tall); 14pt gap below section separator at y=530
   // Columns: PRODUCT(40-105) DESCRIPTION(105-270) QUANTITY(270-340) UNIT PRICE(340-450) AMOUNT(450-555)
-  const tT = 530;
-  const tB = 460;
+  const tT = 516;
+  const tB = 446;
   const c1 = L;
   const c2 = 105;
   const c3 = 270;
@@ -306,31 +306,31 @@ export const createOfficialPoPdfDataUrl = (input: PoPdfInput) => {
   line(c4, tT, c4, tB, 1);
   line(c5, tT, c5, tB, 1);
 
-  // Header row y-baseline=517
-  const hY = 517;
+  // Header row y-baseline=503
+  const hY = 503;
   TC(c1, hY, 'PRODUCT', c2 - c1, 9.5);
   TC(c2, hY, 'DESCRIPTION', c3 - c2, 9.5);
   TC(c3, hY, 'QUANTITY', c4 - c3, 9.5);
   TC(c4, hY, 'UNIT PRICE', c5 - c4, 9.5);
   TC(c5, hY, 'AMOUNT', c6 - c5, 9.5);
 
-  // Sub-header (unit) row — divider at y=507, baseline=497
-  line(c1, 507, c6, 507, 0.7);
+  // Sub-header (unit) row — divider at y=493, baseline=483
+  line(c1, 493, c6, 493, 0.7);
   const unitLabel = (input.currency || 'EUR').toUpperCase();
-  TC(c3, 497, 'MT', c4 - c3, 9);
-  TC(c4, 497, unitLabel, c5 - c4, 9);
-  TC(c5, 497, unitLabel, c6 - c5, 9);
+  TC(c3, 483, 'MT', c4 - c3, 9);
+  TC(c4, 483, unitLabel, c5 - c4, 9);
+  TC(c5, 483, unitLabel, c6 - c5, 9);
 
-  // Data row — divider at y=487, baseline=475
-  line(c1, 487, c6, 487, 0.7);
+  // Data row — divider at y=473, baseline=461
+  line(c1, 473, c6, 473, 0.7);
   const gradeCode =
     input.poGradeCode || (input.gradeId || '').match(/^[A-Za-z]+/)?.[0] || 'BR';
   const gradeDesc = input.poGradeDescription || input.gradeId || '';
-  T(c1 + 4, 475, gradeCode, 10);
-  TC2(c2 + 4, 475, gradeDesc, c3 - c2 - 8, 9.5);
-  TR(c4 - 4, 475, formatNumber(input.qty), 9.5);
-  TR(c5 - 4, 475, formatNumber(unitPrice), 9.5);
-  TR(c6 - 4, 475, formatNumber(amount), 9.5);
+  T(c1 + 4, 461, gradeCode, 10);
+  TC2(c2 + 4, 461, gradeDesc, c3 - c2 - 8, 9.5);
+  TR(c4 - 4, 461, formatNumber(input.qty), 9.5);
+  TR(c5 - 4, 461, formatNumber(unitPrice), 9.5);
+  TR(c6 - 4, 461, formatNumber(amount), 9.5);
 
   // TOTAL row: rect below table, y=460 height=22
   rect(c4, tB, c6 - c4, 22, 1.1);
@@ -382,20 +382,20 @@ export const createOfficialPoPdfDataUrl = (input: PoPdfInput) => {
   TR(pb4 - 3, pbT - 43, formatNumber(contractNet), 9);
 
   // ── SIGNATURE SECTION ────────────────────────────────────────────────
-  // y=345 → y=260
-  T(L, 348, 'PLEASE SIGN AND RETURN CONFIRMATION', 10);
+  // y=334 → y=248
+  T(L, 334, 'PLEASE SIGN AND RETURN CONFIRMATION', 10);
 
-  T(L, 315, 'Issued by :', 9.5);
-  line(L, 288, 180, 288, 0.75);
-  T(L, 276, 'UBE Elastomer Co. Ltd.', 9);
+  T(L, 301, 'Issued by :', 9.5);
+  line(L, 274, 180, 274, 0.75);
+  T(L, 262, 'UBE Elastomer Co. Ltd.', 9);
 
-  line(298, 288, 453, 288, 0.75);
-  T(298, 315, 'Confirmed by :', 9.5);
+  line(298, 274, 453, 274, 0.75);
+  T(298, 301, 'Confirmed by :', 9.5);
   const confirmLines = (
     input.poConfirmBy ||
     'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.'
   ).split('\n');
-  confirmLines.slice(0, 3).forEach((ln, i) => T(298, 276 - i * 14, ln, 9.5));
+  confirmLines.slice(0, 3).forEach((ln, i) => T(298, 262 - i * 14, ln, 9.5));
 
   return buildPdfDataUrl(content);
 };
