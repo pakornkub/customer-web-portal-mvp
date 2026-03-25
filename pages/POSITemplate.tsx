@@ -46,6 +46,7 @@ const emptySiForm = (): SiForm => ({
   freeTime: '',
   courierAddress: '',
   eoriNo: '',
+  bookingNo: '',
   notifyParty: '',
   alsoNotify1: '',
   alsoNotify2: '',
@@ -572,6 +573,14 @@ const SiModal: React.FC<SiModalProps> = ({
               <FInput
                 value={form.eoriNo}
                 onChange={set('eoriNo')}
+                placeholder=""
+              />
+            </div>
+            <div>
+              <FLabel>Booking No.</FLabel>
+              <FInput
+                value={form.bookingNo}
+                onChange={set('bookingNo')}
                 placeholder=""
               />
             </div>

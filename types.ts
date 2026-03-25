@@ -209,6 +209,7 @@ export interface SiTemplate {
   freeTime: string;
   courierAddress: string;
   eoriNo: string;
+  bookingNo: string;
   notifyParty: string;
   alsoNotify1: string;
   alsoNotify2: string;

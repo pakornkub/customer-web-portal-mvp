@@ -53,6 +53,31 @@ type PoPdfInput = {
   /** Multi-line shipping mark lines. */
   siShippingMark?: string;
   siBelowSignature?: string;
+  // ── Bridgestone Poznan-specific SI fields ──
+  /** PO number header label (e.g. "BS POLAND PO No.:"). */
+  siPoNumberHeader?: string;
+  /** Booking number. */
+  siBookingNo?: string;
+  /** Courier / original docs address note. */
+  siCourierAddress?: string;
+  /** EORI number (EU customs). */
+  siEoriNo?: string;
+  /** Notify party name/address. */
+  siNotifyParty?: string;
+  // ── Cooper Kunshan-specific SI fields ──
+  /** NOTIFY PARTY content (Cooper layout). */
+  /** DELIVER TO address (Cooper 3-col middle column). */
+  siDeliverTo?: string;
+  /** Label for 2nd reference number row (e.g. "Cooper NO.:"). */
+  siNo2Header?: string;
+  /** 2nd reference number value (e.g. "72026877"). */
+  siNo2?: string;
+  /** Material code label (e.g. "Material Code"). */
+  siMaterialCodeHeader?: string;
+  /** Material code value shown inside the SHIPPING MARK box. */
+  siMaterialCode?: string;
+  /** Note shown below material code (e.g. "*put marking CODE on both sides..."). */
+  siNoteUnderMaterial?: string;
 };
 
 const toPdfDate = (value?: string) => {
@@ -237,7 +262,8 @@ export const createOfficialPoPdfDataUrl = (input: PoPdfInput) => {
   line(L, 620, R, 620, 1.1);
 
   // ── DELIVERY DATE + TERMS OF PAYMENT ────────────────────────────────
-  // Row band: y=620 → y=592  (height 28)
+  // Row band: y=620 → y=590  vertical divider at x=293
+  line(293, 620, 293, 590, 1);
   UL(L, 610, 'DELIVERY DATE (ETD) :', 9.5);
   T(L, 598, toPdfDate(input.actualETD || input.requestETD), 10.5);
   UL(298, 610, 'TERMS OF PAYMENT :', 9.5);
@@ -252,7 +278,8 @@ export const createOfficialPoPdfDataUrl = (input: PoPdfInput) => {
   line(L, 590, R, 590, 1.1);
 
   // ── TERMS OF DELIVERY + PACKING INSTRUCTIONS ────────────────────────
-  // Row band: y=590 → y=562
+  // Row band: y=590 → y=560  vertical divider at x=293
+  line(293, 590, 293, 560, 1);
   UL(L, 580, 'TERMS OF DELIVERY :', 9.5);
   const destDisplayName = input.destinationName || input.destinationId || '';
   const destCity = destDisplayName.split(',')[0].trim();
@@ -274,7 +301,8 @@ export const createOfficialPoPdfDataUrl = (input: PoPdfInput) => {
   line(L, 560, R, 560, 1.1);
 
   // ── DESTINATION + CUSTOMER PO No. ───────────────────────────────────
-  // Row band: y=560 → y=532
+  // Row band: y=560 → y=530  vertical divider at x=293
+  line(293, 560, 293, 530, 1);
   UL(L, 550, 'DESTINATION :', 9.5);
   TC2(
     L,
@@ -283,7 +311,7 @@ export const createOfficialPoPdfDataUrl = (input: PoPdfInput) => {
     245,
     9.5
   );
-  T(298, 538, 'CUSTOMER PO No. :', 9.5);
+  T(298, 538, 'CUSTOMER PO No. : ', 9.5);
   TC2(390, 538, input.poNo, 165, 9.5);
 
   line(L, 530, R, 530, 1.3);
@@ -400,7 +428,8 @@ export const createOfficialPoPdfDataUrl = (input: PoPdfInput) => {
   return buildPdfDataUrl(content);
 };
 
-export const createShippingInstructionPdfDataUrl = (input: PoPdfInput) => {
+// ── Bridgestone Poznan SI layout ─────────────────────────────────────────────
+const buildBridgestoneSI = (input: PoPdfInput): string[] => {
   // ── PDF page setup ─────────────────────────────────────────────────
   // A4: 595 × 842 pt   margins: L=40 R=555 (width=515)
   const CW = 0.52;
@@ -460,9 +489,8 @@ export const createShippingInstructionPdfDataUrl = (input: PoPdfInput) => {
   T(480, 813, 'UBE', 26);
 
   // ── TITLE ───────────────────────────────────────────────────────────
-  // y=771 bold title; date flush right
+  T(R - 57, 783, toPdfDate(input.orderDate), 9);
   T(178, 771, 'SHIPPING INSTRUCTION', 15);
-  T(480, 771, toPdfDate(input.orderDate), 9);
 
   line(L, 762, R, 762, 1);
 
@@ -484,144 +512,439 @@ export const createShippingInstructionPdfDataUrl = (input: PoPdfInput) => {
 
   line(L, 702, R, 702, 1);
 
-  // ── CONTRACT / USER / COUNTRY / SHIPPER  y=702→652 ─────────────────
-  // Each row height = 16pt, 4 rows → 64pt, bottom at y=638
-  const LV = 112; // label-value split x for left column
+  // ── CONTRACT / USER / COUNTRY / SHIPPER  y=702→638 ─────────────────
+  // Left col labels at x=L, values at x=LV=130 (wider for long vessel names)
+  // Right col: BS POLAND PO No. (from poNumberHeader)
+  const LV = 130;
+  const LVR = 372; // right col value x (after BS PO No. label ~89pt from x=270)
+
   T(L, 690, 'CONTRACT NO. :', 9.5);
-  TC2(LV, 690, `${poNo}-5`, 153, 9.5);
+  TC2(LV, 690, `${poNo}-5`, 130, 9.5);
+  if (input.siPoNumberHeader) {
+    T(270, 690, `${input.siPoNumberHeader}`, 9.5);
+    TC2(LVR, 690, poNo, R - LVR, 9.5);
+  }
 
   T(L, 676, 'USER :', 9.5);
-  TC2(LV, 676, input.siUser || '-', 153, 9.5);
+  TC2(LV, 676, input.siUser || '-', 225, 9.5);
 
   T(L, 662, 'COUNTRY :', 9.5);
-  TC2(LV, 662, input.siCountry || '-', 153, 9.5);
+  TC2(LV, 662, input.siCountry || '-', 225, 9.5);
 
   T(L, 648, 'SHIPPER :', 9.5);
-  TC2(LV, 648, input.siShipper || 'TSL WITH FULL ADDRESS', 153, 9.5);
+  TC2(LV, 648, input.siShipper || 'TSL WITH FULL ADDRESS', 225, 9.5);
 
   line(L, 638, R, 638, 1);
 
-  // ── SHIPPING MARK (right column)  y=638→472 ─────────────────────────
-  // Allocate right col (270→R = 283pt wide) for shipping mark: 9 lines max step=14
-  T(270, 627, 'SHIPPING MARK :', 9.5);
+  // ── SHIPPING MARK box (right col)  y=638→472 ─────────────────────────
+  // Box: x=270 → R, top=634 (4pt gap), bottom=476 (4pt above divider 472)
+  const markBoxTop = 634;
+  const markBoxBot = 476;
+  // draw box manually for precise gap
+  line(270, markBoxTop, R, markBoxTop, 0.85);
+  line(R, markBoxTop, R, markBoxBot, 0.85);
+  line(R, markBoxBot, 270, markBoxBot, 0.85);
+  line(270, markBoxBot, 270, markBoxTop, 0.85);
+
+  T(275, markBoxTop - 12, 'SHIPPING MARK :', 9.5);
   const markFallback = [
-    `${input.siUser || 'TOYO TYRE MALAYSIA'} PLANT`,
-    `MAR${toPdfDate(input.orderDate).replace(/-/g, '')}`,
+    `${input.siUser || 'BRIDGESTONE POZNAN SP/ZO.O'} PLANT`,
+    `ORDER No.: ${poNo}-5`,
+    gradeName,
+    `C/NO. 1-15`,
+    'MADE IN THAILAND'
+  ].join('\n');
+  const markLines = (input.siShippingMark || markFallback).split('\n');
+  markLines
+    .slice(0, 8)
+    .forEach((ml, i) => TC2(275, markBoxTop - 26 - i * 13, ml, R - 281, 9));
+
+  // ── VESSEL / FORWARDER / ETD / ETA (left col)  y=638→472 ─────────────
+  // Word-wrap helper: renders line 2 at y-13 if text overflows maxW
+  const wrapTC = (
+    x: number,
+    y: number,
+    text: string,
+    maxW: number,
+    size: number
+  ) => {
+    if (tw(text, size) <= maxW) {
+      T(x, y, text, size);
+      return;
+    }
+    const words = text.split(' ');
+    let l1 = '';
+    for (const w of words) {
+      const trial = (l1 ? l1 + ' ' : '') + w;
+      if (tw(trial, size) <= maxW) l1 = trial;
+      else break;
+    }
+    T(x, y, l1, size);
+    TC2(x, y - 13, text.slice(l1.length).trim(), maxW, size);
+  };
+
+  // Each wrapTC row uses 26pt gap to the next row so that a wrap line (y-13)
+  // leaves 13pt clearance to the row below — preventing visual collision.
+  T(L, 627, 'FEEDER VESSEL :', 9.5);
+  wrapTC(LV, 627, input.siFeederVessel || '-', 112, 9.5);
+
+  T(L, 601, 'MOTHER VESSEL :', 9.5);
+  wrapTC(LV, 601, input.siMotherVessel || '-', 112, 9.5);
+
+  T(L, 575, 'VESSEL COMPANY :', 9.5);
+  wrapTC(LV, 575, input.siVesselCompany || '-', 112, 9.5);
+
+  // FORWARDER 26pt below VESSEL COMPANY to absorb its possible wrap line
+  T(L, 549, 'FORWARDER :', 9.5);
+  TC2(LV, 549, input.siForwarder || '-', 112, 9.5);
+
+  T(L, 535, 'ETD :', 9.5);
+  TC2(LV, 535, etd, 132, 9.5);
+
+  T(L, 521, 'ETA :', 9.5);
+  TC2(LV, 521, toPdfDate(input.requestETD), 132, 9.5);
+
+  line(L, 472, R, 472, 1);
+
+  // ── PORT / DESTINATION + FREE TIME  y=472→437 ───────────────────────
+  // Left: PORT and DESTINATION stacked; Right: FREE TIME
+  TC2(L, 460, `PORT :`, 40, 9.5);
+  TC2(LV, 460, input.siPortOfLoading || 'LAEM CHABANG, THAILAND', 130, 9.5);
+  TC2(L, 446, `DESTINATION :`, 86, 9.5);
+  TC2(LV, 446, destination, 130, 9.5);
+  // FREE TIME right side
+  TC2(270, 460, `FREE TIME D/M : ${input.siFreeTime || '14 DAYS'}`, 285, 9.5);
+  TC2(270, 446, `D/T : ${input.siFreeTime ? '' : '14 DAYS'}`, 285, 9.5);
+
+  line(L, 437, R, 437, 1);
+
+  // ── BOOKING NO.  y=437→420 ───────────────────────────────────────────
+  T(L, 425, 'BOOKING NO. :', 9.5);
+  TC2(LV, 425, input.siBookingNo || '-', R - LV, 9.5);
+
+  line(L, 415, R, 415, 0.75);
+
+  // ── CONSIGNEE AND NOTIFY  y=415→330 ─────────────────────────────────
+  T(L, 403, 'CONSIGNEE AND', 9.5);
+  T(L, 391, 'NOTIFY :', 9.5);
+  const siConsLines = (
+    input.siConsignee ||
+    'BRIDGESTONE POZNAN SP/ZO.O.\nUL. BALTYCKA 65\n61-017 POZNAN, POLAND'
+  ).split('\n');
+  siConsLines
+    .slice(0, 5)
+    .forEach((ln, i) => TC2(LV, 403 - i * 13, ln, R - LV, 9.5));
+
+  // COURIER ADDRESS (below consignee) — label is long (~17 chars), value starts at x=170 to avoid overlap
+  if (input.siCourierAddress) {
+    T(L, 340, 'COURIER ADDRESS :', 9.5);
+    TC2(170, 340, input.siCourierAddress, R - 170, 9.5);
+  }
+
+  // EORI No.
+  if (input.siEoriNo) {
+    T(L, 326, 'EORI No. :', 9.5);
+    TC2(LV, 326, input.siEoriNo, R - LV, 9.5);
+  }
+
+  line(L, 316, R, 316, 1);
+
+  // ── NOTIFY PARTY  y=316→296 ──────────────────────────────────────────
+  T(L, 304, 'NOTIFY PARTY :', 9.5);
+  TC2(LV, 304, input.siNotifyParty || 'SAME AS CONSIGNEE', R - LV, 9.5);
+
+  line(L, 294, R, 294, 0.85);
+
+  // ── REQUIREMENTS (multi-line)  y=294→240 ────────────────────────────
+  T(L, 282, 'REQUIREMENTS :', 9.5);
+  const reqLines = (
+    input.siRequirements || '* FULL SET OF surrendered B/L.'
+  ).split('\n');
+  reqLines.slice(0, 3).forEach((ln, i) => TC2(LV, 282 - i * 13, ln, R - LV, 9));
+
+  line(L, 244, R, 244, 0.85);
+
+  // ── NOTES (multi-line)  y=244→196 ────────────────────────────────────
+  const noteLines = [input.siNote, input.siNote2, input.siNote3].filter(
+    Boolean
+  ) as string[];
+  if (noteLines.length === 0)
+    noteLines.push('*Please send all original docs by E-mail to UBE Tokyo.');
+  noteLines
+    .slice(0, 4)
+    .forEach((ln, i) => TC2(L, 232 - i * 13, ln, R - L, 8.5));
+
+  line(L, 192, R, 192, 1);
+
+  // ── GRADE TABLE  y=192→138 ───────────────────────────────────────────
+  T(L + 4, 181, 'GRADE', 9.5);
+  T(178, 181, 'QUANTITY (MT)', 9.5);
+  T(320, 181, 'DESCRIPTION', 9.5);
+  line(L, 174, R, 174, 0.85);
+
+  TC2(L + 4, 162, gradeName, 128, 9.5);
+  T(178, 162, `${formatNumber(input.qty)} MT`, 9.5);
+  TC2(320, 162, input.siDescription || gradeName, R - 320, 9.5);
+
+  if (input.siUnderDescription) {
+    TC2(L + 4, 148, input.siUnderDescription, R - L, 9);
+  }
+
+  line(L, 138, R, 138, 1);
+
+  // ── SIGNATURE  ────────────────────────────────────────────────────────
+  line(L, 120, 170, 120, 0.75);
+  T(L, 108, input.siBelowSignature || 'UBE Elastomer Co. Ltd.', 9.5);
+
+  return content;
+};
+
+// ── Cooper Kunshan SI layout ──────────────────────────────────────────────────
+const buildCooperKunshanSI = (input: PoPdfInput): string[] => {
+  const CW = 0.52;
+  const L = 40;
+  const R = 555;
+  const content: string[] = [];
+
+  const T = (x: number, y: number, text: string, size: number) => {
+    content.push('BT');
+    content.push(`/F1 ${size.toFixed(1)} Tf`);
+    content.push(`${x} ${y} Td`);
+    content.push(`(${escapePdf(text)}) Tj`);
+    content.push('ET');
+  };
+
+  const tw = (text: string, size: number) => text.length * size * CW;
+
+  const clamp = (text: string, size: number, maxW: number): string => {
+    if (tw(text, size) <= maxW) return text;
+    let t = text;
+    while (t.length > 1 && tw(t + '...', size) > maxW) t = t.slice(0, -1);
+    return t + '...';
+  };
+
+  const TC2 = (
+    x: number,
+    y: number,
+    text: string,
+    maxW: number,
+    size: number
+  ) => T(x, y, clamp(text, size, maxW), size);
+
+  const line = (x1: number, y1: number, x2: number, y2: number, w = 0.75) => {
+    content.push(`${w} w`);
+    content.push(`${x1} ${y1} m ${x2} ${y2} l S`);
+  };
+
+  const rect = (x: number, y: number, w: number, h: number, lw = 0.75) => {
+    line(x, y, x + w, y, lw);
+    line(x + w, y, x + w, y - h, lw);
+    line(x + w, y - h, x, y - h, lw);
+    line(x, y - h, x, y, lw);
+  };
+
+  const gradeName = (
+    input.poGradeDescription ||
+    input.gradeId ||
+    '-'
+  ).toUpperCase();
+  const destination = (
+    input.destinationName ||
+    input.destinationId ||
+    '-'
+  ).toUpperCase();
+  const poNo = input.poNo || input.orderNo;
+  const etd = toPdfDate(input.actualETD || input.requestETD);
+
+  // ── LETTERHEAD ───────────────────────────────────────────────────────
+  T(L, 817, 'UBE Elastomer Co. Ltd.', 9);
+  T(L, 806, 'Seavans North Bldg., 1-2-1, Shibaura, Minato-ku,', 9);
+  T(L, 795, 'Tokyo 105-6791, Japan', 9);
+  T(480, 813, 'UBE', 26);
+
+  // ── TITLE ────────────────────────────────────────────────────────────
+  T(R - 57, 783, toPdfDate(input.orderDate), 9);
+  T(178, 771, 'SHIPPING INSTRUCTION', 15);
+  line(L, 762, R, 762, 1);
+
+  // ── CONTRACT / USER / COUNTRY  y=762→710 ─────────────────────────────
+  // Two-column: left col (L…260), right col (270…R)
+  const LV = 118;
+  T(L, 750, 'CONTRACT NO. :', 9.5);
+  TC2(LV, 750, `${poNo}-5`, 148, 9.5);
+  T(270, 750, 'USER :', 9.5);
+  TC2(322, 750, input.siUser || '-', R - 322, 9.5);
+
+  T(L, 736, 'COUNTRY :', 9.5);
+  TC2(LV, 736, input.siCountry || '-', 148, 9.5);
+  T(270, 736, 'FROM :', 9.5);
+  TC2(322, 736, input.siFrom || 'UBE ELASTOMER CO., LTD.', R - 322, 9.5);
+
+  // Row 3: buyer reference number (optional — shown only when provided)
+  if (input.siNo2Header || input.siNo2) {
+    T(L, 722, input.siNo2Header || 'REF NO. :', 9.5);
+    TC2(LV, 722, input.siNo2 || '-', 148, 9.5);
+  }
+
+  line(L, 710, R, 710, 1);
+
+  // ── SHIPPER (left) + SHIPPING MARK bordered box (right)  y=710→560 ───
+  T(L, 698, 'SHIPPER :', 9.5);
+  const shipperLines = (input.siShipper || 'TSL WITH FULL ADDRESS').split('\n');
+  shipperLines
+    .slice(0, 8)
+    .forEach((sl, i) => TC2(L, 685 - i * 13, sl, 218, 9.5));
+
+  // Bordered box: x=265, top=706, width=290, height=146 → bottom=560
+  rect(265, 706, R - 265, 142, 0.85);
+  T(270, 694, 'SHIPPING MARK :', 9.5);
+  const markFallback = [
+    'COOPER STANDARD KUNSHAN',
+    toPdfDate(input.orderDate),
     `ORDER No.: ${poNo}-5`,
     gradeName,
     `V.NO. ${poNo}`,
     'MADE IN THAILAND'
   ].join('\n');
   const markLines = (input.siShippingMark || markFallback).split('\n');
-  // markYStart=614, step=13, max 9 lines → bottom = 614-8×13 = 510  (above 472 divider ✓)
-  markLines.slice(0, 9).forEach((ml, i) => TC2(270, 614 - i * 13, ml, 283, 9));
+  // Max 6 mark lines (last baseline=616), leaving room for material code below
+  markLines
+    .slice(0, 6)
+    .forEach((ml, i) => TC2(270, 681 - i * 13, ml, R - 270, 9));
+  // Material code inside mark box — thin interior divider at y=607
+  if (input.siMaterialCodeHeader || input.siMaterialCode) {
+    line(265, 607, R, 607, 0.5);
+    T(270, 596, `${input.siMaterialCodeHeader || 'Material Code'} :`, 8.5);
+    TC2(270, 583, input.siMaterialCode || '-', R - 276, 8.5);
+  }
+  if (input.siNoteUnderMaterial) {
+    TC2(270, 570, input.siNoteUnderMaterial, R - 276, 8);
+  }
 
-  // ── VESSEL / FORWARDER / ETD / ETA (left column)  y=638→472 ─────────
-  // 8 rows step=14 → used rows: 638-7×14=540 last row at y=540, bottom at ~530
-  T(L, 627, 'FEEDER VESSEL :', 9.5);
-  TC2(LV, 627, input.siFeederVessel || '-', 153, 9.5);
+  line(L, 560, R, 560, 1);
 
-  T(L, 613, 'MOTHER VESSEL :', 9.5);
-  TC2(LV, 613, input.siMotherVessel || '-', 153, 9.5);
+  // ── VESSEL  y=560→466 ────────────────────────────────────────────────
+  T(L, 548, 'FEEDER VESSEL :', 9.5);
+  TC2(LV, 548, input.siFeederVessel || '-', R - LV, 9.5);
 
-  T(L, 599, 'VESSEL COMPANY :', 9.5);
-  TC2(LV, 599, input.siVesselCompany || '-', 153, 9.5);
+  T(L, 534, 'MOTHER VESSEL :', 9.5);
+  TC2(LV, 534, input.siMotherVessel || '-', R - LV, 9.5);
 
-  T(L, 585, 'FORWARDER :', 9.5);
-  TC2(LV, 585, input.siForwarder || '-', 153, 9.5);
+  T(L, 520, 'VESSEL COMPANY :', 9.5);
+  TC2(LV, 520, input.siVesselCompany || '-', R - LV, 9.5);
 
-  T(L, 571, 'ETD :', 9.5);
-  T(LV, 571, etd, 9.5);
+  T(L, 506, 'FORWARDER :', 9.5);
+  TC2(LV, 506, input.siForwarder || '-', R - LV, 9.5);
 
-  T(L, 557, 'ETA :', 9.5);
-  T(LV, 557, etd, 9.5);
+  T(L, 492, 'ETD :', 9.5);
+  T(LV, 492, etd, 9.5);
 
-  line(L, 472, R, 472, 1);
+  T(L, 478, 'ETA :', 9.5);
+  T(LV, 478, etd, 9.5);
 
-  // ── PORT / DESTINATION  y=472→444 ───────────────────────────────────
+  line(L, 466, R, 466, 1);
+
+  // ── PORT / DESTINATION  y=466→424 ────────────────────────────────────
   TC2(
     L,
-    461,
+    454,
     `PORT OF LOADING : ${input.siPortOfLoading || 'LAEM CHABANG, THAILAND'}`,
     R - L,
     9.5
   );
-  TC2(L, 447, `PORT OF DESTINATION : ${destination}`, R - L, 9.5);
+  TC2(L, 440, `PORT OF DESTINATION : ${destination}`, R - L, 9.5);
 
-  line(L, 437, R, 437, 1);
+  line(L, 424, R, 424, 1);
 
-  // ── CONSIGNEE & NOTIFY  y=437→310 ───────────────────────────────────
-  // Label at y=426, then up to 7 consignee lines step=13 → bottom = 426-7×13 = 335  (above 323 ✓)
-  T(L, 426, 'CONSIGNEE & NOTIFY :', 9.5);
+  // ── 3-COLUMN: CONSIGNEE | DELIVER TO | FOR REF. OF UEC  y=424→290 ───
+  // Columns: left=L…216  mid=220…381  right=385…R
+  const MC = 220;
+  const RC = 385;
+  line(MC - 4, 424, MC - 4, 290, 0.7);
+  line(RC - 4, 424, RC - 4, 290, 0.7);
+
+  T(L, 412, 'CONSIGNEE :', 9.5);
+  T(MC, 412, 'DELIVER TO :', 9.5);
+  T(RC, 412, 'FOR REF. OF UEC :', 9.5);
+
+  // Left col: siConsignee
   const siConsLines = (
     input.siConsignee ||
-    'Toyo Tyre Malaysia Sdn Bhd\nPT23101, Jalan Tembaga Kuning\nKawasan Perindustrian Kamunting Raya\nPO Box 1, 34600, Kamunting, Perak, Malaysia\nContact Person : Ms Lim / Ms Yap\nTel : 605-8206600 Fax : 605-8206659'
+    'Cooper Standard (Kunshan) Co. Ltd.\nNo.101 Huanqiu Road\nKunshan Economic & Technological\nDevelopment Zone\nJiangsu Province, China 215300'
   ).split('\n');
   siConsLines
-    .slice(0, 7)
-    .forEach((ln, i) => TC2(L, 413 - i * 13, ln, R - L, 9.5));
+    .slice(0, 8)
+    .forEach((ln, i) => TC2(L, 399 - i * 13, ln, MC - 4 - L - 2, 9));
 
-  line(L, 323, R, 323, 1);
-
-  // ── B/L / FREE TIME / REQUIREMENTS  y=323→270 ───────────────────────
-  T(L, 312, 'B/L :', 9.5);
-  TC2(LV, 312, input.siBlType || 'SURRENDERED B/L', R - LV, 9.5);
-
-  T(L, 298, 'FREE TIME :', 9.5);
-  TC2(
-    LV,
-    298,
-    input.siFreeTime || 'D/M : 14 DAYS   D/T : 14 DAYS',
-    R - LV,
-    9.5
+  // Mid col: siDeliverTo (DELIVER TO address)
+  const deliverToLines = (input.siDeliverTo || input.siNote2 || '-').split(
+    '\n'
   );
+  deliverToLines
+    .slice(0, 8)
+    .forEach((ln, i) => TC2(MC + 2, 399 - i * 13, ln, RC - 4 - MC - 4, 9));
 
-  T(L, 284, 'REQUIREMENTS :', 9.5);
-  TC2(
-    LV,
-    284,
-    input.siRequirements || '* Please apply 14 days Free Time',
-    R - LV,
-    9.5
-  );
+  // Right col: poConsigneeNotify (FOR REF. OF UEC — the buying entity at TSL)
+  const refLines = (
+    input.poConsigneeNotify ||
+    'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square\n98 North Sathorn Road\nBangkok 10500, THAILAND'
+  ).split('\n');
+  refLines
+    .slice(0, 8)
+    .forEach((ln, i) => TC2(RC + 2, 399 - i * 13, ln, R - RC - 2, 9));
 
-  line(L, 270, R, 270, 0.85);
+  line(L, 290, R, 290, 1);
 
-  // ── NOTES  y=270→228 ─────────────────────────────────────────────────
-  TC2(L, 260, input.siNote || '* CERTIFICATE OF ANALYSIS', R - L, 9.5);
-  TC2(L, 247, input.siNote2 || '* PACKING LIST', R - L, 9.5);
-  TC2(
-    L,
-    234,
-    input.siNote3 ||
-      '* Please describe MAR information on all delivery documents. (BL, PL, COA)',
-    R - L,
-    9
-  );
+  // ── NOTIFY PARTY  y=290→240 ──────────────────────────────────────────
+  T(L, 278, 'NOTIFY PARTY :', 9.5);
+  const notifyLines = (input.siNotifyParty || input.siNote || '-').split('\n');
+  notifyLines
+    .slice(0, 3)
+    .forEach((ln, i) => TC2(L, 265 - i * 13, ln, R - L, 9.5));
 
-  line(L, 222, R, 222, 1);
+  line(L, 240, R, 240, 1);
 
-  // ── GRADE TABLE  y=222→160 ───────────────────────────────────────────
-  // Header row at y=211, separator at y=204, data row at y=192
-  T(L + 4, 211, 'GRADE', 9.5);
-  T(178, 211, 'QUANTITY (MT)', 9.5);
-  T(320, 211, 'DESCRIPTION', 9.5);
-  line(L, 204, R, 204, 0.85);
-
-  TC2(L + 4, 192, gradeName, 128, 9.5);
-  T(178, 192, `${formatNumber(input.qty)} MT`, 9.5);
-  TC2(320, 192, input.siDescription || gradeName, R - 320, 9.5);
-
-  // Under-description (optional note below data row)
-  if (input.siUnderDescription) {
-    TC2(L + 4, 178, input.siUnderDescription, R - L, 9);
-  }
+  // ── REQUIREMENTS  y=240→168 ──────────────────────────────────────────
+  T(L, 228, 'REQUIREMENTS :', 9.5);
+  const reqLines = (
+    input.siRequirements ||
+    '* Please apply 14 days Free Time\n* CERTIFICATE OF ANALYSIS\n* PACKING LIST'
+  ).split('\n');
+  if (input.siNote3) reqLines.push(input.siNote3);
+  reqLines.slice(0, 4).forEach((ln, i) => TC2(L, 215 - i * 13, ln, R - L, 9.5));
 
   line(L, 168, R, 168, 1);
 
-  // ── SIGNATURE  y=168→110 ─────────────────────────────────────────────
-  line(L, 140, 170, 140, 0.75);
-  T(L, 128, input.siBelowSignature || 'UBE Elastomer Co. Ltd.', 9.5);
+  // ── GRADE TABLE  y=168→114 ───────────────────────────────────────────
+  T(L + 4, 157, 'GRADE', 9.5);
+  T(178, 157, 'QUANTITY (MT)', 9.5);
+  T(320, 157, 'DESCRIPTION', 9.5);
+  line(L, 150, R, 150, 0.85);
 
+  TC2(L + 4, 138, gradeName, 128, 9.5);
+  T(178, 138, `${formatNumber(input.qty)} MT`, 9.5);
+  TC2(320, 138, input.siDescription || gradeName, R - 320, 9.5);
+
+  if (input.siUnderDescription) {
+    TC2(L + 4, 124, input.siUnderDescription, R - L, 9);
+  }
+
+  line(L, 114, R, 114, 1);
+
+  // ── SIGNATURE ────────────────────────────────────────────────────────
+  line(L, 86, 170, 86, 0.75);
+  T(L, 74, input.siBelowSignature || 'UBE Elastomer Co. Ltd.', 9.5);
+
+  return content;
+};
+
+// ── Dispatcher ────────────────────────────────────────────────────────────────
+export const createShippingInstructionPdfDataUrl = (
+  input: PoPdfInput
+): string => {
+  const content =
+    input.shipToId === 'SHIP-COOPER-KUNSHAN'
+      ? buildCooperKunshanSI(input)
+      : buildBridgestoneSI(input); // default: Bridgestone Poznan
   return buildPdfDataUrl(content);
 };

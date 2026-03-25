@@ -665,19 +665,6 @@ export const OrderDetail: React.FC = () => {
       quotationNo: quotationNo || order.quotationNo
     });
 
-    if (
-      linePermission.action === LineAction.SET_ETD &&
-      canAccessDocumentType(DocumentType.PO_PDF)
-    ) {
-      triggerDownload(generatedPoDataUrl, generatedPoFilename);
-    }
-    if (
-      linePermission.action === LineAction.SET_ETD &&
-      canAccessDocumentType(DocumentType.SHIPPING_INSTRUCTION_PDF)
-    ) {
-      triggerDownload(generatedSiDataUrl, generatedSiFilename);
-    }
-
     if (linePermission.action === LineAction.UPLOAD_FINAL_DOCS) {
       setDraftDocFiles({});
     }

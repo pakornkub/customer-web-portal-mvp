@@ -49,6 +49,19 @@ export type PoPdfInput = {
   siUnderDescription?: string;
   siShippingMark?: string;
   siBelowSignature?: string;
+  // Cooper Kunshan-specific
+  siNotifyParty?: string;
+  siDeliverTo?: string;
+  siNo2Header?: string;
+  siNo2?: string;
+  siMaterialCodeHeader?: string;
+  siMaterialCode?: string;
+  siNoteUnderMaterial?: string;
+  // Bridgestone Poznan-specific
+  siPoNumberHeader?: string;
+  siBookingNo?: string;
+  siCourierAddress?: string;
+  siEoriNo?: string;
 };
 
 interface Props {
@@ -91,6 +104,19 @@ interface SiForm {
   underDescription: string;
   shippingMark: string;
   belowSignature: string;
+  // Cooper Kunshan-specific
+  notifyParty: string;
+  deliverTo: string;
+  no2Header: string;
+  no2: string;
+  materialCodeHeader: string;
+  materialCode: string;
+  noteUnderMaterial: string;
+  // Bridgestone Poznan-specific
+  poNumberHeader: string;
+  bookingNo: string;
+  courierAddress: string;
+  eoriNo: string;
 }
 
 const EMPTY_PO: PoForm = {
@@ -124,7 +150,20 @@ const EMPTY_SI: SiForm = {
   description: '',
   underDescription: '',
   shippingMark: '',
-  belowSignature: ''
+  belowSignature: '',
+  // Cooper Kunshan-specific
+  notifyParty: '',
+  deliverTo: '',
+  no2Header: '',
+  no2: '',
+  materialCodeHeader: '',
+  materialCode: '',
+  noteUnderMaterial: '',
+  // Bridgestone Poznan-specific
+  poNumberHeader: '',
+  bookingNo: '',
+  courierAddress: '',
+  eoriNo: ''
 };
 
 const Label: React.FC<{ children: React.ReactNode; required?: boolean }> = ({
@@ -240,7 +279,20 @@ export const PdfGenerationModal: React.FC<Props> = ({
         description: siTpl.description,
         underDescription: siTpl.underDescription,
         shippingMark: siTpl.shippingMark,
-        belowSignature: siTpl.belowSignature
+        belowSignature: siTpl.belowSignature,
+        // Cooper Kunshan-specific
+        notifyParty: siTpl.notifyParty,
+        deliverTo: siTpl.deliverTo,
+        no2Header: siTpl.no2Header,
+        no2: siTpl.no2,
+        materialCodeHeader: siTpl.materialCodeHeader,
+        materialCode: siTpl.materialCode,
+        noteUnderMaterial: siTpl.noteUnderMaterial,
+        // Bridgestone Poznan-specific
+        poNumberHeader: siTpl.poNumberHeader ?? '',
+        bookingNo: siTpl.bookingNo ?? '',
+        courierAddress: siTpl.courierAddress ?? '',
+        eoriNo: siTpl.eoriNo ?? ''
       });
     }
   }, [line.shipToId, masterData]);
@@ -309,7 +361,20 @@ export const PdfGenerationModal: React.FC<Props> = ({
       siDescription: siForm.description || undefined,
       siUnderDescription: siForm.underDescription || undefined,
       siShippingMark: siForm.shippingMark || undefined,
-      siBelowSignature: siForm.belowSignature || undefined
+      siBelowSignature: siForm.belowSignature || undefined,
+      // Cooper Kunshan-specific
+      siNotifyParty: siForm.notifyParty || undefined,
+      siDeliverTo: siForm.deliverTo || undefined,
+      siNo2Header: siForm.no2Header || undefined,
+      siNo2: siForm.no2 || undefined,
+      siMaterialCodeHeader: siForm.materialCodeHeader || undefined,
+      siMaterialCode: siForm.materialCode || undefined,
+      siNoteUnderMaterial: siForm.noteUnderMaterial || undefined,
+      // Bridgestone Poznan-specific
+      siPoNumberHeader: siForm.poNumberHeader || undefined,
+      siBookingNo: siForm.bookingNo || undefined,
+      siCourierAddress: siForm.courierAddress || undefined,
+      siEoriNo: siForm.eoriNo || undefined
     };
     onConfirm(poInput, siInput);
   };
@@ -535,6 +600,26 @@ export const PdfGenerationModal: React.FC<Props> = ({
                 </div>
               </div>
 
+              <SectionTitle>Reference Numbers</SectionTitle>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Ref No. Label (e.g. Cooper NO.:)</Label>
+                  <Input
+                    value={siForm.no2Header}
+                    onChange={setSi('no2Header')}
+                    placeholder="Cooper NO.:"
+                  />
+                </div>
+                <div>
+                  <Label>Ref No. Value</Label>
+                  <Input
+                    value={siForm.no2}
+                    onChange={setSi('no2')}
+                    placeholder="72026877"
+                  />
+                </div>
+              </div>
+
               <SectionTitle>End-Party Info</SectionTitle>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -621,6 +706,32 @@ export const PdfGenerationModal: React.FC<Props> = ({
                   auto-generate from order data.
                 </p>
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Material Code Label</Label>
+                  <Input
+                    value={siForm.materialCodeHeader}
+                    onChange={setSi('materialCodeHeader')}
+                    placeholder="Material Code"
+                  />
+                </div>
+                <div>
+                  <Label>Material Code Value</Label>
+                  <Input
+                    value={siForm.materialCode}
+                    onChange={setSi('materialCode')}
+                    placeholder="SMITHIC on grade label"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Note Under Material Code</Label>
+                <Input
+                  value={siForm.noteUnderMaterial}
+                  onChange={setSi('noteUnderMaterial')}
+                  placeholder="*put marking CODE on both sides of GPS box"
+                />
+              </div>
 
               <SectionTitle>Consignee (SI)</SectionTitle>
               <div>
@@ -633,6 +744,61 @@ export const PdfGenerationModal: React.FC<Props> = ({
                     'Company Name\nAddress Line 1\nAddress Line 2\nContact Person: ...\nTel: ... Fax: ...'
                   }
                 />
+              </div>
+              <div>
+                <Label>
+                  Deliver To (multi-line — Cooper 3-col middle column)
+                </Label>
+                <Textarea
+                  value={siForm.deliverTo}
+                  onChange={setSi('deliverTo')}
+                  rows={3}
+                  placeholder={'Company Name\nAddress Line 1\nAddress Line 2'}
+                />
+              </div>
+              <div>
+                <Label>Notify Party</Label>
+                <Input
+                  value={siForm.notifyParty}
+                  onChange={setSi('notifyParty')}
+                  placeholder="SAME AS CONSIGNEE"
+                />
+              </div>
+              <div>
+                <Label>Courier Address (Bridgestone)</Label>
+                <Input
+                  value={siForm.courierAddress}
+                  onChange={setSi('courierAddress')}
+                  placeholder="No need original courier."
+                />
+              </div>
+              <div>
+                <Label>EORI No. (Bridgestone)</Label>
+                <Input
+                  value={siForm.eoriNo}
+                  onChange={setSi('eoriNo')}
+                  placeholder="PL782205233400000"
+                />
+              </div>
+
+              <SectionTitle>Bridgestone-Specific</SectionTitle>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>PO No. Header (right of CONTRACT)</Label>
+                  <Input
+                    value={siForm.poNumberHeader}
+                    onChange={setSi('poNumberHeader')}
+                    placeholder="BS POLAND PO No.:"
+                  />
+                </div>
+                <div>
+                  <Label>Booking No.</Label>
+                  <Input
+                    value={siForm.bookingNo}
+                    onChange={setSi('bookingNo')}
+                    placeholder="e.g. ABC123456"
+                  />
+                </div>
               </div>
 
               <SectionTitle>Document Requirements</SectionTitle>
