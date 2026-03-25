@@ -13,6 +13,10 @@ import {
   createShippingInstructionPdfDataUrl
 } from '../utils/poPdf';
 import {
+  PdfGenerationModal,
+  type PoPdfInput
+} from '../components/PdfGenerationModal';
+import {
   useStore,
   canUserAccessShipTo,
   canUserRunLineAction,
@@ -30,6 +34,11 @@ export const CSDashboard: React.FC = () => {
     addNotification
   } = useStore();
   const [etdDates, setEtdDates] = useState<Record<string, string>>({});
+  const [pdfModalState, setPdfModalState] = useState<{
+    orderNo: string;
+    lineId: string;
+    actualETD: string;
+  } | null>(null);
   const [draftDocFilesByLine, setDraftDocFilesByLine] = useState<
     Record<string, Partial<Record<DocumentType, File | null>>>
   >({});
@@ -91,7 +100,7 @@ export const CSDashboard: React.FC = () => {
     if (!date) return;
     if (!currentUser) return;
 
-    const { order, line } = getLine(orderNo, lineId);
+    const { line } = getLine(orderNo, lineId);
     if (
       !line ||
       !canUserRunLineAction(
@@ -104,50 +113,25 @@ export const CSDashboard: React.FC = () => {
       return;
     }
 
-    const confirmed = await Swal.fire({
-      icon: 'question',
-      title: 'Mark Vessel Scheduled',
-      text: `Set ETD for ${line.poNo} as ${date}? PO and SI documents will be generated.`,
-      showCancelButton: true,
-      confirmButtonText: 'Confirm',
-      cancelButtonText: 'Cancel'
-    });
-    if (!confirmed.isConfirmed) return;
+    // Open the PO/SI template modal — CS reviews/edits fields before generating
+    setPdfModalState({ orderNo, lineId, actualETD: date });
+  };
+
+  const handlePdfModalConfirm = (poInput: PoPdfInput, siInput: PoPdfInput) => {
+    if (!pdfModalState || !currentUser) return;
+    const { orderNo, lineId, actualETD } = pdfModalState;
+
+    const { order, line } = getLine(orderNo, lineId);
+    if (!order || !line) return;
 
     const generatedPoFilename = `PO_${orderNo}_${line.poNo}.pdf`;
-    const generatedPoDataUrl = createOfficialPoPdfDataUrl({
-      orderNo,
-      orderDate: order.orderDate,
-      poNo: line.poNo,
-      shipToId: line.shipToId,
-      destinationId: line.destinationId,
-      termId: line.termId,
-      gradeId: line.gradeId,
-      qty: line.qty,
-      price: line.price,
-      currency: line.currency,
-      requestETD: line.requestETD,
-      actualETD: date
-    });
+    const generatedPoDataUrl = createOfficialPoPdfDataUrl(poInput);
     const generatedSiFilename = `SI_${orderNo}_${line.poNo}.pdf`;
-    const generatedSiDataUrl = createShippingInstructionPdfDataUrl({
-      orderNo,
-      orderDate: order.orderDate,
-      poNo: line.poNo,
-      shipToId: line.shipToId,
-      destinationId: line.destinationId,
-      termId: line.termId,
-      gradeId: line.gradeId,
-      qty: line.qty,
-      price: line.price,
-      currency: line.currency,
-      requestETD: line.requestETD,
-      actualETD: date
-    });
+    const generatedSiDataUrl = createShippingInstructionPdfDataUrl(siInput);
 
     updateLine(orderNo, lineId, (item) => ({
       ...item,
-      actualETD: date,
+      actualETD,
       status: OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO,
       documents: [
         ...item.documents.filter(
@@ -197,10 +181,12 @@ export const CSDashboard: React.FC = () => {
       `${orderNo} / ${lineId}`
     );
     addNotification(
-      `ETD set for ${orderNo} / ${line.poNo}: ${date}. PO/SI generated, waiting Sale approval.`,
+      `ETD set for ${orderNo} / ${line.poNo}: ${actualETD}. PO/SI generated, waiting Sale approval.`,
       Role.SALE,
       'email'
     );
+
+    setPdfModalState(null);
   };
 
   const saveEtdDraft = (orderNo: string, lineId: string) => {
@@ -674,6 +660,25 @@ export const CSDashboard: React.FC = () => {
           </div>
         </section>
       </div>
+
+      {/* PO/SI Generation Modal */}
+      {pdfModalState &&
+        (() => {
+          const { order, line } = getLine(
+            pdfModalState.orderNo,
+            pdfModalState.lineId
+          );
+          if (!order || !line) return null;
+          return (
+            <PdfGenerationModal
+              order={order}
+              line={line}
+              actualETD={pdfModalState.actualETD}
+              onConfirm={handlePdfModalConfirm}
+              onClose={() => setPdfModalState(null)}
+            />
+          );
+        })()}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 type PoPdfInput = {
+  // === Order / Line data ===
   orderNo: string;
   orderDate?: string;
   poNo: string;
@@ -11,6 +12,47 @@ type PoPdfInput = {
   currency?: string;
   requestETD?: string;
   actualETD?: string;
+
+  // === PO Template fields ===
+  /** Multi-line TO: block. Each \n = new line rendered in PDF. */
+  poToBlock?: string;
+  /** Multi-line CONSIGNEE & NOTIFY block. */
+  poConsigneeNotify?: string;
+  poTermsOfPayment?: string;
+  poPackingInstructions?: string;
+  /** Multi-line signature: "Name\nTitle\nCompany" */
+  poConfirmBy?: string;
+  /** Resolved destination display name (e.g. "Gdynia, Poland"). Used for DESTINATION section and Terms of Delivery city. */
+  destinationName?: string;
+  /** Product code extracted from gradeId (e.g. "VCR" from "VCR412"). Shown in PRODUCT column. */
+  poGradeCode?: string;
+  /** Full grade description from master data (e.g. "UBEPOL VCR412"). Shown in DESCRIPTION column. */
+  poGradeDescription?: string;
+
+  // === SI Template fields ===
+  siAttn?: string;
+  siFrom?: string;
+  siUser?: string;
+  siCountry?: string;
+  siShipper?: string;
+  siFeederVessel?: string;
+  siMotherVessel?: string;
+  siVesselCompany?: string;
+  siForwarder?: string;
+  siPortOfLoading?: string;
+  /** Multi-line SI CONSIGNEE block. */
+  siConsignee?: string;
+  siBlType?: string;
+  siFreeTime?: string;
+  siRequirements?: string;
+  siNote?: string;
+  siNote2?: string;
+  siNote3?: string;
+  siDescription?: string;
+  siUnderDescription?: string;
+  /** Multi-line shipping mark lines. */
+  siShippingMark?: string;
+  siBelowSignature?: string;
 };
 
 const toPdfDate = (value?: string) => {
@@ -62,449 +104,524 @@ const buildPdfDataUrl = (content: string[]) => {
 };
 
 export const createOfficialPoPdfDataUrl = (input: PoPdfInput) => {
-  const fontScale = 0.9;
-  const unitPrice = Number(input.price || 1435.2);
-  const amount = Number.isFinite(unitPrice * input.qty)
-    ? unitPrice * input.qty
-    : 57867.26;
+  // ── PDF page setup ─────────────────────────────────────────────────
+  // A4: 595 × 842 pt   margins: L=40 R=555 (width=515)
+  // Helvetica char width ≈ 0.52 × fontSize (measured average for mixed text)
+  const CW = 0.52; // char-width coefficient for Helvetica (more accurate than 0.48)
+  const L = 40;
+  const R = 555; // page margins
+
+  const unitPrice = Number(input.price ?? 0);
+  const amount = unitPrice * input.qty;
 
   const content: string[] = [];
-  const drawText = (x: number, y: number, text: string, size = 11) => {
-    const scaledSize = Number((size * fontScale).toFixed(2));
+
+  /** Draw text at (x, baseline-y) at the given font-size. */
+  const T = (x: number, y: number, text: string, size: number) => {
     content.push('BT');
-    content.push(`/F1 ${scaledSize} Tf`);
+    content.push(`/F1 ${size.toFixed(1)} Tf`);
     content.push(`${x} ${y} Td`);
     content.push(`(${escapePdf(text)}) Tj`);
     content.push('ET');
   };
 
-  const drawTextRight = (x: number, y: number, text: string, size = 11) => {
-    const scaledSize = size * fontScale;
-    const estimatedWidth = text.length * scaledSize * 0.48;
-    drawText(x - estimatedWidth, y, text, size);
+  /** Estimate text pixel-width. */
+  const tw = (text: string, size: number) => text.length * size * CW;
+
+  /** Right-align: draw so right edge is at x. */
+  const TR = (x: number, y: number, text: string, size: number) =>
+    T(x - tw(text, size), y, text, size);
+
+  /** Center text inside a box starting at x with given width. */
+  const TC = (x: number, y: number, text: string, boxW: number, size: number) =>
+    T(x + Math.max(0, (boxW - tw(text, size)) / 2), y, text, size);
+
+  /** Clamp text to fit maxWidth by truncating with '…'. */
+  const clamp = (text: string, size: number, maxW: number): string => {
+    if (tw(text, size) <= maxW) return text;
+    let t = text;
+    while (t.length > 1 && tw(t + '...', size) > maxW) t = t.slice(0, -1);
+    return t + '...';
   };
 
-  const drawTextCenter = (
+  /** Draw clamped text. */
+  const TC2 = (
     x: number,
     y: number,
     text: string,
-    width: number,
-    size = 11
-  ) => {
-    const scaledSize = size * fontScale;
-    const estimatedWidth = text.length * scaledSize * 0.48;
-    drawText(x + (width - estimatedWidth) / 2, y, text, size);
-  };
+    maxW: number,
+    size: number
+  ) => T(x, y, clamp(text, size, maxW), size);
 
-  const clampTextToWidth = (text: string, size: number, maxWidth: number) => {
-    const scaledSize = size * fontScale;
-    const charWidth = scaledSize * 0.48;
-    if (charWidth <= 0) return text;
-    const maxChars = Math.floor(maxWidth / charWidth);
-    if (maxChars <= 0) return '';
-    if (text.length <= maxChars) return text;
-    if (maxChars <= 3) return '.'.repeat(maxChars);
-    return `${text.slice(0, maxChars - 3)}...`;
-  };
-
-  const drawTextClamped = (
+  /** Auto-shrink font down to minSize to fit maxW, then clamp. */
+  const TFit = (
     x: number,
     y: number,
     text: string,
-    maxWidth: number,
-    size = 11
+    maxW: number,
+    pref: number,
+    min: number
   ) => {
-    drawText(x, y, clampTextToWidth(text, size, maxWidth), size);
+    let s = pref;
+    while (s > min && tw(text, s) > maxW) s -= 0.25;
+    TC2(x, y, text, maxW, Math.max(min, s));
   };
 
-  const drawTextFitToWidth = (
-    x: number,
-    y: number,
-    text: string,
-    maxWidth: number,
-    preferredSize = 10.5,
-    minSize = 8.5
-  ) => {
-    let nextSize = preferredSize;
-    while (nextSize > minSize) {
-      const scaledSize = nextSize * fontScale;
-      const estimatedWidth = text.length * scaledSize * 0.48;
-      if (estimatedWidth <= maxWidth) break;
-      nextSize -= 0.25;
-    }
-
-    const finalSize = Number(Math.max(minSize, nextSize).toFixed(2));
-    drawTextClamped(x, y, text, maxWidth, finalSize);
-  };
-
-  const drawLine = (
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number,
-    width = 0.75
-  ) => {
-    content.push(`${width} w`);
+  const line = (x1: number, y1: number, x2: number, y2: number, w = 0.75) => {
+    content.push(`${w} w`);
     content.push(`${x1} ${y1} m ${x2} ${y2} l S`);
   };
 
-  const drawRect = (
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    lineWidth = 0.75
-  ) => {
-    drawLine(x, y, x + width, y, lineWidth);
-    drawLine(x + width, y, x + width, y - height, lineWidth);
-    drawLine(x + width, y - height, x, y - height, lineWidth);
-    drawLine(x, y - height, x, y, lineWidth);
+  const rect = (x: number, y: number, w: number, h: number, lw = 0.75) => {
+    line(x, y, x + w, y, lw);
+    line(x + w, y, x + w, y - h, lw);
+    line(x + w, y - h, x, y - h, lw);
+    line(x, y - h, x, y, lw);
   };
 
-  const drawUnderlinedLabel = (
-    x: number,
-    y: number,
-    text: string,
-    size = 11
-  ) => {
-    const scaledSize = size * fontScale;
-    const estimatedWidth = text.length * scaledSize * 0.5;
-    drawText(x, y, text, size);
-    drawLine(x, y - 2, x + estimatedWidth, y - 2, 0.65);
+  /** Draw bold-style label with underline. */
+  const UL = (x: number, y: number, text: string, size: number) => {
+    T(x, y, text, size);
+    line(x, y - 2, x + tw(text, size) * 1.02, y - 2, 0.5);
   };
 
-  drawText(42, 812, 'UBE Elastomer Co.Ltd.', 11);
-  drawText(42, 797, 'Seavans North Bldg., 1-2-1, Shibaura, Minato-ku,', 11);
-  drawText(42, 782, 'Tokyo 105-6791, Japan', 11);
-  drawText(488, 808, 'UBE', 30);
+  // ── LETTERHEAD ──────────────────────────────────────────────────────
+  // y=842 top; leave 25pt top margin → start at y=817
+  T(L, 817, 'UBE Elastomer Co. Ltd.', 9);
+  T(L, 806, 'Seavans North Bldg., 1-2-1, Shibaura, Minato-ku,', 9);
+  T(L, 795, 'Tokyo 105-6791, Japan', 9);
+  T(480, 813, 'UBE', 26);
 
-  drawText(42, 700, 'PURCHASE ORDER', 14);
-  drawRect(410, 716, 145, 24, 0.9);
-  drawTextCenter(410, 700, 'CONFIDENTIAL', 145, 14);
+  // ── TITLE + CONFIDENTIAL box ────────────────────────────────────────
+  // "PURCHASE ORDER" at y=770, CONFIDENTIAL box right side
+  T(L, 771, 'PURCHASE ORDER', 14);
+  rect(400, 781, 155, 20, 1);
+  TC(400, 765, 'CONFIDENTIAL', 155, 13);
 
-  drawText(292, 676, 'Purchase Order No. :', 10.5);
-  drawText(405, 676, input.poNo || input.orderNo, 13);
-  drawText(292, 658, 'Date of Order :', 10.5);
-  drawText(388, 658, toPdfDate(input.orderDate), 10.5);
+  // ── PO NUMBER + DATE (right column) ─────────────────────────────────
+  // y=752: PO No label + value
+  T(295, 752, 'Purchase Order No. :', 9.5);
+  T(410, 752, input.poNo || input.orderNo, 11);
+  T(295, 738, 'Date of Order :', 9.5);
+  T(395, 738, toPdfDate(input.orderDate), 9.5);
 
-  drawLine(40, 648, 555, 648, 1.05);
-  drawLine(290, 690, 290, 435, 1.05);
+  // ── HORIZONTAL DIVIDER ───────────────────────────────────────────────
+  line(L, 728, R, 728, 1.1);
 
-  drawText(42, 632, 'TO:', 10.5);
-  drawText(42, 615, 'THAI SYNTHETIC RUBBERS CO., LTD.', 11);
-  drawText(42, 600, '18 th Floor, Sathorn Square Office Tower,', 10.5);
-  drawText(42, 586, '98 North Sathorn Road,', 10.5);
-  drawText(42, 572, 'Silom, Bangrak, Bangkok 10500,', 10.5);
-  drawText(42, 558, 'THAILAND', 10.5);
-  drawTextFitToWidth(42, 546, 'ATTN.: T.FUJIOKA / SEVP', 242, 10.5, 8.5);
+  // ── VERTICAL DIVIDER left|right in address block ─────────────────────
+  // Address block: y=728 down to y=620
+  line(293, 728, 293, 620, 1);
 
-  drawText(292, 632, 'CONSIGNEE', 10.5);
-  drawText(300, 615, 'Toyo Tyre Malaysia Sdn Bhd', 11);
-  drawText(300, 600, 'PT23101, Jalan Tembaga Kuning', 10.5);
-  drawText(300, 586, 'Kawasan Perindustrian Kamunting Raya', 10.5);
-  drawText(300, 572, 'PO Box 1, 34600, Kamunting, Perak. Malaysia', 10.5);
-  drawTextFitToWidth(
-    300,
-    559,
-    'Contact Person : Ms Lim / Ms Yap',
-    248,
-    10.5,
-    8.5
+  // ── TO: block ────────────────────────────────────────────────────────
+  // Label at y=718, content starts at y=705, step=13, max 6 lines → lowest=705-5×13=640 > 620 ✓
+  T(L, 718, 'TO:', 9.5);
+  const toLines = (
+    input.poToBlock ||
+    'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP'
+  ).split('\n');
+  toLines
+    .slice(0, 6)
+    .forEach((ln, i) => TFit(L, 705 - i * 13, ln, 245, 9.5, 7.5));
+
+  // ── CONSIGNEE & NOTIFY block ─────────────────────────────────────────
+  T(298, 718, 'CONSIGNEE & NOTIFY :', 9.5);
+  const consLines = (
+    input.poConsigneeNotify ||
+    'Consignee Company Name\nAddress Line 1\nAddress Line 2\nCity, Country\nContact Person: ...\nTel / Fax: ...'
+  ).split('\n');
+  consLines
+    .slice(0, 6)
+    .forEach((ln, i) => TFit(298, 705 - i * 13, ln, 252, 9.5, 7.5));
+
+  // ── DIVIDER under address block ──────────────────────────────────────
+  line(L, 620, R, 620, 1.1);
+
+  // ── DELIVERY DATE + TERMS OF PAYMENT ────────────────────────────────
+  // Row band: y=620 → y=592  (height 28)
+  UL(L, 610, 'DELIVERY DATE (ETD) :', 9.5);
+  T(L, 598, toPdfDate(input.actualETD || input.requestETD), 10.5);
+  UL(298, 610, 'TERMS OF PAYMENT :', 9.5);
+  TC2(
+    298,
+    598,
+    input.poTermsOfPayment || 'BY T.T.R 30 DAYS AFTER B/L DATE',
+    252,
+    9.5
   );
-  drawTextFitToWidth(
-    300,
-    546,
-    'Tel : 605-8206600 Fax : 605-8206659',
-    248,
-    10.5,
-    8.5
+
+  line(L, 590, R, 590, 1.1);
+
+  // ── TERMS OF DELIVERY + PACKING INSTRUCTIONS ────────────────────────
+  // Row band: y=590 → y=562
+  UL(L, 580, 'TERMS OF DELIVERY :', 9.5);
+  const destDisplayName = input.destinationName || input.destinationId || '';
+  const destCity = destDisplayName.split(',')[0].trim();
+  const termOfDelivery = [input.termId || 'CIF', destCity]
+    .filter(Boolean)
+    .join(' ')
+    .toUpperCase();
+  TC2(L, 568, termOfDelivery, 245, 9.5);
+
+  UL(298, 580, 'PACKING INSTRUCTIONS :', 9.5);
+  TC2(
+    298,
+    568,
+    input.poPackingInstructions || 'STANDARD EXPORT PACKING',
+    252,
+    9.5
   );
 
-  drawLine(40, 545, 555, 545, 1.05);
-  drawLine(40, 507, 555, 507, 1.05);
+  line(L, 560, R, 560, 1.1);
 
-  drawUnderlinedLabel(42, 532, 'DELIVERY DATE : (ETD)', 10.5);
-  drawText(75, 516, toPdfDate(input.actualETD || input.requestETD), 12);
-
-  drawUnderlinedLabel(292, 532, 'TERMS OF PAYMENT :', 10.5);
-  drawText(300, 516, 'BY  T.T.R 30 DAYS AFTER B/L DATE', 10.5);
-
-  drawLine(40, 470, 555, 470, 1.05);
-  drawUnderlinedLabel(42, 494, 'TERMS OF DELIVERY :', 10.5);
-  drawTextClamped(
-    42,
-    478,
-    (input.termId || 'CIF PENANG').toUpperCase(),
-    240,
-    10.5
-  );
-  drawUnderlinedLabel(292, 494, 'PACKING INSTRUCTIONS :', 10.5);
-  drawText(300, 478, 'GPS', 10.5);
-
-  drawLine(40, 435, 555, 435, 1.05);
-  drawUnderlinedLabel(42, 458, 'DESTINATION :', 10.5);
-  drawTextClamped(
-    42,
-    442,
-    (input.destinationId || 'PENANG,MALAYSIA').toUpperCase(),
+  // ── DESTINATION + CUSTOMER PO No. ───────────────────────────────────
+  // Row band: y=560 → y=532
+  UL(L, 550, 'DESTINATION :', 9.5);
+  TC2(
+    L,
+    538,
+    (input.destinationName || input.destinationId || '').toUpperCase(),
     245,
-    10.5
+    9.5
   );
-  drawText(300, 442, 'PO No.:', 11);
-  drawTextClamped(390, 442, input.poNo, 160, 11);
+  T(298, 538, 'CUSTOMER PO No. :', 9.5);
+  TC2(390, 538, input.poNo, 165, 9.5);
 
-  const tableTop = 405;
-  const tableBottom = 330;
-  const col1 = 40;
-  const col2 = 100;
-  const col3 = 240;
-  const col4 = 290;
-  const col5 = 400;
-  const col6 = 555;
+  line(L, 530, R, 530, 1.1);
 
-  drawRect(col1, tableTop, col6 - col1, tableTop - tableBottom, 1.1);
-  drawLine(col2, tableTop, col2, tableBottom, 0.85);
-  drawLine(col3, tableTop, col3, tableBottom, 0.85);
-  drawLine(col4, tableTop, col4, tableBottom, 1.05);
-  drawLine(col5, tableTop, col5, tableBottom, 1.05);
-  drawLine(col1, 385, col6, 385, 0.85);
-  drawLine(col1, 365, col6, 365, 0.85);
-  drawLine(col1, 347, col6, 347, 0.85);
+  // ── PRODUCT TABLE ─────────────────────────────────────────────────────
+  // Table: y=530 top → y=460 bottom  (70pt tall)
+  // Columns: PRODUCT(40-105) DESCRIPTION(105-270) QUANTITY(270-340) UNIT PRICE(340-450) AMOUNT(450-555)
+  const tT = 530;
+  const tB = 460;
+  const c1 = L;
+  const c2 = 105;
+  const c3 = 270;
+  const c4 = 340;
+  const c5 = 450;
+  const c6 = R;
 
-  drawTextCenter(col1, 391, 'PRODUCT', col2 - col1, 11);
-  drawTextCenter(col2, 391, 'DESCRIPTION', col3 - col2, 11);
-  drawTextCenter(col3, 391, 'QUANTITY', col4 - col3, 11);
-  drawTextCenter(col4, 391, 'UNIT PRICE', col5 - col4, 11);
-  drawTextCenter(col5, 391, 'AMOUNT', col6 - col5, 11);
+  rect(c1, tT, c6 - c1, tT - tB, 1.1);
+  line(c2, tT, c2, tB, 0.85);
+  line(c3, tT, c3, tB, 0.85);
+  line(c4, tT, c4, tB, 1);
+  line(c5, tT, c5, tB, 1);
 
-  drawText(45, 351, input.gradeId?.substring(0, 2) || 'BR', 12);
-  drawTextClamped(102, 351, input.gradeId || 'UBEPOL BR150B', 134, 11);
-  drawTextRight(col4 - 6, 351, `$${formatNumber(input.qty)} MT`, 11);
-  drawTextRight(
-    col5 - 6,
-    351,
-    `$${formatNumber(unitPrice)} ${(input.currency || 'US$').toUpperCase()}`,
-    11
-  );
-  drawTextRight(
-    col6 - 8,
-    351,
-    `$${formatNumber(amount)} ${(input.currency || 'US$').toUpperCase()}`,
-    11
-  );
+  // Header row y-baseline=517
+  const hY = 517;
+  TC(c1, hY, 'PRODUCT', c2 - c1, 9.5);
+  TC(c2, hY, 'DESCRIPTION', c3 - c2, 9.5);
+  TC(c3, hY, 'QUANTITY', c4 - c3, 9.5);
+  TC(c4, hY, 'UNIT PRICE', c5 - c4, 9.5);
+  TC(c5, hY, 'AMOUNT', c6 - c5, 9.5);
 
-  drawRect(col4, 330, col6 - col4, 28, 1.1);
-  drawLine(col5, 330, col5, 302, 1.05);
-  drawTextCenter(col4, 311, 'TOTAL', col5 - col4, 12);
-  drawTextRight(col6 - 8, 311, formatNumber(amount), 12);
+  // Sub-header (unit) row — divider at y=507, baseline=497
+  line(c1, 507, c6, 507, 0.7);
+  const unitLabel = (input.currency || 'EUR').toUpperCase();
+  TC(c3, 497, 'MT', c4 - c3, 9);
+  TC(c4, 497, unitLabel, c5 - c4, 9);
+  TC(c5, 497, unitLabel, c6 - c5, 9);
 
-  drawUnderlinedLabel(42, 286, 'PRICE BREAK DOWN', 12);
-  const pbTop = 270;
-  const pbBottom = 214;
-  const pbLeft = 42;
-  const pbMid1 = 170;
-  const pbMid2 = 290;
-  const pbRight = 375;
+  // Data row — divider at y=487, baseline=475
+  line(c1, 487, c6, 487, 0.7);
+  const gradeCode =
+    input.poGradeCode || (input.gradeId || '').match(/^[A-Za-z]+/)?.[0] || 'BR';
+  const gradeDesc = input.poGradeDescription || input.gradeId || '';
+  T(c1 + 4, 475, gradeCode, 10);
+  TC2(c2 + 4, 475, gradeDesc, c3 - c2 - 8, 9.5);
+  TR(c4 - 4, 475, formatNumber(input.qty), 9.5);
+  TR(c5 - 4, 475, formatNumber(unitPrice), 9.5);
+  TR(c6 - 4, 475, formatNumber(amount), 9.5);
 
-  drawRect(pbLeft, pbTop, pbRight - pbLeft, pbTop - pbBottom, 1.05);
-  drawLine(pbMid1, pbTop, pbMid1, pbBottom, 0.85);
-  drawLine(pbMid2, pbTop, pbMid2, pbBottom, 0.85);
-  drawLine(pbLeft, 252, pbRight, 252, 0.85);
-  drawLine(pbLeft, 234, pbRight, 234, 0.85);
+  // TOTAL row: rect below table, y=460 height=22
+  rect(c4, tB, c6 - c4, 22, 1.1);
+  line(c5, tB, c5, tB - 22, 1);
+  TC(c4, tB - 14, 'TOTAL', c5 - c4, 10);
+  TR(c6 - 4, tB - 14, formatNumber(amount), 10);
+
+  // ── PRICE BREAK DOWN ─────────────────────────────────────────────────
+  // Placed at y=425 → y=365
+  UL(L, 422, 'PRICE BREAK DOWN', 10.5);
+
+  const pbT = 412;
+  const pbB = 364;
+  const pb1 = L;
+  const pb2 = 172;
+  const pb3 = 296;
+  const pb4 = 385;
+  rect(pb1, pbT, pb4 - pb1, pbT - pbB, 1);
+  line(pb2, pbT, pb2, pbB, 0.7);
+  line(pb3, pbT, pb3, pbB, 0.7);
+  line(pb1, pbT - 16, pb4, pbT - 16, 0.7);
+  line(pb1, pbT - 32, pb4, pbT - 32, 0.7);
 
   const discountRate = 0.04;
-  const discountAmount = unitPrice * discountRate;
-  const contractAfterDiscount = unitPrice - discountAmount;
+  const discountAmt = unitPrice * discountRate;
+  const contractNet = unitPrice - discountAmt;
 
-  drawText(44, 257, 'CONTRACT PRICE', 10.5);
-  drawText(174, 257, 'CIF base US$ / MT', 10.5);
-  drawTextRight(pbRight - 4, 257, formatNumber(unitPrice), 10.5);
-  drawText(44, 239, 'DISCOUNT', 10.5);
-  drawText(174, 239, '4% on CIF VALUE', 10.5);
-  drawTextRight(pbRight - 4, 239, formatNumber(discountAmount), 10.5);
-  drawText(44, 221, '(A) CONTRACT -DISCOUNT', 10.5);
-  drawTextRight(pbRight - 4, 221, formatNumber(contractAfterDiscount), 10.5);
+  T(pb1 + 3, pbT - 11, 'CONTRACT PRICE', 9);
+  TC2(
+    pb2 + 3,
+    pbT - 11,
+    `${(input.termId || 'CIF').toUpperCase()} base ${unitLabel} / MT`,
+    pb3 - pb2 - 6,
+    9
+  );
+  TR(pb4 - 3, pbT - 11, formatNumber(unitPrice), 9);
 
-  drawText(42, 200, 'PLEASE SIGN AND RETURN CONFIRMATION', 11);
-  drawText(42, 160, 'Issued by :', 11);
-  drawLine(42, 112, 186, 112, 0.85);
-  drawText(42, 98, 'UBE Elastomer Co. Ltd.', 11);
-  drawLine(300, 112, 445, 112, 0.85);
-  drawText(300, 98, 'T.FUJIOKA', 11);
-  drawText(300, 82, 'Senior Executive Vice President', 11);
-  drawText(300, 66, 'Thai Synthetic Rubbers Co., Ltd.', 11);
+  T(pb1 + 3, pbT - 27, 'DISCOUNT', 9);
+  TC2(
+    pb2 + 3,
+    pbT - 27,
+    `${(discountRate * 100).toFixed(0)}% on ${(input.termId || 'CIF').toUpperCase()} VALUE`,
+    pb3 - pb2 - 6,
+    9
+  );
+  TR(pb4 - 3, pbT - 27, formatNumber(discountAmt), 9);
+
+  T(pb1 + 3, pbT - 43, 'CONTRACT - DISCOUNT', 9);
+  TR(pb4 - 3, pbT - 43, formatNumber(contractNet), 9);
+
+  // ── SIGNATURE SECTION ────────────────────────────────────────────────
+  // y=345 → y=260
+  T(L, 348, 'PLEASE SIGN AND RETURN CONFIRMATION', 10);
+
+  T(L, 315, 'Issued by :', 9.5);
+  line(L, 288, 180, 288, 0.75);
+  T(L, 276, 'UBE Elastomer Co. Ltd.', 9);
+
+  line(298, 288, 453, 288, 0.75);
+  T(298, 315, 'Confirmed by :', 9.5);
+  const confirmLines = (
+    input.poConfirmBy ||
+    'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.'
+  ).split('\n');
+  confirmLines.slice(0, 3).forEach((ln, i) => T(298, 276 - i * 14, ln, 9.5));
 
   return buildPdfDataUrl(content);
 };
 
 export const createShippingInstructionPdfDataUrl = (input: PoPdfInput) => {
-  const fontScale = 0.9;
+  // ── PDF page setup ─────────────────────────────────────────────────
+  // A4: 595 × 842 pt   margins: L=40 R=555 (width=515)
+  const CW = 0.52;
+  const L = 40;
+  const R = 555;
+
   const content: string[] = [];
 
-  const drawText = (x: number, y: number, text: string, size = 11) => {
-    const scaledSize = Number((size * fontScale).toFixed(2));
+  const T = (x: number, y: number, text: string, size: number) => {
     content.push('BT');
-    content.push(`/F1 ${scaledSize} Tf`);
+    content.push(`/F1 ${size.toFixed(1)} Tf`);
     content.push(`${x} ${y} Td`);
     content.push(`(${escapePdf(text)}) Tj`);
     content.push('ET');
   };
 
-  const drawLine = (
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number,
-    width = 0.75
-  ) => {
-    content.push(`${width} w`);
-    content.push(`${x1} ${y1} m ${x2} ${y2} l S`);
+  const tw = (text: string, size: number) => text.length * size * CW;
+
+  const clamp = (text: string, size: number, maxW: number): string => {
+    if (tw(text, size) <= maxW) return text;
+    let t = text;
+    while (t.length > 1 && tw(t + '...', size) > maxW) t = t.slice(0, -1);
+    return t + '...';
   };
 
-  const drawRect = (
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    lineWidth = 0.75
-  ) => {
-    drawLine(x, y, x + width, y, lineWidth);
-    drawLine(x + width, y, x + width, y - height, lineWidth);
-    drawLine(x + width, y - height, x, y - height, lineWidth);
-    drawLine(x, y - height, x, y, lineWidth);
-  };
-
-  const drawTextClamped = (
+  const TC2 = (
     x: number,
     y: number,
     text: string,
-    maxWidth: number,
-    size = 11
-  ) => {
-    const scaledSize = size * fontScale;
-    const charWidth = scaledSize * 0.48;
-    if (charWidth <= 0) {
-      drawText(x, y, text, size);
-      return;
-    }
+    maxW: number,
+    size: number
+  ) => T(x, y, clamp(text, size, maxW), size);
 
-    const maxChars = Math.max(0, Math.floor(maxWidth / charWidth));
-    if (maxChars <= 0) return;
-    if (text.length <= maxChars) {
-      drawText(x, y, text, size);
-      return;
-    }
-    if (maxChars <= 3) {
-      drawText(x, y, '.'.repeat(maxChars), size);
-      return;
-    }
-
-    drawText(x, y, `${text.slice(0, maxChars - 3)}...`, size);
+  const line = (x1: number, y1: number, x2: number, y2: number, w = 0.75) => {
+    content.push(`${w} w`);
+    content.push(`${x1} ${y1} m ${x2} ${y2} l S`);
   };
 
-  const gradeName = (input.gradeId || '-').toUpperCase();
-  const destination = (input.destinationId || '-').toUpperCase();
+  // ── Derived values ──────────────────────────────────────────────────
+  const gradeName = (
+    input.poGradeDescription ||
+    input.gradeId ||
+    '-'
+  ).toUpperCase();
+  const destination = (
+    input.destinationName ||
+    input.destinationId ||
+    '-'
+  ).toUpperCase();
   const poNo = input.poNo || input.orderNo;
   const etd = toPdfDate(input.actualETD || input.requestETD);
 
-  drawText(42, 812, 'UBE Elastomer Co.Ltd.', 10.5);
-  drawText(42, 798, 'Seavans North Bldg., 1-2-1, Shibaura, Minato-ku,', 10.5);
-  drawText(42, 784, 'Tokyo 105-6791, Japan', 10.5);
-  drawText(474, 806, 'UBE', 29);
+  // ── LETTERHEAD  y=842 top ────────────────────────────────────────────
+  T(L, 817, 'UBE Elastomer Co. Ltd.', 9);
+  T(L, 806, 'Seavans North Bldg., 1-2-1, Shibaura, Minato-ku,', 9);
+  T(L, 795, 'Tokyo 105-6791, Japan', 9);
+  T(480, 813, 'UBE', 26);
 
-  drawText(204, 745, 'SHIPPING INSTRUCTION', 16);
-  drawText(498, 745, toPdfDate(input.orderDate), 9.5);
+  // ── TITLE ───────────────────────────────────────────────────────────
+  // y=771 bold title; date flush right
+  T(178, 771, 'SHIPPING INSTRUCTION', 15);
+  T(480, 771, toPdfDate(input.orderDate), 9);
 
-  drawText(42, 714, 'ATTN:', 10);
-  drawText(84, 714, 'T.FUJIOKA / SEVP', 10);
-  drawText(42, 700, 'THAI SYNTHETIC RUBBERS CO., LTD.', 10);
+  line(L, 762, R, 762, 1);
 
-  drawText(260, 714, 'From:', 10);
-  drawText(306, 714, 'M.KAWAMORI / H.UEDA', 10);
-  drawText(306, 700, 'UBE Elastomer Co. Ltd.', 10);
-  drawText(306, 686, 'TEL:81-3-5419-6167', 10);
-  drawText(306, 672, 'FAX:81-3-5419-6250', 10);
+  // ── ATTN / FROM block  y=762→716 ────────────────────────────────────
+  // Left column (L to 265), right column (270 to R)
+  // Row 1: ATTN / From labels  y=750
+  T(L, 750, 'ATTN :', 9.5);
+  TC2(78, 750, input.siAttn || 'T.FUJIOKA / SEVP', 183, 9.5);
+  T(270, 750, 'From :', 9.5);
+  TC2(312, 750, input.siFrom || 'M.KAWAMORI / H.UEDA', 241, 9.5);
 
-  drawText(44, 639, 'CONTRACT NO.:', 10);
-  drawTextClamped(130, 639, `${poNo}-5`, 152, 10);
-  drawText(44, 624, 'USER:', 10);
-  drawTextClamped(130, 624, 'TOYO TYRE MALAYSIA', 152, 10);
-  drawText(44, 609, 'COUNTRY:', 10);
-  drawTextClamped(130, 609, 'Malaysia', 152, 10);
-  drawText(44, 594, 'SHIPPER:', 10);
-  drawTextClamped(130, 594, 'TSL WITH FULL ADDRESS', 152, 10);
+  // Row 2: company  y=737
+  TC2(L, 737, 'THAI SYNTHETIC RUBBERS CO., LTD.', 225, 9.5);
+  TC2(270, 737, 'UBE Elastomer Co. Ltd.', 283, 9.5);
 
-  drawText(44, 557, 'FEEDER VESSEL :', 10);
-  drawTextClamped(128, 557, 'INTERASIA MOTIVATION V.W026', 112, 9.5);
-  drawText(44, 542, 'MOTHER VESSEL : -', 10);
-  drawText(44, 527, 'VESSEL COMPANY :', 10);
-  drawTextClamped(128, 527, 'INTER ASIA', 112, 10);
-  drawText(44, 512, 'FORWARDER :', 10);
-  drawTextClamped(128, 512, 'LEO', 112, 10);
-  drawText(44, 497, 'ETD:', 10);
-  drawText(84, 497, etd, 10);
-  drawText(44, 482, 'ETA:', 10);
-  drawText(84, 482, etd, 10);
+  // Row 3-4: Tel / Fax (right column only)
+  T(270, 724, 'TEL : 81-3-5419-6167', 9);
+  T(270, 712, 'FAX : 81-3-5419-6250', 9);
 
-  drawText(299, 557, 'SHIPPING MARK', 10.5);
-  drawTextClamped(299, 537, 'TOYO TYRE MALAYSIA PLANT', 296, 10);
-  drawTextClamped(
-    299,
-    522,
+  line(L, 702, R, 702, 1);
+
+  // ── CONTRACT / USER / COUNTRY / SHIPPER  y=702→652 ─────────────────
+  // Each row height = 16pt, 4 rows → 64pt, bottom at y=638
+  const LV = 112; // label-value split x for left column
+  T(L, 690, 'CONTRACT NO. :', 9.5);
+  TC2(LV, 690, `${poNo}-5`, 153, 9.5);
+
+  T(L, 676, 'USER :', 9.5);
+  TC2(LV, 676, input.siUser || '-', 153, 9.5);
+
+  T(L, 662, 'COUNTRY :', 9.5);
+  TC2(LV, 662, input.siCountry || '-', 153, 9.5);
+
+  T(L, 648, 'SHIPPER :', 9.5);
+  TC2(LV, 648, input.siShipper || 'TSL WITH FULL ADDRESS', 153, 9.5);
+
+  line(L, 638, R, 638, 1);
+
+  // ── SHIPPING MARK (right column)  y=638→472 ─────────────────────────
+  // Allocate right col (270→R = 283pt wide) for shipping mark: 9 lines max step=14
+  T(270, 627, 'SHIPPING MARK :', 9.5);
+  const markFallback = [
+    `${input.siUser || 'TOYO TYRE MALAYSIA'} PLANT`,
     `MAR${toPdfDate(input.orderDate).replace(/-/g, '')}`,
-    296,
-    10
+    `ORDER No.: ${poNo}-5`,
+    gradeName,
+    `V.NO. ${poNo}`,
+    'MADE IN THAILAND'
+  ].join('\n');
+  const markLines = (input.siShippingMark || markFallback).split('\n');
+  // markYStart=614, step=13, max 9 lines → bottom = 614-8×13 = 510  (above 472 divider ✓)
+  markLines.slice(0, 9).forEach((ml, i) => TC2(270, 614 - i * 13, ml, 283, 9));
+
+  // ── VESSEL / FORWARDER / ETD / ETA (left column)  y=638→472 ─────────
+  // 8 rows step=14 → used rows: 638-7×14=540 last row at y=540, bottom at ~530
+  T(L, 627, 'FEEDER VESSEL :', 9.5);
+  TC2(LV, 627, input.siFeederVessel || '-', 153, 9.5);
+
+  T(L, 613, 'MOTHER VESSEL :', 9.5);
+  TC2(LV, 613, input.siMotherVessel || '-', 153, 9.5);
+
+  T(L, 599, 'VESSEL COMPANY :', 9.5);
+  TC2(LV, 599, input.siVesselCompany || '-', 153, 9.5);
+
+  T(L, 585, 'FORWARDER :', 9.5);
+  TC2(LV, 585, input.siForwarder || '-', 153, 9.5);
+
+  T(L, 571, 'ETD :', 9.5);
+  T(LV, 571, etd, 9.5);
+
+  T(L, 557, 'ETA :', 9.5);
+  T(LV, 557, etd, 9.5);
+
+  line(L, 472, R, 472, 1);
+
+  // ── PORT / DESTINATION  y=472→444 ───────────────────────────────────
+  TC2(
+    L,
+    461,
+    `PORT OF LOADING : ${input.siPortOfLoading || 'LAEM CHABANG, THAILAND'}`,
+    R - L,
+    9.5
   );
-  drawTextClamped(299, 507, `ORDER No.: ${poNo}-5`, 296, 10);
-  drawTextClamped(299, 492, gradeName, 296, 10);
-  drawTextClamped(299, 477, `V.NO. ${poNo}`, 296, 10);
-  drawTextClamped(299, 462, 'MADE IN THAILAND', 296, 10);
+  TC2(L, 447, `PORT OF DESTINATION : ${destination}`, R - L, 9.5);
 
-  drawTextClamped(42, 448, `PORT of LOADING : LAEM CHABANG, THAILAND`, 510, 10);
-  drawTextClamped(42, 434, `PORT OF DESTINATION : ${destination}`, 510, 10);
-  drawText(42, 420, 'CONSIGNEE and notify', 10);
-  drawTextClamped(42, 406, 'Toyo Tyre Malaysia Sdn Bhd', 510, 10);
-  drawTextClamped(42, 392, 'PT23101, Jalan Tembaga Kuning', 510, 10);
-  drawTextClamped(42, 378, 'Kawasan Perindustrian Kamunting Raya', 510, 10);
-  drawTextClamped(
-    42,
-    364,
-    'PO Box 1, 34600, Kamunting, Perak, Malaysia',
-    510,
-    10
-  );
-  drawTextClamped(42, 350, 'Contact Person : Ms Lim / Ms Yap', 510, 10);
-  drawTextClamped(42, 336, 'Tel : 605-8206600 Fax : 605-8206659', 510, 10);
+  line(L, 437, R, 437, 1);
 
-  drawText(42, 316, 'B/L', 10);
-  drawText(150, 316, 'SURRENDERED B/L', 10);
-  drawText(42, 302, 'FREE TIME', 10);
-  drawText(150, 302, 'D/M:14DAYS    D/T 14DAYS', 10);
-  drawText(42, 288, 'REQUIREMENTS:', 10);
-  drawTextClamped(260, 302, '* Please apply 14 days Free Time', 292, 10);
+  // ── CONSIGNEE & NOTIFY  y=437→310 ───────────────────────────────────
+  // Label at y=426, then up to 7 consignee lines step=13 → bottom = 426-7×13 = 335  (above 323 ✓)
+  T(L, 426, 'CONSIGNEE & NOTIFY :', 9.5);
+  const siConsLines = (
+    input.siConsignee ||
+    'Toyo Tyre Malaysia Sdn Bhd\nPT23101, Jalan Tembaga Kuning\nKawasan Perindustrian Kamunting Raya\nPO Box 1, 34600, Kamunting, Perak, Malaysia\nContact Person : Ms Lim / Ms Yap\nTel : 605-8206600 Fax : 605-8206659'
+  ).split('\n');
+  siConsLines
+    .slice(0, 7)
+    .forEach((ln, i) => TC2(L, 413 - i * 13, ln, R - L, 9.5));
 
-  drawText(42, 268, '*CERTIFICATE OF ANALYSIS', 9.5);
-  drawText(42, 254, '*PACKING LIST', 9.5);
-  drawTextClamped(
-    42,
-    240,
-    '*Please describe MAR information on all delivery documents. (BL,PL,COA)',
-    510,
-    8.8
+  line(L, 323, R, 323, 1);
+
+  // ── B/L / FREE TIME / REQUIREMENTS  y=323→270 ───────────────────────
+  T(L, 312, 'B/L :', 9.5);
+  TC2(LV, 312, input.siBlType || 'SURRENDERED B/L', R - LV, 9.5);
+
+  T(L, 298, 'FREE TIME :', 9.5);
+  TC2(
+    LV,
+    298,
+    input.siFreeTime || 'D/M : 14 DAYS   D/T : 14 DAYS',
+    R - LV,
+    9.5
   );
 
-  drawLine(40, 214, 555, 214, 0.85);
-  drawText(42, 200, 'GRADE', 10);
-  drawText(170, 200, 'QUANTITY(MT)', 10);
-  drawText(300, 200, 'DESCRIPTION', 10);
-  drawLine(40, 195, 555, 195, 0.85);
-  drawTextClamped(42, 180, gradeName, 120, 10);
-  drawText(190, 180, `${formatNumber(input.qty)} MT`, 10);
-  drawTextClamped(300, 180, gradeName, 250, 10);
+  T(L, 284, 'REQUIREMENTS :', 9.5);
+  TC2(
+    LV,
+    284,
+    input.siRequirements || '* Please apply 14 days Free Time',
+    R - LV,
+    9.5
+  );
 
-  drawText(42, 152, '', 12);
-  drawLine(42, 146, 170, 146, 0.8);
-  drawText(42, 132, 'UBE Elastomer Co. Ltd.', 10);
+  line(L, 270, R, 270, 0.85);
+
+  // ── NOTES  y=270→228 ─────────────────────────────────────────────────
+  TC2(L, 260, input.siNote || '* CERTIFICATE OF ANALYSIS', R - L, 9.5);
+  TC2(L, 247, input.siNote2 || '* PACKING LIST', R - L, 9.5);
+  TC2(
+    L,
+    234,
+    input.siNote3 ||
+      '* Please describe MAR information on all delivery documents. (BL, PL, COA)',
+    R - L,
+    9
+  );
+
+  line(L, 222, R, 222, 1);
+
+  // ── GRADE TABLE  y=222→160 ───────────────────────────────────────────
+  // Header row at y=211, separator at y=204, data row at y=192
+  T(L + 4, 211, 'GRADE', 9.5);
+  T(178, 211, 'QUANTITY (MT)', 9.5);
+  T(320, 211, 'DESCRIPTION', 9.5);
+  line(L, 204, R, 204, 0.85);
+
+  TC2(L + 4, 192, gradeName, 128, 9.5);
+  T(178, 192, `${formatNumber(input.qty)} MT`, 9.5);
+  TC2(320, 192, input.siDescription || gradeName, R - 320, 9.5);
+
+  // Under-description (optional note below data row)
+  if (input.siUnderDescription) {
+    TC2(L + 4, 178, input.siUnderDescription, R - L, 9);
+  }
+
+  line(L, 168, R, 168, 1);
+
+  // ── SIGNATURE  y=168→110 ─────────────────────────────────────────────
+  line(L, 140, 170, 140, 0.75);
+  T(L, 128, input.siBelowSignature || 'UBE Elastomer Co. Ltd.', 9.5);
 
   return buildPdfDataUrl(content);
 };

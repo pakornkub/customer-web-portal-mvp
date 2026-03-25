@@ -122,6 +122,7 @@ export interface OrderItem {
   asap: boolean;
   actualETD?: string;
   documents: OrderDocument[];
+  pdfSnapshot?: PdfGenerationSnapshot;
 }
 
 export interface IntegrationLog {
@@ -163,4 +164,73 @@ export interface ActivityLog {
   user: string;
   timestamp: string;
   details: string;
+}
+
+// ── PO/SI Master Templates ─────────────────────────────────────────
+export interface PoTemplate {
+  id: string;
+  shipToId: string;
+  /** Multi-line: "Company\nAddr1\nAddr2\nATTN: contact" */
+  toBlock: string;
+  /** Multi-line: "Company\nAddr1\nAddr2\nContact Person\nTel/Fax" */
+  consigneeNotify: string;
+  agent: string;
+  endUser: string;
+  termsOfPayment: string;
+  packingInstructions: string;
+  /** Multi-line: "Name\nTitle\nCompany" */
+  confirmBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SiTemplate {
+  id: string;
+  shipToId: string;
+  attn: string;
+  from: string;
+  poNumberHeader: string;
+  no2Header: string;
+  no2: string;
+  materialCodeHeader: string;
+  materialCode: string;
+  noteUnderMaterial: string;
+  user: string;
+  country: string;
+  shipper: string;
+  feederVessel: string;
+  motherVessel: string;
+  vesselCompany: string;
+  forwarder: string;
+  portOfLoading: string;
+  /** Multi-line: "Company\nAddr1\nAddr2\nContact" */
+  consignee: string;
+  blType: string;
+  freeTime: string;
+  courierAddress: string;
+  eoriNo: string;
+  notifyParty: string;
+  alsoNotify1: string;
+  alsoNotify2: string;
+  deliverTo: string;
+  requirements: string;
+  note: string;
+  note2: string;
+  note3: string;
+  description: string;
+  underDescription: string;
+  /** Multi-line additional shipping mark lines */
+  shippingMark: string;
+  belowSignature: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PdfGenerationSnapshot {
+  generatedAt: string;
+  generatedBy: string;
+  poTemplateId?: string;
+  siTemplateId?: string;
+  poFields: Record<string, string>;
+  siFields: Record<string, string>;
 }

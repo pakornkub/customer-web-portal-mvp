@@ -29,6 +29,10 @@ import {
   createShippingInstructionPdfDataUrl
 } from '../utils/poPdf';
 import {
+  PdfGenerationModal,
+  type PoPdfInput
+} from '../components/PdfGenerationModal';
+import {
   LineAction,
   DocumentType,
   OrderLineStatus,
@@ -79,6 +83,9 @@ export const OrderDetail: React.FC = () => {
   const [currencyInput, setCurrencyInput] = useState('USD');
   const [saleNoteInput, setSaleNoteInput] = useState('');
   const [actualEtdInput, setActualEtdInput] = useState('');
+  const [pdfModalState, setPdfModalState] = useState<{
+    actualETD: string;
+  } | null>(null);
   const [draftDocFiles, setDraftDocFiles] = useState<
     Partial<Record<DocumentType, File | null>>
   >({});
@@ -534,48 +541,21 @@ export const OrderDetail: React.FC = () => {
 
     if (!confirmed.isConfirmed) return;
 
+    if (linePermission.action === LineAction.SET_ETD) {
+      setPdfModalState({ actualETD: actualEtdInput });
+      return;
+    }
+
     const quotationNo =
       linePermission.action === LineAction.APPROVE_LINE
         ? selectedLine.quotationNo ||
           `QT-${Math.floor(100000 + Math.random() * 900000)}`
         : selectedLine.quotationNo;
 
-    const generatedPoFilename = `PO_${order.orderNo}_${selectedLine.poNo}.pdf`;
-    const generatedPoDataUrl =
-      linePermission.action === LineAction.SET_ETD
-        ? createOfficialPoPdfDataUrl({
-            orderNo: order.orderNo,
-            orderDate: order.orderDate,
-            poNo: selectedLine.poNo,
-            shipToId: selectedLine.shipToId,
-            destinationId: selectedLine.destinationId,
-            termId: selectedLine.termId,
-            gradeId: selectedLine.gradeId,
-            qty: selectedLine.qty,
-            price: selectedLine.price,
-            currency: selectedLine.currency,
-            requestETD: selectedLine.requestETD,
-            actualETD: actualEtdInput
-          })
-        : '';
-    const generatedSiFilename = `SI_${order.orderNo}_${selectedLine.poNo}.pdf`;
-    const generatedSiDataUrl =
-      linePermission.action === LineAction.SET_ETD
-        ? createShippingInstructionPdfDataUrl({
-            orderNo: order.orderNo,
-            orderDate: order.orderDate,
-            poNo: selectedLine.poNo,
-            shipToId: selectedLine.shipToId,
-            destinationId: selectedLine.destinationId,
-            termId: selectedLine.termId,
-            gradeId: selectedLine.gradeId,
-            qty: selectedLine.qty,
-            price: selectedLine.price,
-            currency: selectedLine.currency,
-            requestETD: selectedLine.requestETD,
-            actualETD: actualEtdInput
-          })
-        : '';
+    const generatedPoFilename = '';
+    const generatedPoDataUrl = '';
+    const generatedSiFilename = '';
+    const generatedSiDataUrl = '';
 
     const pendingUploads =
       linePermission.action === LineAction.UPLOAD_FINAL_DOCS
@@ -714,6 +694,57 @@ export const OrderDetail: React.FC = () => {
         'email'
       );
     }
+  };
+
+  const handlePdfModalConfirm = (poInput: PoPdfInput, siInput: PoPdfInput) => {
+    if (!order || !selectedLine || !linePermission || !currentUser) return;
+
+    const generatedPoFilename = `PO_${order.orderNo}_${selectedLine.poNo}.pdf`;
+    const generatedSiFilename = `SI_${order.orderNo}_${selectedLine.poNo}.pdf`;
+    const generatedPoDataUrl = createOfficialPoPdfDataUrl(poInput);
+    const generatedSiDataUrl = createShippingInstructionPdfDataUrl(siInput);
+
+    const nextItems = order.items.map((line) => {
+      if (line.id !== selectedLine.id) return line;
+      return {
+        ...line,
+        actualETD: pdfModalState?.actualETD || actualEtdInput,
+        status: linePermission.toStatus,
+        documents: [
+          ...line.documents.filter(
+            (doc) =>
+              doc.type !== DocumentType.PO_PDF &&
+              doc.type !== DocumentType.SHIPPING_INSTRUCTION_PDF
+          ),
+          {
+            id: `doc-${Math.random().toString(36).slice(2, 8)}`,
+            type: DocumentType.PO_PDF,
+            filename: generatedPoFilename,
+            dataUrl: generatedPoDataUrl,
+            uploadedBy: currentUser.username,
+            uploadedAt: new Date().toISOString()
+          },
+          {
+            id: `doc-${Math.random().toString(36).slice(2, 8)}`,
+            type: DocumentType.SHIPPING_INSTRUCTION_PDF,
+            filename: generatedSiFilename,
+            dataUrl: generatedSiDataUrl,
+            uploadedBy: currentUser.username,
+            uploadedAt: new Date().toISOString()
+          }
+        ]
+      };
+    });
+
+    updateOrder(order.orderNo, {
+      items: nextItems,
+      status: deriveOrderProgressStatus(nextItems),
+      quotationNo: order.quotationNo
+    });
+
+    triggerDownload(generatedPoDataUrl, generatedPoFilename);
+    triggerDownload(generatedSiDataUrl, generatedSiFilename);
+    setPdfModalState(null);
   };
 
   const saveSelectedLineDraft = async () => {
@@ -1395,6 +1426,15 @@ export const OrderDetail: React.FC = () => {
           </div>
         </div>
       </div>
+      {pdfModalState && order && selectedLine && (
+        <PdfGenerationModal
+          order={order}
+          line={selectedLine}
+          actualETD={pdfModalState.actualETD}
+          onConfirm={handlePdfModalConfirm}
+          onClose={() => setPdfModalState(null)}
+        />
+      )}
     </div>
   );
 };

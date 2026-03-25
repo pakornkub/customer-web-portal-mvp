@@ -17,6 +17,7 @@ import { CSDashboard } from './pages/CSDashboard';
 import { Logs } from './pages/Logs';
 import { Admin } from './pages/Admin';
 import { MasterData } from './pages/MasterData';
+import { POSITemplate } from './pages/POSITemplate';
 import { ClearData } from './pages/ClearData';
 import { MgrApprove } from './pages/MgrApprove';
 import { Role } from './types';
@@ -119,6 +120,14 @@ const App: React.FC = () => {
           element={
             <Protected roles={[Role.ADMIN]}>
               <Admin />
+            </Protected>
+          }
+        />
+        <Route
+          path="/po-si-templates"
+          element={
+            <Protected roles={[Role.ADMIN]}>
+              <POSITemplate />
             </Protected>
           }
         />

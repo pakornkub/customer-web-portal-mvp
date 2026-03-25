@@ -19,7 +19,8 @@ import {
   Sun,
   Moon,
   Database,
-  BadgeCheck
+  BadgeCheck,
+  FileText
 } from 'lucide-react';
 import { Role } from '../types';
 
@@ -129,6 +130,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({
       roles: [Role.SALE_MANAGER, Role.ADMIN]
     },
     { to: '/cs', icon: Truck, label: 'CS Hub', roles: [Role.CS, Role.ADMIN] },
+    {
+      to: '/po-si-templates',
+      icon: FileText,
+      label: 'PO/SI Templates',
+      roles: [Role.ADMIN]
+    },
     {
       to: '/master-data',
       icon: Settings,

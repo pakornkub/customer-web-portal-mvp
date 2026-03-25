@@ -17,7 +17,9 @@ import {
   NotificationLog,
   ActivityLog,
   DocumentType,
-  IntegrationLog
+  IntegrationLog,
+  PoTemplate,
+  SiTemplate
 } from './types';
 
 export const deriveOrderProgressStatus = (
@@ -89,6 +91,8 @@ interface MasterDataState {
   grades: MasterDataRecord[];
   shipTos: ShipToRecord[];
   groupSaleTypes: GroupSaleTypeRecord[];
+  poTemplates: PoTemplate[];
+  siTemplates: SiTemplate[];
 }
 
 interface LinePermissionNamedPreset {
@@ -132,6 +136,22 @@ interface AppState {
   updateShipTos: (data: ShipToRecord[]) => void;
   updateGroupSaleTypes: (data: GroupSaleTypeRecord[]) => void;
   updateCompanies: (data: CustomerCompany[]) => void;
+  addPoTemplate: (
+    template: Omit<PoTemplate, 'id' | 'createdAt' | 'updatedAt'>
+  ) => void;
+  updatePoTemplate: (
+    id: string,
+    updates: Partial<Omit<PoTemplate, 'id' | 'createdAt'>>
+  ) => void;
+  removePoTemplate: (id: string) => void;
+  addSiTemplate: (
+    template: Omit<SiTemplate, 'id' | 'createdAt' | 'updatedAt'>
+  ) => void;
+  updateSiTemplate: (
+    id: string,
+    updates: Partial<Omit<SiTemplate, 'id' | 'createdAt'>>
+  ) => void;
+  removeSiTemplate: (id: string) => void;
   updateUserPermissions: (userId: string, perms: DocumentType[]) => void;
   addUser: (user: Omit<User, 'id'>) => void;
   deleteUser: (userId: string) => void;
@@ -2400,7 +2420,119 @@ const INITIAL_MASTER: MasterDataState = {
     { id: 'VCR617', name: 'UBEPOL VCR617' },
     { id: 'X-200', name: 'X-200' }
   ],
-  shipTos: INITIAL_SHIP_TO_MAPPINGS
+  shipTos: INITIAL_SHIP_TO_MAPPINGS,
+  poTemplates: [
+    {
+      id: 'POT-BRIDGESTONE-POZNAN',
+      shipToId: 'SHIP-BRIDGESTONE-POZNAN',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'BRIDGESTONE POZNAN SP/ZO.O.\nUL.BALTYCKA 65\n61-017 POZNAN, POLAND',
+      agent: '',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 60 DAYS AFTER B/L DATE',
+      packingInstructions: 'STANDARD EXPORT PACKING BY GPS',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'POT-COOPER-KUNSHAN',
+      shipToId: 'SHIP-COOPER-KUNSHAN',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify: '',
+      agent: 'UBE EUROPE GMBH',
+      endUser: 'Cooper (Kunshan) Tire Co., Ltd.',
+      termsOfPayment: 'BY T.T.R 105 DAYS AFTER B/L DATE',
+      packingInstructions: 'STANDARD EXPORT PACKING',
+      confirmBy: 'Thai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    }
+  ] as PoTemplate[],
+  siTemplates: [
+    {
+      id: 'SIT-BRIDGESTONE-POZNAN',
+      shipToId: 'SHIP-BRIDGESTONE-POZNAN',
+      attn: 'MR.T. Fujioka /SEVP',
+      from: 'D.KAWAMORI/UEDA',
+      poNumberHeader: 'BS POLAND PO No.:',
+      no2Header: '',
+      no2: '',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'BRIDGESTONE POZNAN SP/ZO.O',
+      country: 'GDYNIA POLAND',
+      shipper: 'TSL',
+      feederVessel: 'ITHACA V.111S',
+      motherVessel: 'ONE SATISFACTION V.001W',
+      vesselCompany: 'OCEAN NETWORK EXPRESS PTE LTD. C/O',
+      forwarder: 'DIRECT',
+      portOfLoading: '',
+      consignee: 'BRIDGESTONE POZNAN SP/ZO.O.',
+      blType: '',
+      freeTime: '',
+      courierAddress: 'No need original courier.',
+      eoriNo: 'PL782205233400000',
+      notifyParty: 'SAME AS CONSIGNEE',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements: '* FULL SET OF surrendered B/L.',
+      note: '*Please send all original docs and COMMERCIAL IV (between UBE and TSL) by PDF copies by E-mail to UBE Tokyo.',
+      note2: '',
+      note3: '',
+      description: 'POLYBUTADIENE RUBBER',
+      underDescription: '',
+      shippingMark: '',
+      belowSignature: 'UBE Elastomer Co. Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'SIT-COOPER-KUNSHAN',
+      shipToId: 'SHIP-COOPER-KUNSHAN',
+      attn: '',
+      from: '',
+      poNumberHeader: 'UEG PO No.',
+      no2Header: 'Cooper NO.:',
+      no2: '72026877',
+      materialCodeHeader: 'Material Code',
+      materialCode: 'SMITHIC on grade label',
+      noteUnderMaterial: '*put marking CODE on both sides of GPS box',
+      user: 'Cooper (Kunshan) Tire Co., Ltd.',
+      country: 'CHINA',
+      shipper: 'FULL CONTACT DETAIL OF TSL',
+      feederVessel: '',
+      motherVessel: '',
+      vesselCompany: '',
+      forwarder: '',
+      portOfLoading: 'LAEM CHABANG, THAILAND',
+      consignee: 'Cooper (Kunshan) Tire Co., Ltd.',
+      blType: '',
+      freeTime: '',
+      courierAddress: '',
+      eoriNo: '',
+      notifyParty: 'Cooper (Kunshan) Tire Co., Ltd.',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: 'Cooper (Kunshan) Tire Co., Ltd.',
+      requirements: '*SWB,P/L,I/P,CoA',
+      note: '',
+      note2: '',
+      note3: '',
+      description: 'SYNTHETIC RUBBER',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'Overseas Sales Group',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    }
+  ] as SiTemplate[]
 };
 
 const mergeById = <T extends { id: string }>(
@@ -2430,7 +2562,9 @@ const getInitialDataState = () => {
       destinations: [...INITIAL_MASTER.destinations],
       terms: [...INITIAL_MASTER.terms],
       grades: [...INITIAL_MASTER.grades],
-      shipTos: [...INITIAL_MASTER.shipTos]
+      shipTos: [...INITIAL_MASTER.shipTos],
+      poTemplates: [...INITIAL_MASTER.poTemplates],
+      siTemplates: [...INITIAL_MASTER.siTemplates]
     },
     linePermissionMatrix: clonePermissionMatrix(INITIAL_LINE_PERMISSION_MATRIX),
     linePermissionLocked: false,
@@ -2564,6 +2698,84 @@ export const useStore = create<AppState>()(
 
       updateCompanies: (data) => {
         set({ companies: data });
+      },
+
+      addPoTemplate: (template) => {
+        const now = new Date().toISOString();
+        const id =
+          'POT-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+        const newTemplate: PoTemplate = {
+          ...template,
+          id,
+          createdAt: now,
+          updatedAt: now
+        };
+        set((state) => ({
+          masterData: {
+            ...state.masterData,
+            poTemplates: [...state.masterData.poTemplates, newTemplate]
+          }
+        }));
+      },
+
+      updatePoTemplate: (id, updates) => {
+        const now = new Date().toISOString();
+        set((state) => ({
+          masterData: {
+            ...state.masterData,
+            poTemplates: state.masterData.poTemplates.map((t) =>
+              t.id === id ? { ...t, ...updates, updatedAt: now } : t
+            )
+          }
+        }));
+      },
+
+      removePoTemplate: (id) => {
+        set((state) => ({
+          masterData: {
+            ...state.masterData,
+            poTemplates: state.masterData.poTemplates.filter((t) => t.id !== id)
+          }
+        }));
+      },
+
+      addSiTemplate: (template) => {
+        const now = new Date().toISOString();
+        const id =
+          'SIT-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+        const newTemplate: SiTemplate = {
+          ...template,
+          id,
+          createdAt: now,
+          updatedAt: now
+        };
+        set((state) => ({
+          masterData: {
+            ...state.masterData,
+            siTemplates: [...state.masterData.siTemplates, newTemplate]
+          }
+        }));
+      },
+
+      updateSiTemplate: (id, updates) => {
+        const now = new Date().toISOString();
+        set((state) => ({
+          masterData: {
+            ...state.masterData,
+            siTemplates: state.masterData.siTemplates.map((t) =>
+              t.id === id ? { ...t, ...updates, updatedAt: now } : t
+            )
+          }
+        }));
+      },
+
+      removeSiTemplate: (id) => {
+        set((state) => ({
+          masterData: {
+            ...state.masterData,
+            siTemplates: state.masterData.siTemplates.filter((t) => t.id !== id)
+          }
+        }));
       },
 
       updateUserPermissions: (userId, perms) => {
