@@ -62,10 +62,9 @@ type PoPdfInput = {
   siCourierAddress?: string;
   /** EORI number (EU customs). */
   siEoriNo?: string;
-  /** Notify party name/address. */
+  /** Notify party name/address (Bridgestone layout). */
   siNotifyParty?: string;
   // ── Cooper Kunshan-specific SI fields ──
-  /** NOTIFY PARTY content (Cooper layout). */
   /** DELIVER TO address (Cooper 3-col middle column). */
   siDeliverTo?: string;
   /** Label for 2nd reference number row (e.g. "Cooper NO.:"). */

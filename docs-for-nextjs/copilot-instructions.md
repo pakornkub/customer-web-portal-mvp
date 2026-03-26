@@ -62,11 +62,20 @@ Key reference document: `Objective.md` (contains full feature spec, data models,
 - Form labels use `ui-form-label` class.
 
 ### PDF Generation
-- Use `jsPDF` library: `import { jsPDF } from 'jspdf'`
-- All PDF generation runs in `'use client'` context only
-- Convert to base64 with `doc.output('datauristring')` for storage
-- Trigger download with `doc.save(filename)`
-- See `Objective.md` TASK-13 for exact layout spec
+
+- All PDF generation is in `utils/poPdf.ts` — **raw PDF 1.4 builder** (no jsPDF)
+- All generation runs in `'use client'` context only
+- Three exported functions:
+  - `createPurchaseOrderPdfDataUrl(input: PoPdfInput): string`
+  - `createShippingInstructionPdfDataUrl(input: PoPdfInput): string`
+  - Two internal SI builders dispatched by `shipToId`:
+    - `buildBridgestoneSI` → for `SHIP-BRIDGESTONE-POZNAN`
+    - `buildCooperKunshanSI` → default (Cooper Kunshan)
+- PDF data stored as base64 string in `OrderDocument.dataUrl`
+- Trigger download: create `<a href={dataUrl} download={filename}>` and click programmatically
+- `PoPdfInput` contains both base Order/Line fields AND all SI template fields (Bridgestone-specific + Cooper-specific) — see `Objective.md` TASK-13 for the complete type
+- SI templates are pre-seeded in `masterData.siTemplates` keyed by `shipToId`
+- The `PdfGenerationModal` component reads the matching template, pre-fills the form, and calls `onConfirm(poInput, siInput)` — the parent action handler generates and stores both PDFs
 
 ### ID Generation
 - Use `nanoid` for generating unique IDs: `import { nanoid } from 'nanoid'`
@@ -236,14 +245,36 @@ setTimeout(() => {
 
 ## PDF Generation Pattern
 
-For `MARK_RECEIVED_PO` action:
-1. Generate PO PDF as data URL (client-side, canvas or jsPDF)
-2. Generate Shipping Instruction PDF as data URL
-3. Attach both as `OrderDocument` records to the line
-4. Trigger browser download for both files
-5. Mark line as `RECEIVED_ACTUAL_PO`
+For `SET_ETD` / CS Dashboard action:
+1. Build `PoPdfInput` from order line + SI template fields (pre-filled via `PdfGenerationModal`)
+2. Call `createPurchaseOrderPdfDataUrl(input)` → `poDataUrl` (string)
+3. Call `createShippingInstructionPdfDataUrl(input)` → `siDataUrl` (string)
+   - Internally dispatches to `buildBridgestoneSI` or `buildCooperKunshanSI` by `shipToId`
+4. Attach both as `OrderDocument` records to the line via `updateOrderLine`
+5. Trigger browser download: `<a href={dataUrl} download={filename}>`
+6. Mark line as `WAIT_SALE_UEC_APPROVE_PO`
 
-PDF must include: orderNo, date, company, and per-line: poNo, grade, qty, price, currency, shipTo, destination, term, requestETD, requestETA.
+SI template master data is in `masterData.siTemplates`. Match by `shipToId`.
+`PdfGenerationModal` handles pre-filling and returns `(poInput, siInput)` to the parent.
+
+```ts
+import {
+  createPurchaseOrderPdfDataUrl,
+  createShippingInstructionPdfDataUrl
+} from '@/utils/poPdf';
+
+const poDataUrl = createPurchaseOrderPdfDataUrl(siInput);
+const siDataUrl = createShippingInstructionPdfDataUrl(siInput);
+
+const triggerDownload = (dataUrl: string, filename: string) => {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  a.click();
+};
+triggerDownload(poDataUrl, `PO-${line.poNo}.pdf`);
+triggerDownload(siDataUrl, `SI-${line.poNo}.pdf`);
+```
 
 ---
 
