@@ -327,7 +327,7 @@ interface SiTemplate {
   from: string;
   // Bridgestone: "BS POLAND PO No.:"  |  Cooper: "UEG PO No."
   poNumberHeader: string;
-  no2Header: string;        // Cooper: "Cooper NO.:"
+  no2Header: string; // Cooper: "Cooper NO.:"
   no2: string;
   materialCodeHeader: string;
   materialCode: string;
@@ -340,29 +340,30 @@ interface SiTemplate {
   vesselCompany: string;
   forwarder: string;
   portOfLoading: string;
-  consignee: string;        // multi-line
+  consignee: string; // multi-line
   blType: string;
   freeTime: string;
-  courierAddress: string;   // Bridgestone: "No need original courier."
-  eoriNo: string;           // Bridgestone: EU customs EORI number
+  courierAddress: string; // Bridgestone: "No need original courier."
+  eoriNo: string; // Bridgestone: EU customs EORI number
   bookingNo: string;
   notifyParty: string;
   alsoNotify1: string;
   alsoNotify2: string;
-  deliverTo: string;        // Cooper: DELIVER TO address
+  deliverTo: string; // Cooper: DELIVER TO address
   requirements: string;
   note: string;
   note2: string;
   note3: string;
   description: string;
   underDescription: string;
-  shippingMark: string;     // multi-line
+  shippingMark: string; // multi-line
   belowSignature: string;
   createdAt: string;
   updatedAt: string;
 }
 ```
-```
+
+````
 
 ---
 
@@ -425,7 +426,7 @@ enum GroupSaleType {
   OVERSEAS,
   DOMESTIC
 }
-```
+````
 
 ---
 
@@ -868,7 +869,7 @@ createShippingInstructionPdfDataUrl(input: PoPdfInput): string
 if (input.shipToId === 'SHIP-BRIDGESTONE-POZNAN') {
   pages = buildBridgestoneSI(input);
 } else {
-  pages = buildCooperKunshanSI(input);  // default / Cooper Kunshan
+  pages = buildCooperKunshanSI(input); // default / Cooper Kunshan
 }
 ```
 
@@ -902,14 +903,14 @@ type PoPdfInput = {
   actualETD?: string;
 
   // === PO Template fields ===
-  poToBlock?: string;            // multi-line TO: block
-  poConsigneeNotify?: string;    // multi-line CONSIGNEE & NOTIFY
+  poToBlock?: string; // multi-line TO: block
+  poConsigneeNotify?: string; // multi-line CONSIGNEE & NOTIFY
   poTermsOfPayment?: string;
   poPackingInstructions?: string;
-  poConfirmBy?: string;          // multi-line: "Name\nTitle\nCompany"
-  destinationName?: string;      // resolved destination display name
-  poGradeCode?: string;          // e.g. "VCR" from "VCR412"
-  poGradeDescription?: string;   // full grade description
+  poConfirmBy?: string; // multi-line: "Name\nTitle\nCompany"
+  destinationName?: string; // resolved destination display name
+  poGradeCode?: string; // e.g. "VCR" from "VCR412"
+  poGradeDescription?: string; // full grade description
 
   // === SI Template fields (shared) ===
   siAttn?: string;
@@ -922,7 +923,7 @@ type PoPdfInput = {
   siVesselCompany?: string;
   siForwarder?: string;
   siPortOfLoading?: string;
-  siConsignee?: string;          // multi-line consignee block
+  siConsignee?: string; // multi-line consignee block
   siBlType?: string;
   siFreeTime?: string;
   siRequirements?: string;
@@ -931,23 +932,23 @@ type PoPdfInput = {
   siNote3?: string;
   siDescription?: string;
   siUnderDescription?: string;
-  siShippingMark?: string;       // multi-line mark lines
+  siShippingMark?: string; // multi-line mark lines
   siBelowSignature?: string;
 
   // === Bridgestone Poznan-specific SI fields ===
-  siPoNumberHeader?: string;     // e.g. "BS POLAND PO No.:"
+  siPoNumberHeader?: string; // e.g. "BS POLAND PO No.:"
   siBookingNo?: string;
-  siCourierAddress?: string;     // note shown under CONSIGNEE
-  siEoriNo?: string;             // EU customs EORI number
-  siNotifyParty?: string;        // NOTIFY PARTY content
+  siCourierAddress?: string; // note shown under CONSIGNEE
+  siEoriNo?: string; // EU customs EORI number
+  siNotifyParty?: string; // NOTIFY PARTY content
 
   // === Cooper Kunshan-specific SI fields ===
-  siDeliverTo?: string;          // DELIVER TO address (3-col middle column)
-  siNo2Header?: string;          // 2nd ref number label e.g. "Cooper NO.:"
-  siNo2?: string;                // 2nd ref number value
+  siDeliverTo?: string; // DELIVER TO address (3-col middle column)
+  siNo2Header?: string; // 2nd ref number label e.g. "Cooper NO.:"
+  siNo2?: string; // 2nd ref number value
   siMaterialCodeHeader?: string; // e.g. "Material Code"
-  siMaterialCode?: string;       // shown inside SHIPPING MARK box
-  siNoteUnderMaterial?: string;  // note below material code
+  siMaterialCode?: string; // shown inside SHIPPING MARK box
+  siNoteUnderMaterial?: string; // note below material code
 };
 ```
 
@@ -992,19 +993,23 @@ SIGNATURE line: y=120   below-sig: y=108
 ```
 
 **Key layout variables:**
+
 ```ts
-const LV = 130;    // label→value split x for most left-col rows
-const LVR = 372;   // right-col value x for BS POLAND PO No. field
+const LV = 130; // label→value split x for most left-col rows
+const LVR = 372; // right-col value x for BS POLAND PO No. field
 ```
 
 **Word-wrap helper** (`wrapTC`) — used for FEEDER/MOTHER/VESSEL COMPANY:
+
 - Splits text at last word boundary that fits within `maxW`
 - Renders overflow on `y-13` (next line)
 - Each wrapTC row is spaced **26pt** from the next to allow for wrap overflow
 
 #### Cooper Kunshan SI Layout
 
-Uses a different layout with headers, a 3-column reference section, and an embedded material code in the shipping mark box. Key differences:
+Uses a different layout with headers, a 3-column reference section, and an
+embedded material code in the shipping mark box. Key differences:
+
 - 3-col row: `UEG PO No.` / `Cooper NO.` / `MATERIAL CODE`
 - `SHIPPING MARK` box includes `DELIVER TO` and `Material Code` info
 - Has `NOTIFY PARTY` and `ALSO NOTIFY` rows
@@ -1033,9 +1038,9 @@ updateOrderLine(orderNo, line.id, {
 
 #### Master Template Storage (`SiTemplate`)
 
-SI templates are stored in `masterData.siTemplates` in the Zustand store.
-Each template is keyed by `shipToId`. The `PdfGenerationModal` reads the
-matching template and pre-fills the form fields before PDF generation.
+SI templates are stored in `masterData.siTemplates` in the Zustand store. Each
+template is keyed by `shipToId`. The `PdfGenerationModal` reads the matching
+template and pre-fills the form fields before PDF generation.
 
 ```ts
 interface SiTemplate {
@@ -1043,8 +1048,8 @@ interface SiTemplate {
   shipToId: string;
   attn: string;
   from: string;
-  poNumberHeader: string;   // BS: "BS POLAND PO No.:", Cooper: "UEG PO No."
-  no2Header: string;        // Cooper: "Cooper NO.:"
+  poNumberHeader: string; // BS: "BS POLAND PO No.:", Cooper: "UEG PO No."
+  no2Header: string; // Cooper: "Cooper NO.:"
   no2: string;
   materialCodeHeader: string;
   materialCode: string;
@@ -1057,23 +1062,23 @@ interface SiTemplate {
   vesselCompany: string;
   forwarder: string;
   portOfLoading: string;
-  consignee: string;        // multi-line
+  consignee: string; // multi-line
   blType: string;
   freeTime: string;
-  courierAddress: string;   // Bridgestone: "No need original courier."
-  eoriNo: string;           // Bridgestone: "PL782205233400000"
+  courierAddress: string; // Bridgestone: "No need original courier."
+  eoriNo: string; // Bridgestone: "PL782205233400000"
   bookingNo: string;
   notifyParty: string;
   alsoNotify1: string;
   alsoNotify2: string;
-  deliverTo: string;        // Cooper: consignee address
+  deliverTo: string; // Cooper: consignee address
   requirements: string;
   note: string;
   note2: string;
   note3: string;
   description: string;
   underDescription: string;
-  shippingMark: string;     // multi-line
+  shippingMark: string; // multi-line
   belowSignature: string;
   createdAt: string;
   updatedAt: string;
@@ -1081,6 +1086,7 @@ interface SiTemplate {
 ```
 
 **Pre-seeded templates** (in `store.ts` initial state):
+
 - `SIT-BRIDGESTONE-POZNAN` → `shipToId: 'SHIP-BRIDGESTONE-POZNAN'`
 - `SIT-COOPER-KUNSHAN` → `shipToId: 'SHIP-COOPER-KUNSHAN'`
 
