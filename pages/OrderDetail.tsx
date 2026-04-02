@@ -41,6 +41,43 @@ import {
   UserGroup
 } from '../types';
 
+type VesselViewRecord = {
+  c_feeder: string;
+  c_mother: string;
+  c_shpline: string;
+  c_fwd: string;
+  c_etd: string;
+  c_eta: string;
+};
+
+// Stub data — replace with real CSV-sourced records when available, keyed by shipToId
+const VESSEL_VIEW_MOCK: Record<string, VesselViewRecord> = {
+  'SHIP-MICHELIN': {
+    c_feeder: 'Feeder Alpha',
+    c_mother: 'Ever Given',
+    c_shpline: 'Evergreen',
+    c_fwd: 'FWD Co.',
+    c_etd: '2026-04-10',
+    c_eta: '2026-04-25'
+  },
+  'SHIP-TOYO-TIRE': {
+    c_feeder: 'Feeder Beta',
+    c_mother: 'MSC Carmen',
+    c_shpline: 'MSC',
+    c_fwd: 'Thai FWD',
+    c_etd: '2026-04-15',
+    c_eta: '2026-04-30'
+  },
+  'SHIP-BRIDGESTONE': {
+    c_feeder: 'Feeder Gamma',
+    c_mother: 'CMA Lyra',
+    c_shpline: 'CMA CGM',
+    c_fwd: 'UniThai',
+    c_etd: '2026-04-20',
+    c_eta: '2026-05-05'
+  }
+};
+
 export const OrderDetail: React.FC = () => {
   const { orderNo } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -49,10 +86,18 @@ export const OrderDetail: React.FC = () => {
     companies,
     currentUser,
     linePermissionMatrix,
+    masterData,
     updateOrder,
     addActivity,
     addNotification
   } = useStore();
+
+  const getShipToName = (shipToId: string) =>
+    masterData.shipTos.find((s) => s.id === shipToId)?.name || shipToId;
+
+  const getDestinationName = (destinationId: string) =>
+    masterData.destinations.find((d) => d.id === destinationId)?.name ||
+    destinationId;
 
   const order = orders.find((item) => item.orderNo === orderNo);
 
@@ -83,8 +128,21 @@ export const OrderDetail: React.FC = () => {
   const [currencyInput, setCurrencyInput] = useState('USD');
   const [saleNoteInput, setSaleNoteInput] = useState('');
   const [actualEtdInput, setActualEtdInput] = useState('');
+  const [feederVesselInput, setFeederVesselInput] = useState('');
+  const [motherVesselInput, setMotherVesselInput] = useState('');
+  const [vesselCompanyInput, setVesselCompanyInput] = useState('');
+  const [forwarderInput, setForwarderInput] = useState('');
+  const [vesselEtdInput, setVesselEtdInput] = useState('');
+  const [vesselEtaInput, setVesselEtaInput] = useState('');
+  const [clearanceDateInput, setClearanceDateInput] = useState('');
   const [pdfModalState, setPdfModalState] = useState<{
     actualETD: string;
+    feederVessel: string;
+    motherVessel: string;
+    vesselCompany: string;
+    forwarder: string;
+    vesselEtd: string;
+    vesselEta: string;
   } | null>(null);
   const [draftDocFiles, setDraftDocFiles] = useState<
     Partial<Record<DocumentType, File | null>>
@@ -96,6 +154,13 @@ export const OrderDetail: React.FC = () => {
       setCurrencyInput('USD');
       setSaleNoteInput('');
       setActualEtdInput('');
+      setFeederVesselInput('');
+      setMotherVesselInput('');
+      setVesselCompanyInput('');
+      setForwarderInput('');
+      setVesselEtdInput('');
+      setVesselEtaInput('');
+      setClearanceDateInput('');
       setDraftDocFiles({});
       return;
     }
@@ -104,6 +169,13 @@ export const OrderDetail: React.FC = () => {
     setCurrencyInput(selectedLine.currency || 'USD');
     setSaleNoteInput(selectedLine.saleNote || '');
     setActualEtdInput(selectedLine.actualETD || '');
+    setFeederVesselInput(selectedLine.feederVessel || '');
+    setMotherVesselInput(selectedLine.motherVessel || '');
+    setVesselCompanyInput(selectedLine.vesselCompany || '');
+    setForwarderInput(selectedLine.forwarder || '');
+    setVesselEtdInput(selectedLine.vesselEtd || '');
+    setVesselEtaInput(selectedLine.vesselEta || '');
+    setClearanceDateInput(selectedLine.clearanceDate || '');
     setDraftDocFiles({});
   }, [selectedLine?.id]);
 
@@ -494,6 +566,25 @@ export const OrderDetail: React.FC = () => {
     return true;
   })();
 
+  const handleFetchVesselView = () => {
+    if (!selectedLine) return;
+    const record = VESSEL_VIEW_MOCK[selectedLine.shipToId];
+    if (!record) {
+      Swal.fire({
+        icon: 'info',
+        title: 'No data found',
+        text: `No scheduled vessel found for ship-to "${getShipToName(selectedLine.shipToId)}".`
+      });
+      return;
+    }
+    setFeederVesselInput(record.c_feeder);
+    setMotherVesselInput(record.c_mother);
+    setVesselCompanyInput(record.c_shpline);
+    setForwarderInput(record.c_fwd);
+    setVesselEtdInput(record.c_etd);
+    setVesselEtaInput(record.c_eta);
+  };
+
   const runSelectedLineAction = async () => {
     if (!selectedLine || !linePermission) return;
 
@@ -542,7 +633,15 @@ export const OrderDetail: React.FC = () => {
     if (!confirmed.isConfirmed) return;
 
     if (linePermission.action === LineAction.SET_ETD) {
-      setPdfModalState({ actualETD: actualEtdInput });
+      setPdfModalState({
+        actualETD: actualEtdInput,
+        feederVessel: feederVesselInput,
+        motherVessel: motherVesselInput,
+        vesselCompany: vesselCompanyInput,
+        forwarder: forwarderInput,
+        vesselEtd: vesselEtdInput,
+        vesselEta: vesselEtaInput
+      });
       return;
     }
 
@@ -656,6 +755,14 @@ export const OrderDetail: React.FC = () => {
         };
       }
 
+      if (linePermission.action === LineAction.APPROVE_SALE_PO) {
+        return {
+          ...line,
+          clearanceDate: clearanceDateInput.trim() || undefined,
+          status: linePermission.toStatus
+        };
+      }
+
       return { ...line, status: linePermission.toStatus };
     });
 
@@ -696,6 +803,12 @@ export const OrderDetail: React.FC = () => {
       return {
         ...line,
         actualETD: pdfModalState?.actualETD || actualEtdInput,
+        feederVessel: pdfModalState?.feederVessel || feederVesselInput,
+        motherVessel: pdfModalState?.motherVessel || motherVesselInput,
+        vesselCompany: pdfModalState?.vesselCompany || vesselCompanyInput,
+        forwarder: pdfModalState?.forwarder || forwarderInput,
+        vesselEtd: pdfModalState?.vesselEtd || vesselEtdInput,
+        vesselEta: pdfModalState?.vesselEta || vesselEtaInput,
         status: linePermission.toStatus,
         documents: [
           ...line.documents.filter(
@@ -1059,21 +1172,115 @@ export const OrderDetail: React.FC = () => {
                 </div>
               )}
 
+              {linePermission?.action === LineAction.APPROVE_SALE_PO && (
+                <div className="md:col-span-2 space-y-1">
+                  <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                    Clearance Date
+                  </p>
+                  <input
+                    type="date"
+                    value={clearanceDateInput}
+                    onChange={(e) => setClearanceDateInput(e.target.value)}
+                    className="shadcn-input h-8 text-xs w-full"
+                    disabled={!canRunSelectedLineAction}
+                  />
+                </div>
+              )}
+
               {linePermission?.action === LineAction.SET_ETD && (
-                <div className="md:col-span-2">
-                  <div className="space-y-1">
+                <div className="md:col-span-2 space-y-3">
+                  <div className="flex items-center justify-between">
                     <p className="ui-kicker text-slate-500 dark:text-slate-400">
-                      Actual ETD
+                      Vessel Information
                     </p>
-                    <input
-                      type="date"
-                      value={actualEtdInput}
-                      onChange={(event) =>
-                        setActualEtdInput(event.target.value)
-                      }
-                      className="shadcn-input h-8 text-xs"
+                    <button
+                      type="button"
+                      onClick={handleFetchVesselView}
                       disabled={!canRunSelectedLineAction}
-                    />
+                      className="text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition-colors"
+                    >
+                      Fetch from View
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                        Feeder Vessel
+                      </p>
+                      <input
+                        type="text"
+                        value={feederVesselInput}
+                        onChange={(e) => setFeederVesselInput(e.target.value)}
+                        className="shadcn-input h-8 text-xs"
+                        disabled={!canRunSelectedLineAction}
+                        placeholder="c_feeder"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                        Mother Vessel
+                      </p>
+                      <input
+                        type="text"
+                        value={motherVesselInput}
+                        onChange={(e) => setMotherVesselInput(e.target.value)}
+                        className="shadcn-input h-8 text-xs"
+                        disabled={!canRunSelectedLineAction}
+                        placeholder="c_mother"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                        Vessel Company
+                      </p>
+                      <input
+                        type="text"
+                        value={vesselCompanyInput}
+                        onChange={(e) => setVesselCompanyInput(e.target.value)}
+                        className="shadcn-input h-8 text-xs"
+                        disabled={!canRunSelectedLineAction}
+                        placeholder="c_shpline"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                        Forwarder
+                      </p>
+                      <input
+                        type="text"
+                        value={forwarderInput}
+                        onChange={(e) => setForwarderInput(e.target.value)}
+                        className="shadcn-input h-8 text-xs"
+                        disabled={!canRunSelectedLineAction}
+                        placeholder="c_fwd"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                        Actual ETD
+                      </p>
+                      <input
+                        type="date"
+                        value={actualEtdInput}
+                        onChange={(event) =>
+                          setActualEtdInput(event.target.value)
+                        }
+                        className="shadcn-input h-8 text-xs"
+                        disabled={!canRunSelectedLineAction}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="ui-kicker text-slate-500 dark:text-slate-400">
+                        Actual ETA
+                      </p>
+                      <input
+                        type="date"
+                        value={vesselEtaInput}
+                        onChange={(e) => setVesselEtaInput(e.target.value)}
+                        className="shadcn-input h-8 text-xs"
+                        disabled={!canRunSelectedLineAction}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
@@ -1211,7 +1418,7 @@ export const OrderDetail: React.FC = () => {
                     Ship To
                   </p>
                   <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
-                    {selectedLine.shipToId}
+                    {getShipToName(selectedLine.shipToId)}
                   </p>
                 </div>
                 <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
@@ -1219,7 +1426,7 @@ export const OrderDetail: React.FC = () => {
                     Destination
                   </p>
                   <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
-                    {selectedLine.destinationId}
+                    {getDestinationName(selectedLine.destinationId)}
                   </p>
                 </div>
                 <div className="border-b border-slate-100 dark:border-slate-800 pb-2">

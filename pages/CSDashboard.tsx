@@ -24,20 +24,87 @@ import {
 } from '../store';
 import { DocumentType, LineAction, OrderLineStatus, Role } from '../types';
 
+type VesselViewRecord = {
+  c_feeder: string;
+  c_mother: string;
+  c_shpline: string;
+  c_fwd: string;
+  c_etd: string;
+  c_eta: string;
+};
+const VESSEL_VIEW_MOCK: Record<string, VesselViewRecord> = {
+  'SHIP-MICHELIN': {
+    c_feeder: 'Feeder Alpha',
+    c_mother: 'Ever Given',
+    c_shpline: 'Evergreen',
+    c_fwd: 'FWD Co.',
+    c_etd: '2026-04-10',
+    c_eta: '2026-04-25'
+  },
+  'SHIP-TOYO-TIRE': {
+    c_feeder: 'Feeder Beta',
+    c_mother: 'MSC Carmen',
+    c_shpline: 'MSC',
+    c_fwd: 'Thai FWD',
+    c_etd: '2026-04-15',
+    c_eta: '2026-04-30'
+  },
+  'SHIP-BRIDGESTONE': {
+    c_feeder: 'Feeder Gamma',
+    c_mother: 'CMA Lyra',
+    c_shpline: 'CMA CGM',
+    c_fwd: 'UniThai',
+    c_etd: '2026-04-20',
+    c_eta: '2026-05-05'
+  }
+};
+
 export const CSDashboard: React.FC = () => {
   const {
     orders,
     currentUser,
     linePermissionMatrix,
+    masterData,
     updateOrder,
     addActivity,
     addNotification
   } = useStore();
+
+  const getShipToName = (shipToId: string) =>
+    masterData.shipTos.find((s) => s.id === shipToId)?.name || shipToId;
+
+  type VesselInputs = {
+    feeder: string;
+    mother: string;
+    company: string;
+    forwarder: string;
+    eta: string;
+  };
+  const defaultVI = (): VesselInputs => ({
+    feeder: '',
+    mother: '',
+    company: '',
+    forwarder: '',
+    eta: ''
+  });
   const [etdDates, setEtdDates] = useState<Record<string, string>>({});
+  const [vesselInputs, setVesselInputs] = useState<
+    Record<string, VesselInputs>
+  >({});
+  const setVI = (lineId: string, field: keyof VesselInputs, value: string) =>
+    setVesselInputs((prev) => ({
+      ...prev,
+      [lineId]: { ...(prev[lineId] || defaultVI()), [field]: value }
+    }));
   const [pdfModalState, setPdfModalState] = useState<{
     orderNo: string;
     lineId: string;
     actualETD: string;
+    feederVessel: string;
+    motherVessel: string;
+    vesselCompany: string;
+    forwarder: string;
+    vesselEta: string;
   } | null>(null);
   const [draftDocFilesByLine, setDraftDocFilesByLine] = useState<
     Record<string, Partial<Record<DocumentType, File | null>>>
@@ -95,6 +162,29 @@ export const CSDashboard: React.FC = () => {
     });
   };
 
+  const handleFetchVesselView = (lineId: string, shipToId: string) => {
+    const record = VESSEL_VIEW_MOCK[shipToId];
+    if (!record) {
+      Swal.fire({
+        icon: 'info',
+        title: 'No data found',
+        text: `No scheduled vessel found for ship-to "${getShipToName(shipToId)}".`
+      });
+      return;
+    }
+    setVesselInputs((prev) => ({
+      ...prev,
+      [lineId]: {
+        feeder: record.c_feeder,
+        mother: record.c_mother,
+        company: record.c_shpline,
+        forwarder: record.c_fwd,
+        eta: record.c_eta
+      }
+    }));
+    setEtdDates((prev) => ({ ...prev, [lineId]: record.c_etd }));
+  };
+
   const submitETD = async (orderNo: string, lineId: string) => {
     const date = etdDates[lineId];
     if (!date) return;
@@ -114,12 +204,31 @@ export const CSDashboard: React.FC = () => {
     }
 
     // Open the PO/SI template modal — CS reviews/edits fields before generating
-    setPdfModalState({ orderNo, lineId, actualETD: date });
+    const vi = vesselInputs[lineId] || defaultVI();
+    setPdfModalState({
+      orderNo,
+      lineId,
+      actualETD: date,
+      feederVessel: vi.feeder,
+      motherVessel: vi.mother,
+      vesselCompany: vi.company,
+      forwarder: vi.forwarder,
+      vesselEta: vi.eta
+    });
   };
 
   const handlePdfModalConfirm = (poInput: PoPdfInput, siInput: PoPdfInput) => {
     if (!pdfModalState || !currentUser) return;
-    const { orderNo, lineId, actualETD } = pdfModalState;
+    const {
+      orderNo,
+      lineId,
+      actualETD,
+      feederVessel,
+      motherVessel,
+      vesselCompany,
+      forwarder,
+      vesselEta
+    } = pdfModalState;
 
     const { order, line } = getLine(orderNo, lineId);
     if (!order || !line) return;
@@ -132,6 +241,11 @@ export const CSDashboard: React.FC = () => {
     updateLine(orderNo, lineId, (item) => ({
       ...item,
       actualETD,
+      feederVessel: feederVessel || undefined,
+      motherVessel: motherVessel || undefined,
+      vesselCompany: vesselCompany || undefined,
+      forwarder: forwarder || undefined,
+      vesselEta: vesselEta || undefined,
       status: OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO,
       documents: [
         ...item.documents.filter(
@@ -206,9 +320,15 @@ export const CSDashboard: React.FC = () => {
       return;
     }
 
+    const vi = vesselInputs[lineId] || defaultVI();
     updateLine(orderNo, lineId, (item) => ({
       ...item,
-      actualETD: date
+      actualETD: date,
+      feederVessel: vi.feeder || undefined,
+      motherVessel: vi.mother || undefined,
+      vesselCompany: vi.company || undefined,
+      forwarder: vi.forwarder || undefined,
+      vesselEta: vi.eta || undefined
     }));
 
     Swal.fire({
@@ -435,22 +555,122 @@ export const CSDashboard: React.FC = () => {
                       {row.orderNo}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {line.poNo} • {line.shipToId}
+                      {line.poNo} • {getShipToName(line.shipToId)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      value={etdDates[line.id] || ''}
-                      onChange={(e) =>
-                        setEtdDates((prev) => ({
-                          ...prev,
-                          [line.id]: e.target.value
-                        }))
-                      }
-                      className="shadcn-input h-8 text-xs flex-1"
-                      disabled={!canRunLineAction}
-                    />
+
+                  {/* Vessel info inputs */}
+                  <div className="space-y-2 mb-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        Vessel Information
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleFetchVesselView(line.id, line.shipToId)
+                        }
+                        disabled={!canRunLineAction}
+                        className="text-xs px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition-colors"
+                      >
+                        Fetch from View
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div className="space-y-0.5">
+                        <p className="ui-kicker text-slate-400 dark:text-slate-500">
+                          Feeder Vessel
+                        </p>
+                        <input
+                          type="text"
+                          value={vesselInputs[line.id]?.feeder || ''}
+                          onChange={(e) =>
+                            setVI(line.id, 'feeder', e.target.value)
+                          }
+                          className="shadcn-input h-7 text-xs w-full"
+                          disabled={!canRunLineAction}
+                          placeholder="c_feeder"
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="ui-kicker text-slate-400 dark:text-slate-500">
+                          Mother Vessel
+                        </p>
+                        <input
+                          type="text"
+                          value={vesselInputs[line.id]?.mother || ''}
+                          onChange={(e) =>
+                            setVI(line.id, 'mother', e.target.value)
+                          }
+                          className="shadcn-input h-7 text-xs w-full"
+                          disabled={!canRunLineAction}
+                          placeholder="c_mother"
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="ui-kicker text-slate-400 dark:text-slate-500">
+                          Vessel Company
+                        </p>
+                        <input
+                          type="text"
+                          value={vesselInputs[line.id]?.company || ''}
+                          onChange={(e) =>
+                            setVI(line.id, 'company', e.target.value)
+                          }
+                          className="shadcn-input h-7 text-xs w-full"
+                          disabled={!canRunLineAction}
+                          placeholder="c_shpline"
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="ui-kicker text-slate-400 dark:text-slate-500">
+                          Forwarder
+                        </p>
+                        <input
+                          type="text"
+                          value={vesselInputs[line.id]?.forwarder || ''}
+                          onChange={(e) =>
+                            setVI(line.id, 'forwarder', e.target.value)
+                          }
+                          className="shadcn-input h-7 text-xs w-full"
+                          disabled={!canRunLineAction}
+                          placeholder="c_fwd"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div className="space-y-0.5">
+                        <p className="ui-kicker text-slate-400 dark:text-slate-500">
+                          Actual ETD
+                        </p>
+                        <input
+                          type="date"
+                          value={etdDates[line.id] || ''}
+                          onChange={(e) =>
+                            setEtdDates((prev) => ({
+                              ...prev,
+                              [line.id]: e.target.value
+                            }))
+                          }
+                          className="shadcn-input h-7 text-xs w-full"
+                          disabled={!canRunLineAction}
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="ui-kicker text-slate-400 dark:text-slate-500">
+                          Actual ETA
+                        </p>
+                        <input
+                          type="date"
+                          value={vesselInputs[line.id]?.eta || ''}
+                          onChange={(e) =>
+                            setVI(line.id, 'eta', e.target.value)
+                          }
+                          className="shadcn-input h-7 text-xs w-full"
+                          disabled={!canRunLineAction}
+                        />
+                      </div>
+                    </div>
                   </div>
                   <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button

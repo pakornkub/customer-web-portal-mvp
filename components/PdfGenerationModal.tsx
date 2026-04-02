@@ -427,7 +427,13 @@ export const PdfGenerationModal: React.FC<Props> = ({
             value={line.price ? `${line.price} ${line.currency || 'USD'}` : '—'}
           />
           <ReadOnlyField label="Terms" value={line.termId} />
-          <ReadOnlyField label="Destination" value={line.destinationId} />
+          <ReadOnlyField
+            label="Destination"
+            value={
+              masterData.destinations.find((d) => d.id === line.destinationId)
+                ?.name || line.destinationId
+            }
+          />
           <ReadOnlyField label="ETD" value={actualETD} />
           <ReadOnlyField
             label="Order Date"

@@ -25,14 +25,21 @@ export const SaleReview: React.FC = () => {
     orders,
     currentUser,
     linePermissionMatrix,
+    masterData,
     updateOrder,
     addActivity,
     addNotification,
     addIntegrationLog
   } = useStore();
+
+  const getShipToName = (shipToId: string) =>
+    masterData.shipTos.find((s) => s.id === shipToId)?.name || shipToId;
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [currencies, setCurrencies] = useState<Record<string, string>>({});
   const [saleNotes, setSaleNotes] = useState<Record<string, string>>({});
+  const [clearanceDates, setClearanceDates] = useState<Record<string, string>>(
+    {}
+  );
   const [processingLineId, setProcessingLineId] = useState<string | null>(null);
 
   const targets = useMemo(() => {
@@ -226,7 +233,11 @@ export const SaleReview: React.FC = () => {
 
     const nextItems = order.items.map((item) =>
       item.id === lineId
-        ? { ...item, status: OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO }
+        ? {
+            ...item,
+            clearanceDate: clearanceDates[lineId]?.trim() || item.clearanceDate,
+            status: OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO
+          }
         : item
     );
 
@@ -386,7 +397,7 @@ export const SaleReview: React.FC = () => {
                                 {line.poNo}
                               </td>
                               <td className="px-6 py-5 font-bold text-slate-600 dark:text-slate-400">
-                                {line.shipToId || '-'}
+                                {getShipToName(line.shipToId)}
                               </td>
                               <td className="px-6 py-5 text-right font-bold text-slate-900 dark:text-white">
                                 {line.qty.toLocaleString()} units
@@ -533,7 +544,9 @@ export const SaleReview: React.FC = () => {
                         <th className="px-6 py-4 text-right">Qty</th>
                         <th className="px-6 py-4 text-right">Price</th>
                         <th className="px-6 py-4 text-left">ETD</th>
+                        <th className="px-6 py-4 text-left">Clearance Date</th>
                         <th className="px-6 py-4 text-left">PO Document</th>
+                        <th className="px-6 py-4 text-left">SI Document</th>
                         <th className="px-6 py-4 text-right">Action</th>
                       </tr>
                     </thead>
@@ -541,6 +554,10 @@ export const SaleReview: React.FC = () => {
                       {group.lines.map((line) => {
                         const poPdf = line.documents.find(
                           (doc) => doc.type === DocumentType.PO_PDF
+                        );
+                        const siPdf = line.documents.find(
+                          (doc) =>
+                            doc.type === DocumentType.SHIPPING_INSTRUCTION_PDF
                         );
                         return (
                           <tr
@@ -551,7 +568,7 @@ export const SaleReview: React.FC = () => {
                               {line.poNo}
                             </td>
                             <td className="px-6 py-5 font-bold text-slate-600 dark:text-slate-400">
-                              {line.shipToId || '-'}
+                              {getShipToName(line.shipToId)}
                             </td>
                             <td className="px-6 py-5 text-right font-bold text-slate-900 dark:text-white">
                               {line.qty.toLocaleString()} units
@@ -563,6 +580,23 @@ export const SaleReview: React.FC = () => {
                             </td>
                             <td className="px-6 py-5 text-slate-600 dark:text-slate-400 text-xs">
                               {line.actualETD || '-'}
+                            </td>
+                            <td className="px-6 py-5">
+                              <input
+                                type="date"
+                                value={
+                                  clearanceDates[line.id] ??
+                                  line.clearanceDate ??
+                                  ''
+                                }
+                                onChange={(e) =>
+                                  setClearanceDates((prev) => ({
+                                    ...prev,
+                                    [line.id]: e.target.value
+                                  }))
+                                }
+                                className="shadcn-input h-8 text-xs w-36"
+                              />
                             </td>
                             <td className="px-6 py-5">
                               {poPdf ? (
@@ -577,10 +611,38 @@ export const SaleReview: React.FC = () => {
                                       document.body.removeChild(link);
                                     }
                                   }}
-                                  className="inline-flex items-center gap-1.5 px-3 h-8 ui-radius-control text-xs font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                                  className="inline-flex items-center gap-1.5 px-3 h-8 ui-radius-control text-xs font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900 max-w-[9rem] overflow-hidden"
                                 >
-                                  <Download className="w-3.5 h-3.5" />
-                                  {poPdf.filename}
+                                  <Download className="w-3.5 h-3.5 shrink-0" />
+                                  <span className="truncate">
+                                    {poPdf.filename}
+                                  </span>
+                                </button>
+                              ) : (
+                                <span className="text-xs text-slate-400">
+                                  -
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-5">
+                              {siPdf ? (
+                                <button
+                                  onClick={() => {
+                                    if (siPdf.dataUrl) {
+                                      const link = document.createElement('a');
+                                      link.href = siPdf.dataUrl;
+                                      link.download = siPdf.filename;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                    }
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 h-8 ui-radius-control text-xs font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900 max-w-[9rem] overflow-hidden"
+                                >
+                                  <Download className="w-3.5 h-3.5 shrink-0" />
+                                  <span className="truncate">
+                                    {siPdf.filename}
+                                  </span>
                                 </button>
                               ) : (
                                 <span className="text-xs text-slate-400">

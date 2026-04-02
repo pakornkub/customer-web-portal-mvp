@@ -235,6 +235,14 @@ export const MgrApprove: React.FC = () => {
                         {line.actualETD || line.requestETD || '-'}
                       </p>
                     </div>
+                    <div>
+                      <p className="ui-micro-text text-slate-500 dark:text-slate-400 mb-0.5">
+                        Clearance Date
+                      </p>
+                      <p className="font-medium text-slate-700 dark:text-slate-300">
+                        {line.clearanceDate || '-'}
+                      </p>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">

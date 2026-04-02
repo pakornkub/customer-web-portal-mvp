@@ -121,6 +121,13 @@ export interface OrderItem {
   quotationNo?: string;
   asap: boolean;
   actualETD?: string;
+  clearanceDate?: string;
+  feederVessel?: string;
+  motherVessel?: string;
+  vesselCompany?: string;
+  forwarder?: string;
+  vesselEtd?: string;
+  vesselEta?: string;
   documents: OrderDocument[];
   pdfSnapshot?: PdfGenerationSnapshot;
 }
