@@ -33,29 +33,78 @@ type VesselViewRecord = {
   c_eta: string;
 };
 const VESSEL_VIEW_MOCK: Record<string, VesselViewRecord> = {
-  'SHIP-MICHELIN': {
-    c_feeder: 'Feeder Alpha',
-    c_mother: 'Ever Given',
-    c_shpline: 'Evergreen',
-    c_fwd: 'FWD Co.',
-    c_etd: '2026-04-10',
-    c_eta: '2026-04-25'
+  'SHIP-BRIDGESTONE-POZNAN': {
+    c_feeder: 'ITHACA V.111S',
+    c_mother: 'ONE SATISFACTION V.001W',
+    c_shpline: 'OCEAN NETWORK EXPRESS PTE. LTD.',
+    c_fwd: 'DIRECT',
+    c_etd: '2026-02-11',
+    c_eta: '2026-04-03'
   },
-  'SHIP-TOYO-TIRE': {
-    c_feeder: 'Feeder Beta',
-    c_mother: 'MSC Carmen',
+  'SHIP-BRIDGESTONE-BRASIL': {
+    c_feeder: 'ONE GRUS V.023E',
+    c_mother: 'EVER LOTUS V.1571-060W',
+    c_shpline: 'YANGMING',
+    c_fwd: 'MERCURIAL',
+    c_etd: '2023-12-28',
+    c_eta: '2024-02-01'
+  },
+  'SHIP-BRIDGESTONE-TATABANYA': {
+    c_feeder: 'PELICAN V.073S',
+    c_mother: 'ONE HELSINKI V.063W',
+    c_shpline: 'OCEAN NETWORK EXPRESS PTE. LTD.',
+    c_fwd: 'DIRECT',
+    c_etd: '2025-10-04',
+    c_eta: '2026-01-02'
+  },
+  'SHIP-SUMITOMO-BRASIL': {
+    c_feeder: 'SINAR BAJO V.110S',
+    c_mother: 'CMA CGM BUZIOS V.0010W',
+    c_shpline:
+      'PACIFIC INTERNATIONAL LINES (PRIVATE) LIMITED C/O PIL SHIPPING (THAILAND)LTD.',
+    c_fwd: 'DLT',
+    c_etd: '2026-02-25',
+    c_eta: '2026-04-13'
+  },
+  'SHIP-SUMITOMO-SOUTH-AFRICA': {
+    c_feeder: 'ONE WREN V.029E',
+    c_mother: 'NYK FUJI V.135W',
+    c_shpline: 'OCEAN NETWORK EXPRESS PTE. LTD. C/O',
+    c_fwd: 'FOB / DSV',
+    c_etd: '2026-02-22',
+    c_eta: '2026-03-27'
+  },
+  'SHIP-SUMITOMO-HUNAN': {
+    c_feeder: 'HEUNG-A BANGKOK V.2602N',
+    c_mother: '-',
+    c_shpline: 'HEUNG A',
+    c_fwd: 'DIRECT',
+    c_etd: '2026-03-20',
+    c_eta: '2026-03-27'
+  },
+  'SHIP-TOYO-MALAYSIA': {
+    c_feeder: 'INTERASIA TRIUMPH V.W007',
+    c_mother: '-',
+    c_shpline: 'WANHAI',
+    c_fwd: 'LEO',
+    c_etd: '',
+    c_eta: ''
+  },
+  'SHIP-HENGDASHENG-TOYO': {
+    c_feeder: 'JOSCO LUCKY V.2511N',
+    c_mother: '-',
+    c_shpline: 'TAICANG CONTAINER LINES CO.,LTD',
+    c_fwd: 'LEO',
+    c_etd: '',
+    c_eta: ''
+  },
+  'SHIP-TOYO-TIRE-NA': {
+    c_feeder: 'MSC BRIDGEPORT V.GU606W',
+    c_mother: 'ZIM THAILAND V.14E',
     c_shpline: 'MSC',
-    c_fwd: 'Thai FWD',
-    c_etd: '2026-04-15',
-    c_eta: '2026-04-30'
-  },
-  'SHIP-BRIDGESTONE': {
-    c_feeder: 'Feeder Gamma',
-    c_mother: 'CMA Lyra',
-    c_shpline: 'CMA CGM',
-    c_fwd: 'UniThai',
-    c_etd: '2026-04-20',
-    c_eta: '2026-05-05'
+    c_fwd: 'DIRECT / FOB',
+    c_etd: '',
+    c_eta: ''
   }
 };
 

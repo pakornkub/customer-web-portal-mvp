@@ -2451,6 +2451,341 @@ const INITIAL_MASTER: MasterDataState = {
       confirmBy: 'Thai Synthetic Rubbers Co., Ltd.',
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone Brasil ──────────────────────────────────────────
+    {
+      id: 'POT-BRIDGESTONE-BRASIL',
+      shipToId: 'SHIP-BRIDGESTONE-BRASIL',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'BRIDGESTONE DO BRASIL\nAV.QUEIROS DOS SANTOS 1717\nSANTO ANDRE-09015-901-SAO PAULO-BRAZIL\nCNPJ:57497539/0001-15\nTEL:(011)4433-1666 FAX(011)4433-1187\nMr.Paulo',
+      agent: '',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 45 DAYS AFTER B/L DATE',
+      packingInstructions: 'STANDARD EXPORT PACKING BY GPS',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone Hungary (Tatabanya) ─────────────────────────────
+    {
+      id: 'POT-BRIDGESTONE-TATABANYA',
+      shipToId: 'SHIP-BRIDGESTONE-TATABANYA',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'Bridgestone Tatabanya Manufacturing Ltd.\nH-2851 Korneye, Kohid u. 1.\nATTN:Erika Gulyas\nTEL +36 30 696 0061 FAX:+36.34.521.200',
+      agent: '',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 60 DAYS AFTER B/L DATE',
+      packingInstructions: 'STANDARD EXPORT PACKING BY GPS',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Michelin Shenyang ───────────────────────────────────────────
+    {
+      id: 'POT-MICHELIN-SHENYANG',
+      shipToId: 'SHIP-MICHELIN-SHENYANG',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND',
+      consigneeNotify:
+        'Michelin Shenyang Tire Co.,Ltd\nNo.12,Xihesi North Street,Shenyang Economic\nand Technological Development Area,Shenyang,\nLiaoning,P.R.China .110142\nTel:+8624 8603 5105 Fax:86-24-25176770',
+      agent: '',
+      endUser: 'Michelin Shenyang Tire Co.,Ltd',
+      termsOfPayment: 'BY T.T.R 135 DAYS AFTER B/L DATE',
+      packingInstructions: 'STANDARD EXPORT PACKING',
+      confirmBy: 'Thai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Shanghai Michelin ───────────────────────────────────────────
+    {
+      id: 'POT-MICHELIN-SHANGHAI',
+      shipToId: 'SHIP-SHANGHAI-MICHELIN',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND',
+      consigneeNotify:
+        'Shanghai Michelin Tire Co.,Ltd.\nNO.2915 JIANCHUAN ROAD, MIN HANG DEVELOPMENT ZONE,\nSHANGHAI, 201111 P.R.CHINA\nTel:+86 21 3405 4888 Fax:54723540\nMs.Jun You',
+      agent: '',
+      endUser: 'Shanghai Michelin Tire Co.,Ltd.',
+      termsOfPayment: 'BY T.T.R 135 DAYS AFTER B/L DATE',
+      packingInstructions: 'STANDARD EXPORT PACKING',
+      confirmBy: 'Thai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Goodyear Amiens Sud ─────────────────────────────────────────
+    {
+      id: 'POT-GOODYEAR-AMIENS',
+      shipToId: 'SHIP-GOODYEAR-DUNLOP-AMIENS',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'GOODYEAR DUNLOP TIRES\n60 AV ROGER DUMOULIN\n80030 AMIENS\nFRANCE',
+      agent: 'UBE EUROPE GMBH',
+      endUser: 'GOODYEAR AMIENS SUD',
+      termsOfPayment: 'BY T.T.R 105 DAYS AFTER B/L DATE',
+      packingInstructions: 'STANDARD EXPORT PACKING',
+      confirmBy: 'Thai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Goodyear Brasil ─────────────────────────────────────────────
+    {
+      id: 'POT-GOODYEAR-BRASIL',
+      shipToId: 'SHIP-GOODYEAR-BRASIL',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'Goodyear do Brasil Produtos de Borracha Ltda.\nAv. Affonso Pansan, 3415 (Anhanguera, KM 128)\n13473-620 Vila Bertini - Americana City\nSao Paulo State / Brazil\nCNPJ 60.500.246/0016-30',
+      agent: 'UBE EUROPE GMBH',
+      endUser: 'GOODYEAR DO BRASIL PRODUTOS DE BORRACHA LTDA',
+      termsOfPayment: 'BY T.T.R 105 DAYS AFTER B/L DATE',
+      packingInstructions: 'STANDARD EXPORT PACKING',
+      confirmBy: 'Thai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Sumitomo Rubber Brasil ──────────────────────────────────────
+    {
+      id: 'POT-SUMITOMO-BRASIL',
+      shipToId: 'SHIP-SUMITOMO-BRASIL',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'SUMITOMO RUBBER DO BRASIL LTDA\nR.FRANCISCO FERREIRA DA CRUZ 4656\n83820293 FAZENDA RIO GRANDE-PR-PAR\nBRAZIL\nCNPJ:13.816.470/0001-70',
+      agent: 'UBE EUROPE GMBH',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 60 DAYS AFTER B/L DATE',
+      packingInstructions: 'GPS',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Sumitomo Rubber South Africa ────────────────────────────────
+    {
+      id: 'POT-SUMITOMO-SOUTH-AFRICA',
+      shipToId: 'SHIP-SUMITOMO-SOUTH-AFRICA',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'Sumitomo Rubber South Africa (Pty) Ltd\nAttention : Lorna Bandoraho\nLion Match Office Park\nThe Old Factory Building\n892 Umgeni Road\nDurban 4001\nKwazulu Natal\nSouth Africa\nTel: +27-31-2421111',
+      agent: 'UBE EUROPE GMBH',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 90 DAYS AFTER B/L DATE',
+      packingInstructions: 'GPS',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Sumitomo Rubber Hunan ───────────────────────────────────────
+    {
+      id: 'POT-SUMITOMO-HUNAN',
+      shipToId: 'SHIP-SUMITOMO-HUNAN',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'Sumitomo Rubber (Hunan) CO.LTD\nNo.1318 Liangtang East Road, Changlong street,\nChangsha county, Changsha city,\nHunan province, China\nTEL:0086-731-86407006-1229',
+      agent: '',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 90 DAYS AFTER B/L DATE',
+      packingInstructions: 'STANDARD EXPORT PACKING',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Toyo Tyre Malaysia ─────────────────────────────────────────
+    {
+      id: 'POT-TOYO-MALAYSIA',
+      shipToId: 'SHIP-TOYO-MALAYSIA',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'Toyo Tyre Malaysia Sdn Bhd\nPT23101, Jalan Tembaga Kuning\nKawasan Perindustrian Kamunting Raya\nPO Box 1, 34600, Kamunting, Perak. Malaysia\nContact Person: Ms Lim / Ms Yap\nTel: 605-8206669 Fax: 605-8206659',
+      agent: '',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 30 DAYS AFTER B/L DATE',
+      packingInstructions: 'GPS',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Hengdasheng Toyo Zhangjiagang ──────────────────────────────
+    {
+      id: 'POT-HENGDASHENG-TOYO',
+      shipToId: 'SHIP-HENGDASHENG-TOYO',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'HENGDASHENG TOYO TIRE(ZHANGJIAGANG) CO., LTD.\n58,DONGHAI ROAD, YANGTZE INTERNATIONAL CHEMICAL\nINDUSTRIAL PARK, ZHANGJIAGANG, JIANGSU, CHINA\nCONTACT PERSON: Lili Yu E-MAIL: yulili@toyotiresz.com\nTEL:0512-3500-7124',
+      agent: '',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 60 DAYS AFTER B/L DATE',
+      packingInstructions: 'STANDARD EXPORT PACKING',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Toyo Tire North America ────────────────────────────────────
+    {
+      id: 'POT-TOYO-TIRE-NA',
+      shipToId: 'SHIP-TOYO-TIRE-NA',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'TOYO TIRE NORTH AMERICA MANUFACTURING INC.\n3660 Highway 411 NE\nWhite, GA 30184\nATTN: SUSAN WOOD',
+      agent: '',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 60 DAYS AFTER B/L DATE',
+      packingInstructions: 'STANDARD EXPORT PACKING',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone India ──────────────────────────────────────────
+    {
+      id: 'POT-BRIDGESTONE-INDIA',
+      shipToId: 'SHIP-BRIDGESTONE-INDIA',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'Bridgestone India Private Limited\nPLOT NO. A-43, PHASE-II, MIDC CHAKAN\nVILLAGE SAWARDARI, TALUKA KHED, DIST. PUNE,\nMAHARASHTRA - 410 501, INDIA\nTEL: +91.2135.672.000\nIEC NO. 0396013341/GSTIN Number 27AABCB2304E1ZD',
+      agent: '',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 60 DAYS AFTER B/L DATE',
+      packingInstructions: 'One Way Box',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone South Africa ───────────────────────────────────
+    {
+      id: 'POT-BRIDGESTONE-SA',
+      shipToId: 'SHIP-BRIDGESTONE-SA',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'BRIDGESTONE SA (PTY) LTD\n189 GRAHAMSTOWN ROAD, DEAL PARTY,\nPORT ELIZABETH, 6001, SOUTH AFRICA\nATTN:SHIPPING DEPT\nPO BOX 992 PORT ELIZABETH, 6000',
+      agent: '',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 90 DAYS AFTER B/L DATE',
+      packingInstructions: 'GPS',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Brisa Turkey ───────────────────────────────────────────────
+    {
+      id: 'POT-BRISA-TURKEY',
+      shipToId: 'SHIP-BRISA-TURKEY',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'BRISA BRIDGESTONE SABANCI LASTIK SANAYI VE TICARET A.S.\nAlikahya Fatih Mah.Sanayi Cad.No:98\n41310 Izmit / KOCAELI Turkey\nContact Person: BURCU YUZUAK\nPhone: +90 (262) 316 57 53',
+      agent: '',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 45 DAYS AFTER B/L DATE',
+      packingInstructions: 'GPS',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone Firestone Wilson ───────────────────────────────
+    {
+      id: 'POT-BRIDGESTONE-FIRESTONE-WILSON',
+      shipToId: 'SHIP-BRIDGESTONE-FIRESTONE-WILSON',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'Bridgestone Firestone NT Wilson Plant\nTriangle East Storage 2010 Baldree Road Wilson\nNC27893 USA\nTEL: 252-246-7630 FAX: 252-246-7315\nATTN: Jeff Pyle',
+      agent: '',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 90 DAYS AFTER B/L DATE',
+      packingInstructions: 'METAL BOX',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone Wuxi ───────────────────────────────────────────
+    {
+      id: 'POT-BRIDGESTONE-WUXI',
+      shipToId: 'SHIP-BRIDGESTONE-WUXI',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'BRIDGESTONE (WUXI) TIRE CO.,LTD.\nNo.67, XINMEI ROAD, WUXI NATIONAL HIGH-NEW\nTECHNICAL INDUSTRIAL DEVELOPMENT ZONE,\nWUXI 214028, JIANGSU, CHINA\nFAX:86-0510-8532-2199 TEL:86-0510-8532-2288',
+      agent: '',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 60 DAYS AFTER B/L DATE',
+      packingInstructions: 'GPS',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone Indonesia ──────────────────────────────────────
+    {
+      id: 'POT-BRIDGESTONE-INDONESIA',
+      shipToId: 'SHIP-PT-BRIDGESTONE',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'PT. BRIDGESTONE TIRE INDONESIA\nKawasan Industri Surya Cipta Jl. Surya Utama Kav 8-13,\nKutamekar, Ciampel, Kab. Karawang, Jawa Barat, 41363\nPhone No.: (+62-267) 440 201\nNPWP No. 0010 0011 8809 2000',
+      agent: '',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 30 DAYS AFTER B/L DATE',
+      packingInstructions: 'GPS',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone Taiwan ─────────────────────────────────────────
+    {
+      id: 'POT-BRIDGESTONE-TAIWAN',
+      shipToId: 'SHIP-BRIDGESTONE-TAIWAN',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify:
+        'BRIDGESTONE TAIWAN CO.,LTD.\nNo.1-1, Wenhua Rd, Hukou Township\nHsinchu County 30352 Taiwan (R.O.C.)\nPHONE:886-35-981621',
+      agent: '',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 10 DAYS AFTER B/L DATE',
+      packingInstructions: 'GPS',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone Mexico ─────────────────────────────────────────
+    {
+      id: 'POT-BRIDGESTONE-MEXICO',
+      shipToId: 'SHIP-BRIDGESTONE-MEXICO',
+      toBlock:
+        'THAI SYNTHETIC RUBBERS CO., LTD.\n18th Floor, Sathorn Square Office Tower,\n98 North Sathorn Road,\nSilom, Bangrak, Bangkok 10500,\nTHAILAND\nATTN.: T. Fujioka / SEVP',
+      consigneeNotify: 'PLEASE REFER TO THE SI',
+      agent: '',
+      endUser: '',
+      termsOfPayment: 'BY T.T.R 90 DAYS AFTER B/L DATE',
+      packingInstructions: 'STANDARD EXPORT PACKING',
+      confirmBy:
+        'T. Fujioka\nSenior Executive Vice President\nThai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
     }
   ] as PoTemplate[],
   siTemplates: [
@@ -2531,6 +2866,878 @@ const INITIAL_MASTER: MasterDataState = {
       underDescription: '',
       shippingMark: 'SHIPPING MARK',
       belowSignature: 'Overseas Sales Group',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone Brasil ──────────────────────────────────────────
+    {
+      id: 'SIT-BRIDGESTONE-BRASIL',
+      shipToId: 'SHIP-BRIDGESTONE-BRASIL',
+      attn: 'MR.T. Fujioka/SEVP',
+      from: 'KAWAMORI/UEDA',
+      poNumberHeader: 'BS BRASIL PO No.',
+      no2Header: '',
+      no2: '',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'BRIDGESTONE BRASIL',
+      country: 'SANTOS, BRAZIL',
+      shipper: 'TSL',
+      feederVessel: 'ONE GRUS V.023E',
+      motherVessel: 'EVER LOTUS V.1571-060W',
+      vesselCompany: 'YANGMING',
+      forwarder: 'MERCURIAL',
+      portOfLoading: '',
+      consignee:
+        'BRIDGESTONE DO BRASIL INDUSTRIA E COMERCIO LTDA.\nAV.QUEIROS DOS SANTOS 1717\nSANTO ANDRE-09015-901-SAO PAULO-BRAZIL\nCNPJ:57497539/0001-15\nTEL:(011)4433-1666 FAX(011)4433-1187\nE-mail: ImportacaoLASRM@la-bridgestone.com',
+      blType:
+        '* FULL SET OF CLEAN OCEAN B/L 3 ORIGINAL + 4 COPIES (issued at destination)',
+      freeTime: '',
+      courierAddress:
+        'Av. Jornalista Roberto Marinho, 85\nTower Bridge Corporate - 18th. Floor\n04576-010 - Sao Paulo - SP - BRAZIL\nATT: Dept. COMEX - Thatielen Bastos\nPhone 55-11-4433-1634',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'BRIDGESTONE DO BRASIL IND. E COM. LTDA.',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements:
+        '*PLEASE SHOW THE FOLLOWING WORDS ON DESCRIPTION OF B/L\n*NCM code for empty packages: 7326 on B/L',
+      note: '*PLEASE SEND ALL ORIGINAL DOCS EXCEPT COMMERCIAL CIF I/V (TSL-UBE) TO BS BRASIL DIRECTLY',
+      note2:
+        '*PLEASE SEND US ALL DOCS PDF COPIES BY E-MAIL, NO NEED TO SEND BY COURIER TO US',
+      note3: '',
+      description: 'SYNTHETIC RUBBER UBE 150 L BRIDGESTONE',
+      underDescription: 'NCM:4002',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'UBE Elastomer Co. Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone Hungary (Tatabanya) ─────────────────────────────
+    {
+      id: 'SIT-BRIDGESTONE-TATABANYA',
+      shipToId: 'SHIP-BRIDGESTONE-TATABANYA',
+      attn: 'MR.T. Fujioka /SEVP',
+      from: 'D.KAWAMORI/UEDA',
+      poNumberHeader: 'BS TATABANYA PO No.:',
+      no2Header: '',
+      no2: '',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'BRIDGESTONE HUNGARY',
+      country: 'HUNGARY',
+      shipper: 'TSL',
+      feederVessel: 'PELICAN V.073S',
+      motherVessel: 'ONE HELSINKI V.063W',
+      vesselCompany: 'OCEAN NETWORK EXPRESS PTE. LTD.',
+      forwarder: 'DIRECT',
+      portOfLoading: '',
+      consignee: 'Bridgestone Tatabanya Manufacturing Ltd.',
+      blType: '* SEA WAY BILL is required.',
+      freeTime: '',
+      courierAddress:
+        'No need original courier to BS and UBE Tokyo if SEA WAY BILL.',
+      eoriNo: 'HU0002515281',
+      bookingNo: '',
+      notifyParty: 'SAME AS CONSIGNEE',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements: '* SEA WAY BILL is required.',
+      note: '**Please e-mail ALL docs and CIF COMMERCIAL IV (between UBE and TSL) by PDF copies to UBE Tokyo.',
+      note2: '*NO need original courier to BS and UBE Tokyo if SEA WAY BILL.',
+      note3: '',
+      description: 'POLYBUTADIENE RUBBER',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'UBE Elastomer Co. Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Michelin Shenyang ───────────────────────────────────────────
+    {
+      id: 'SIT-MICHELIN-SHENYANG',
+      shipToId: 'SHIP-MICHELIN-SHENYANG',
+      attn: '',
+      from: '',
+      poNumberHeader: '',
+      no2Header: '',
+      no2: '',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'MICHELIN SHENYANG TIRE CO.',
+      country: 'SHENYANG, CHINA',
+      shipper: 'FULL CONTACT DETAIL OF TSL',
+      feederVessel: '',
+      motherVessel: '',
+      vesselCompany: '',
+      forwarder: '',
+      portOfLoading: 'LAEM CHABANG, THAILAND',
+      consignee:
+        'Michelin Shenyang Tire Co.,Ltd\nNo.12,Xihesi North Street,Shenyang Economic\nand Technological Development Area,Shenyang,\nLiaoning,P.R.China .110142\nTel:+8624 8603 5105\nUSCI:912101066046211235\nATTN:SY2 PUR department /Suning. Wang.',
+      blType: '',
+      freeTime: '',
+      courierAddress:
+        'NO.12 XI HE SI BEI Street SHENYANG ECONOMIC & TECHNOLOGICAL\nDEVELOPMENT AREA (SEDA)\nShenyang, Liaoning Province, CHINA\nZIP CODE:110142\nATTN:Suning. Wang.',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'SAME AS CONSIGNEE',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements:
+        '*NO NEED TO DISPATCH THE ORIGINAL DOCS. EXCEPT FORM E, PDF FILES OF ORIGINAL ARE ENOUGH.',
+      note: '*Please send ALL ORIGINAL DOCS. PDF COPIES BY E-MAIL to UEC Matsumoto.',
+      note2: '*PLEASE COURIER ORIGINAL FULL SET OF FORM-E TO MSC SHENYANG',
+      note3: '*PDF OF BL AND FORM-E MUST BE SCAN OF THE ORIGINAL WITH COLORED',
+      description: 'POLYBUTADIENE RUBBER',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'Thai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Shanghai Michelin ───────────────────────────────────────────
+    {
+      id: 'SIT-MICHELIN-SHANGHAI',
+      shipToId: 'SHIP-SHANGHAI-MICHELIN',
+      attn: '',
+      from: '',
+      poNumberHeader: '',
+      no2Header: '',
+      no2: '',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'SHANGHAI MICHELIN TIRE CO., LTD.',
+      country: 'SHANGHAI, CHINA',
+      shipper: 'FULL CONTACT DETAIL OF TSL',
+      feederVessel: '',
+      motherVessel: '',
+      vesselCompany: '',
+      forwarder: '',
+      portOfLoading: 'LAEM CHABANG, THAILAND',
+      consignee:
+        'Shanghai Michelin Tire Co.,Ltd.\nNO.2915 JIANCHUAN ROAD, MIN HANG DEVELOPMENT ZONE,\nSHANGHAI, 201111 P.R.CHINA\nTel:+86 21 3405 4888 Fax:54723540\nUSCI:91310000607429866C\njun.you@michelin.com',
+      blType: '',
+      freeTime: '',
+      courierAddress:
+        'SHANGHAI MICHELIN WARRIOR TIRE\nNO.2915 JIANCHUAN ROAD, MIN HANG DEVELOPMENT ZONE,\nSHANGHAI, CHINA zip code 201111',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'SAME AS CONSIGNEE',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements:
+        '*NO NEED TO DISPATCH THE ORIGINAL DOCS. BY COURIER, PDF FILES OF ORIGINAL ARE ENOUGH.',
+      note: '*Please send ALL ORIGINAL DOCS. (including TSL commercial INV) PDF COPIES BY E-MAIL to UEC Matsumoto.',
+      note2:
+        '*PDF OF BL AND FORM-E MUST BE SCANNED OF THE ORIGINAL WITH COLORED',
+      note3: '*Please issue full set of FORM-E WITH TSL FOB Custom I/V.',
+      description: 'SYNTHETIC RUBBER',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'Overseas Sales Group',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Goodyear Amiens Sud ─────────────────────────────────────────
+    {
+      id: 'SIT-GOODYEAR-AMIENS',
+      shipToId: 'SHIP-GOODYEAR-DUNLOP-AMIENS',
+      attn: '',
+      from: '',
+      poNumberHeader: 'UEG PO No.',
+      no2Header: 'GY PO NO.:',
+      no2: '8210256629',
+      materialCodeHeader: 'GOODYEAR CODE',
+      materialCode: 'ESTHERIC on grade label',
+      noteUnderMaterial: '*put marking CODE on both sides of Goodpack box',
+      user: 'GOODYEAR DUNLOP TIRES',
+      country: 'FRANCE',
+      shipper: 'TSL /UBE EUROPE GMBH',
+      feederVessel: '',
+      motherVessel: '',
+      vesselCompany: '',
+      forwarder: '',
+      portOfLoading: 'LAEM CHABANG, THAILAND',
+      consignee:
+        'GOODYEAR OPERATIONS SA.\nAmiens plant\nAVENUE GORDON SMITH\n7750 COLMAR-BERG\nLU - LUXEMBOURG',
+      blType: '*SWB, P/L, CoA,I/P',
+      freeTime: '',
+      courierAddress:
+        'PSA BDP INTERNATIONAL LOJISTIK ANONIM SIRKETI\nMASLAK MAHALLESI, SAAT SOKAK\nSPINE TOWER SITESI NO:5, IC KAPI NO:48, KAT:3\n34398 SARIYER ISTANBUL,TURKEY\nContact email: goodyear-ofimp.llptr@bdpint.com',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'GOODYEAR AMIENS SUD',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '60 AV ROGER DUMOULIN\n80030 AMIENS\nFRANCE',
+      requirements: '*NO NEED TO ISSUE I/P CERTIFICATE FOR THIS SHIPMENT',
+      note: '*NO NEED TO DISPATCH ANY DOCS. TO UEG',
+      note2:
+        '*Please send all original docs. copies (COLORED PDF) by email to UEG and UEC, and send UEC INV+BL copies separately.',
+      note3: '',
+      description: 'SYNTHETIC RUBBER',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'Overseas Sales Group',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Goodyear Brasil ─────────────────────────────────────────────
+    {
+      id: 'SIT-GOODYEAR-BRASIL',
+      shipToId: 'SHIP-GOODYEAR-BRASIL',
+      attn: '',
+      from: '',
+      poNumberHeader: 'UEG PO No.',
+      no2Header: 'GY PO NO.:',
+      no2: '4500477572',
+      materialCodeHeader: 'GOODYEAR CODE:',
+      materialCode: 'SMITHIC on grade label',
+      noteUnderMaterial: '*put marking CODE on both sides of Goodpack box',
+      user: 'GOODYEAR DUNLOP TIRES',
+      country: 'BRASIL',
+      shipper: 'TSL ON BEHALF OF UBE EUROPE GMBH',
+      feederVessel: '',
+      motherVessel: '',
+      vesselCompany: '',
+      forwarder: '',
+      portOfLoading: 'LAEM CHABANG, THAILAND',
+      consignee:
+        'Goodyear do Brasil Produtos de Borracha Ltda.\nAv. Affonso Pansan, 3415 (Anhanguera, KM 128)\n13473-620 Vila Bertini - Americana City\nSao Paulo State / Brazil\nCNPJ 60.500.246/0016-30\nAttn.: Mrs. Cassia Rodrigues',
+      blType: '*FULL SET OF ORIGINAL B/L',
+      freeTime: '',
+      courierAddress:
+        'S. Magalhaes S.A. Logistica em Comercio Exterior\nPraca da Republica, 62 - 2nd Floor\n11013-010 Santos, SP/ Brasil\nA/C: Giselia Oliveira and Wilson Carlos\nE-Mail: importgy@smagalhaes.com.br',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'Goodyear do Brasil Produtos de Borracha Ltda.',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo:
+        'Goodyear do Brasil Produtos de Borracha Ltda.\nAv. Affonso Pansan, 3415 (Anhanguera, KM128)\nVila Bertini - Americana City\nSao Paulo State/Brazil\nZip Code 13473-620\nAttn.: Fernanda Duarte',
+      requirements:
+        '*Please show material NCM NO.4002.20 on BL and P/L.\n*PLEASE SHOW FREIGHT VALUE ON BL',
+      note: '*Please send all original docs. copies (COLORED PDF) by email to UEG and UEC, and send UEC INV+BL copies separately.',
+      note2:
+        '*Please dispatch the full set of ORIGINAL BL to UEG, for other docs PDF COPIES are enough.',
+      note3:
+        '*All documents must signed by hand in blue ink indicating name and title of person signing',
+      description: 'POLYBUTADIENE RUBBER',
+      underDescription: '',
+      shippingMark: 'GOODYEAR DO BRASIL PRODUTOS',
+      belowSignature: 'Overseas Sales Group',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Sumitomo Rubber Brasil ──────────────────────────────────────
+    {
+      id: 'SIT-SUMITOMO-BRASIL',
+      shipToId: 'SHIP-SUMITOMO-BRASIL',
+      attn: 'T.FUJIOKA / SEVP',
+      from: 'S.OKUNI/H.UEDA',
+      poNumberHeader: 'UEG PO No.',
+      no2Header: 'SUMITOMO PO NO.:',
+      no2: '100752',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'SUMITOMO RUBBER BRASIL',
+      country: 'BRASIL',
+      shipper: 'TSL /UBE EUROPE GMBH',
+      feederVessel: 'SINAR BAJO V.110S',
+      motherVessel: 'CMA CGM BUZIOS V.0010W',
+      vesselCompany:
+        'PACIFIC INTERNATIONAL LINES (PRIVATE) LIMITED C/O PIL SHIPPING (THAILAND)LTD.',
+      forwarder: 'DLT',
+      portOfLoading: 'LAEM CHABANG, THAILAND',
+      consignee:
+        'SUMITOMO RUBBER DO BRASIL LTDA\nR.FRANCISCO FERREIRA DA CRUZ 4656\n83820293 FAZENDA RIO GRANDE-PR-PAR\nBRAZIL\nCNPJ:13.816.470/0001-70',
+      blType: '',
+      freeTime: '21 DAYS FREE TIME',
+      courierAddress:
+        'CNPJ:13.816.470/0001-70\nAV.FRANCISCO FERREIRA DA CRUZ,4656\nBAIRRO:EUCALIPTUS-FAZENDA RIO GRANDE-PR\nBRASIL CEP:83.820-293\nAC:VITOR MELLO\nE-MAIL:vitor.mello@dunloppneus.com.br',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'SUMITOMO RUBBER DO BRASIL LTDA',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements:
+        '*ALL DOCS MUST BE SIGNED IN BLUE INK PEN\n*ISSUANCE OF THE ORIGINAL B/L AT DESTINATION (BRAZIL) SHOWING FREIGHT COSTS',
+      note: '*PLEASE SEND ALL ORIGINAL DOCS EXCEPT COMMERCIAL CIF I/V (TSL-UBE) TO UEG DIRECTLY',
+      note2:
+        '*PLEASE SEND ALL DOCS PDF COPIES BY E-MAIL TO UBE MATSUMOTO, NO NEED TO SEND THEM BY COURIER.',
+      note3: '*COLOR SCAN OF B/L COPY',
+      description: 'SYNTHETIC RUBBER',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'UBE Elastomer Co. Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Sumitomo Rubber South Africa ────────────────────────────────
+    {
+      id: 'SIT-SUMITOMO-SOUTH-AFRICA',
+      shipToId: 'SHIP-SUMITOMO-SOUTH-AFRICA',
+      attn: 'T.FUJIOKA / SEVP',
+      from: 'S. OKUNI/ H.UEDA',
+      poNumberHeader: 'UEG PO No.',
+      no2Header: 'SUMITOMO PO NO.:',
+      no2: '7100189111',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'SUMITOMO RUBBER SOUTH AFRICA (PTY) LTD.',
+      country: 'SOUTH AFRICA',
+      shipper: 'TSL /UBE EUROPE GMBH',
+      feederVessel: 'ONE WREN V.029E',
+      motherVessel: 'NYK FUJI V.135W',
+      vesselCompany: 'OCEAN NETWORK EXPRESS PTE. LTD. C/O',
+      forwarder: 'FOB / DSV',
+      portOfLoading: 'LAEM CHABANG, THAILAND',
+      consignee:
+        'Sumitomo Rubber South Africa (Pty) Ltd\nAttention: Zwelakhe Nhleko\nLion Match Office Park\nThe Old Factory Building\n892 Umgeni Road\nDurban 4001\nKwazulu Natal\nSouth Africa\nTel: +27 031 242 1202',
+      blType: '*Telex released B/L',
+      freeTime: '-',
+      courierAddress:
+        'DSV South Africa (Pty) Ltd.\n1st Floor Podium, John Ross House,\n22/23 Mncadi Ave, Esplanade\n4001 Durban\nP O BOX 1008, Durban, 4000\nSouth Africa 4018\nContact: Suraj Seobaran\nEmail: Suraj.Seobaran@za.dsv.com',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'DSV South Africa (Pty) Ltd.',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements: '*P/L\n*Quality Certificate\n*Invoice 1 original',
+      note: '*Please submit complete set of documents in advance for final approval of Sumitomo',
+      note2:
+        '*PLEASE SEND ALL DOCS PDF COLOURED COPIES BY E-MAIL TO UEC OKUNI, NO NEED TO SEND THEM BY COURIER.',
+      note3: '',
+      description: 'SYNTHETIC RUBBER',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'UBE Elastomer Co. Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Sumitomo Rubber Hunan ───────────────────────────────────────
+    {
+      id: 'SIT-SUMITOMO-HUNAN',
+      shipToId: 'SHIP-SUMITOMO-HUNAN',
+      attn: 'T.FUJIOKA/SEVP',
+      from: 'S.OKUNI/ H.UEDA',
+      poNumberHeader: 'USH PO No.:',
+      no2Header: '',
+      no2: '',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'Sumitomo Rubber (Hunan) CO.LTD',
+      country: 'CHINA',
+      shipper: 'FULL CONTACT DETAIL OF TSL',
+      feederVessel: 'HEUNG-A BANGKOK V.2602N',
+      motherVessel: '-',
+      vesselCompany: 'HEUNG A',
+      forwarder: 'DIRECT',
+      portOfLoading: 'LAEM CHABANG, THAILAND',
+      consignee:
+        'Sumitomo Rubber (Hunan) CO.LTD\nNo.1318 Liangtang East Road, Changlong street,\nChangsha county, Changsha city,\nHunan province, China\nTEL:0086-731-86407006-1229\nUSCI:91430100561703582X',
+      blType: '*FULL SET OF SURRENDERED B.L',
+      freeTime: 'D/M:14DAYS D/T:14DAYS',
+      courierAddress:
+        "UBE (SHANGHAI) LTD.\nRoom 2403#, Shanghai International Trade Centre,\nYan'an West Road 2201#, changning district,\nSHANGHAI, CHINA ZIP:200336\nCONTACT PERSON: Yang Jie\nTEL:021-6273-2288",
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'THE SAME AS ABOVE AND UBE (SHANGHAI) LTD.',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements:
+        '*FULL SET OF SURRENDERED B.L\n*No need to issue individual I/P.',
+      note: '*Please issue full set Form-E with UEC I/V.',
+      note2:
+        '*Please e-mail ALL docs and CIF COMMERCIAL IV (between UEC and TSL) by PDF copies to UEC Tokyo.',
+      note3: '*HS CODE:4002.20',
+      description: 'SYNTHETIC RUBBER UBEPOL VCR617',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'UBE Elastomer Co. Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Toyo Tyre Malaysia ─────────────────────────────────────────
+    {
+      id: 'SIT-TOYO-MALAYSIA',
+      shipToId: 'SHIP-TOYO-MALAYSIA',
+      attn: 'T.FUJIOKA/SEVP',
+      from: 'M.KAWAMORI / H.UEDA',
+      poNumberHeader: '',
+      no2Header: '',
+      no2: '',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'TOYO TYRE MALAYSIA',
+      country: 'Malaysia',
+      shipper: 'TSL WITH FULL ADDRESS',
+      feederVessel: 'INTERASIA TRIUMPH V.W007',
+      motherVessel: '-',
+      vesselCompany: 'WANHAI',
+      forwarder: 'LEO',
+      portOfLoading: 'LAEM CHABANG, THAILAND',
+      consignee:
+        'Toyo Tyre Malaysia Sdn Bhd\nPT23101, Jalan Tembaga Kuning\nKawasan Perindustrian Kamunting Raya\nPO Box 1, 34600, Kamunting, Perak. Malaysia\nContact Person: Ms Lim / Ms Yap\nTel: 605-8206669 Fax: 605-8206659',
+      blType: 'SURRENDERED B/L',
+      freeTime: 'D/M:14DAYS D/T:14DAYS',
+      courierAddress: '',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'SAME AS CONSIGNEE',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements: '*CERTIFICATE OF ANALYSIS\n*PACKING LIST',
+      note: '*No need to issue individual I/P and COO.',
+      note2:
+        '*Please send all docs and COMMERCIAL IV (between UEC and TSL) by PDF copies by E-mail to UEC Tokyo.',
+      note3: '',
+      description: 'POLYBUTADIENE RUBBER',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'UBE Elastomer Co. Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Hengdasheng Toyo Zhangjiagang ──────────────────────────────
+    {
+      id: 'SIT-HENGDASHENG-TOYO',
+      shipToId: 'SHIP-HENGDASHENG-TOYO',
+      attn: 'T.FUJIOKA/SEVP',
+      from: 'S.OKUNI/H.UEDA',
+      poNumberHeader: 'USH PO No.:',
+      no2Header: '',
+      no2: '',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'HENGDASHENG TOYO TIRE(ZHANGJIAGANG) CO., LTD.',
+      country: 'CHINA',
+      shipper: 'FULL CONTACT DETAIL OF TSL',
+      feederVessel: 'JOSCO LUCKY V.2511N',
+      motherVessel: '-',
+      vesselCompany: 'TAICANG CONTAINER LINES CO.,LTD',
+      forwarder: 'LEO',
+      portOfLoading: 'LAEM CHABANG, THAILAND',
+      consignee:
+        'HENGDASHENG TOYO TIRE(ZHANGJIAGANG) CO., LTD.\n58,DONGHAI ROAD, YANGTZE INTERNATIONAL CHEMICAL\nINDUSTRIAL PARK, ZHANGJIAGANG, JIANGSU, CHINA\nCONTACT PERSON: Lili Yu E-MAIL: yulili@toyotiresz.com\nTEL:0512-3500-7124\nUSCI:91320592553812607A',
+      blType: 'SURRENDERED B/L',
+      freeTime: 'D/M:14DAYS D/T:14DAYS',
+      courierAddress:
+        "UBE (SHANGHAI) LTD. ATTN:Yang Jie-san\nRoom 2403#, Shanghai International Trade Centre,\nYan'an West Road 2201#, changning district,\nSHANGHAI, CHINA ZIP:200336\nTELL:021-6273-2288\nUSCI:913101157030082793",
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'THE SAME AS ABOVE AND UBE (SHANGHAI) LTD.',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements:
+        '*FULL SET OF SURRENDERED B.L\n*No need to issue individual I/P.\n*PLEASE MARK HS CODE 4002.20.90 ON BL',
+      note: '*3 ORIGINAL OF CERTIFICATE OF ANALYSIS and 1 original together with product',
+      note2: '*Please issue full set of Form-E with TSL FOB custom I/V.',
+      note3:
+        '*Pls send PDF copies of all original docs. to UEC(Okuni) by e-mail and send all original docs to UBE shanghai directly.',
+      description: 'SYNTHETIC RUBBER',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'UBE Elastomer Co. Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Toyo Tire North America ────────────────────────────────────
+    {
+      id: 'SIT-TOYO-TIRE-NA',
+      shipToId: 'SHIP-TOYO-TIRE-NA',
+      attn: 'T.FUJIOKA/SEVP',
+      from: 'S. OKUNI/ D. KAWAMORI',
+      poNumberHeader: 'UAI PO NO',
+      no2Header: 'TOYO PO',
+      no2: '4501239925',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'TOYO TIRE NORTH AMERICA',
+      country: 'U. S. A.',
+      shipper: 'TSL WITH FULL ADDRESS',
+      feederVessel: 'MSC BRIDGEPORT V.GU606W',
+      motherVessel: 'ZIM THAILAND V.14E',
+      vesselCompany: 'MSC',
+      forwarder: 'DIRECT / FOB',
+      portOfLoading: 'LAEM CHABANG, THAILAND',
+      consignee:
+        'TOYO TIRE NORTH AMERICA MANUFACTURING INC.\n3660 Highway 411 NE\nWhite, GA 30184\nATTN: SUSAN WOOD\nwoods@toyotires.com\nTEL: 678-492-2165',
+      blType: '* Full set of Sea Waybill',
+      freeTime: '',
+      courierAddress:
+        'D.J.Powers Company, Inc.\n5000 Business Center Drive, Suite 1000\nSavannah, GA 31405\nTEL:912-790-1927\nATTN: DANETTE PENTECOST\nTOYO.TIRE@DJPOWERS.COM',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'UBE America Inc.',
+      alsoNotify1: 'TOYO TIRE NORTH AMERICA MANUFACTURING INC.',
+      alsoNotify2: '',
+      deliverTo:
+        'TOYO TIRE NORTH AMERICA MANUFACTURING INC.\n3660 Highway 411 NE\nWhite, GA 30184',
+      requirements: '* Full set of Sea Waybill\n* 2/2 ORIGINAL CoA',
+      note: '*Please e-mail ALL docs and FOB COMMERCIAL IV (between UEC and TSL) by PDF copies to UEC Tokyo (Okuni)',
+      note2: '*NO need original courier to UAI and us.',
+      note3: '*Please send ISF data to UEC and UAI by e-mail at once.',
+      description: 'POLYBUTADIENE RUBBER',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'UBE Elastomer Co. Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone India ──────────────────────────────────────────
+    {
+      id: 'SIT-BRIDGESTONE-INDIA',
+      shipToId: 'SHIP-BRIDGESTONE-INDIA',
+      attn: 'MR.FUJIOKA/SEVP',
+      from: 'W.MIYANAMI',
+      poNumberHeader: 'BS INDIA PO No.:',
+      no2Header: '',
+      no2: '',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'BRIDGESTONE INDIA PRIVATE LIMITED',
+      country: 'INDIA',
+      shipper: 'TSL WITH FULL CONTACT DETAILS',
+      feederVessel: 'xx',
+      motherVessel: 'xx',
+      vesselCompany: 'xx',
+      forwarder: 'xx',
+      portOfLoading: '',
+      consignee:
+        'Bridgestone India Private Limited\nPLOT NO. A-43, PHASE-II, MIDC CHAKAN\nVILLAGE SAWARDARI, TALUKA KHED, DIST. PUNE,\nMAHARASHTRA - 410 501, INDIA\nTEL: +91.2135.672.000\nATTN: Ms. Neha Latare/Mr. Sagar Gujarathi/Mr.Sandeep Gallani',
+      blType: '*Full set of Surrendered MASTER B/L (NOT FORWARDER BL)',
+      freeTime: 'D/M: 14 DAYS, D/T: 14 DAYS',
+      courierAddress:
+        'Bridgestone India Private Limited\nPLOT NO. A-43, PHASE-II, MIDC CHAKAN\nVILLAGE SAWARDARI, TALUKA KHED, DIST. PUNE,\nMAHARASHTRA - 410 501, INDIA\nTEL: +91 2135 672166\nATTN: prashant-verma@bridgestone.co.in',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'Bridgestone India Private Limited',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements:
+        '*Full set of Surrendered MASTER B/L (NOT FORWARDER BL)\n*PLS MARK "FREE TIME: 14 DAYS FREE DETENTION AT NHAVA SHEVA."',
+      note: '*Please send all original docs. to BS INDIA directly except CIF COMMERCIAL IV (between UBE and TSL) by courier.',
+      note2: '',
+      note3: '',
+      description: 'POLY BUTADIENE RUBBER UBEPOL BR150L',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'UBE Elastomer Co. Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone South Africa ───────────────────────────────────
+    {
+      id: 'SIT-BRIDGESTONE-SA',
+      shipToId: 'SHIP-BRIDGESTONE-SA',
+      attn: 'T. Fujioka / SEVP',
+      from: '',
+      poNumberHeader: 'BS S.A. PO No.:',
+      no2Header: '',
+      no2: '',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'BRIDGESTONE SOUTH AFRICA',
+      country: 'SOUTH AFRICA',
+      shipper: 'TSL',
+      feederVessel: '',
+      motherVessel: '',
+      vesselCompany: '',
+      forwarder: '',
+      portOfLoading: '',
+      consignee:
+        'BRIDGESTONE SA (PTY) LTD\n189 GRAHAMSTOWN ROAD, DEAL PARTY,\nPORT ELIZABETH, 6001, SOUTH AFRICA\nATTN:SHIPPING DEPT',
+      blType: '',
+      freeTime: '',
+      courierAddress: '',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'SAME AS CONSIGNEE',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements: '',
+      note: '',
+      note2: '',
+      note3: '',
+      description: 'UBEPOL VCR412',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'UBE Elastomer Co. Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Brisa Turkey ───────────────────────────────────────────────
+    {
+      id: 'SIT-BRISA-TURKEY',
+      shipToId: 'SHIP-BRISA-TURKEY',
+      attn: 'T. Fujioka / SEVP',
+      from: '',
+      poNumberHeader: 'BS TURKEY PO No.:',
+      no2Header: '',
+      no2: '',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'BRISA BRIDGESTONE SABANCI',
+      country: 'TURKEY',
+      shipper: 'TSL',
+      feederVessel: '',
+      motherVessel: '',
+      vesselCompany: '',
+      forwarder: '',
+      portOfLoading: '',
+      consignee:
+        'BRISA BRIDGESTONE SABANCI LASTIK SANAYI VE TICARET A.S.\nAlikahya Fatih Mah.Sanayi Cad.No:98\n41310 Izmit / KOCAELI Turkey\nContact Person: BURCU YUZUAK\nPhone: +90 (262) 316 57 53',
+      blType: '',
+      freeTime: '',
+      courierAddress: '',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'SAME AS CONSIGNEE',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements: '',
+      note: '',
+      note2: '',
+      note3: '',
+      description: 'UBEPOL VCR412',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'UBE Elastomer Co. Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone Firestone Wilson ───────────────────────────────
+    {
+      id: 'SIT-BRIDGESTONE-FIRESTONE-WILSON',
+      shipToId: 'SHIP-BRIDGESTONE-FIRESTONE-WILSON',
+      attn: 'T. Fujioka / SEVP',
+      from: '',
+      poNumberHeader: 'BS WILSON PO No.:',
+      no2Header: '',
+      no2: '',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'BRIDGESTONE FIRESTONE NT',
+      country: 'WILSON, NC',
+      shipper: 'TSL',
+      feederVessel: '',
+      motherVessel: '',
+      vesselCompany: '',
+      forwarder: '',
+      portOfLoading: '',
+      consignee:
+        'Bridgestone Firestone NT Wilson Plant\nTriangle East Storage 2010 Baldree Road Wilson\nNC27893 USA\nTEL: 252-246-7630 FAX: 252-246-7315\nATTN: Jeff Pyle',
+      blType: '',
+      freeTime: '',
+      courierAddress: '',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'SAME AS CONSIGNEE',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements: '',
+      note: '',
+      note2: '',
+      note3: '',
+      description: 'UBEPOL VCR412',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'UBE Elastomer Co. Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone Wuxi ───────────────────────────────────────────
+    {
+      id: 'SIT-BRIDGESTONE-WUXI',
+      shipToId: 'SHIP-BRIDGESTONE-WUXI',
+      attn: 'T. Fujioka / SEVP',
+      from: '',
+      poNumberHeader: 'BS WUXI PO No.:',
+      no2Header: '',
+      no2: '',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'BRIDGESTONE WUXI TIRE',
+      country: 'SHANGHAI CHINA',
+      shipper: 'TSL',
+      feederVessel: '',
+      motherVessel: '',
+      vesselCompany: '',
+      forwarder: '',
+      portOfLoading: '',
+      consignee:
+        'BRIDGESTONE (WUXI) TIRE CO.,LTD.\nNo.67, XINMEI ROAD, WUXI NATIONAL HIGH-NEW\nTECHNICAL INDUSTRIAL DEVELOPMENT ZONE,\nWUXI 214028, JIANGSU, CHINA\nFAX:86-0510-8532-2199 TEL:86-0510-8532-2288',
+      blType: '',
+      freeTime: '',
+      courierAddress: '',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'SAME AS CONSIGNEE',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements: '',
+      note: '',
+      note2: '',
+      note3: '',
+      description: 'UBEPOL VCR412',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'UBE Elastomer Co. Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone Indonesia ──────────────────────────────────────
+    {
+      id: 'SIT-BRIDGESTONE-INDONESIA',
+      shipToId: 'SHIP-PT-BRIDGESTONE',
+      attn: 'T. Fujioka / SEVP',
+      from: '',
+      poNumberHeader: 'BSIN PO No.:',
+      no2Header: '',
+      no2: '',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'BS INDONESIA',
+      country: 'JAKARTA INDONESIA',
+      shipper: 'TSL',
+      feederVessel: '',
+      motherVessel: '',
+      vesselCompany: '',
+      forwarder: '',
+      portOfLoading: '',
+      consignee:
+        'PT. BRIDGESTONE TIRE INDONESIA\nKawasan Industri Surya Cipta Jl. Surya Utama Kav 8-13,\nKutamekar, Ciampel, Kab. Karawang, Jawa Barat, 41363\nPhone No.: (+62-267) 440 201\nNPWP No. 0010 0011 8809 2000',
+      blType: '',
+      freeTime: '',
+      courierAddress: '',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'SAME AS CONSIGNEE',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements: '',
+      note: '',
+      note2: '',
+      note3: '',
+      description: 'UBEPOL BR150L',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'Thai Synthetic Rubbers Co., Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone Taiwan ─────────────────────────────────────────
+    {
+      id: 'SIT-BRIDGESTONE-TAIWAN',
+      shipToId: 'SHIP-BRIDGESTONE-TAIWAN',
+      attn: 'T. Fujioka / SEVP',
+      from: '',
+      poNumberHeader: 'BSTW PO No.:',
+      no2Header: '',
+      no2: '',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'BRIDGESTONE TAIWAN CO.,LTD.',
+      country: 'KEELUNG TAIWAN',
+      shipper: 'TSL',
+      feederVessel: '',
+      motherVessel: '',
+      vesselCompany: '',
+      forwarder: '',
+      portOfLoading: '',
+      consignee:
+        'BRIDGESTONE TAIWAN CO.,LTD.\nNo.1-1, Wenhua Rd, Hukou Township\nHsinchu County 30352 Taiwan (R.O.C.)\nPHONE:886-35-981621',
+      blType: '',
+      freeTime: '',
+      courierAddress: '',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'SAME AS CONSIGNEE',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements: '',
+      note: '',
+      note2: '',
+      note3: '',
+      description: 'UBEPOL VCR412',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'UBE Elastomer Co. Ltd.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    // ── Bridgestone Mexico ─────────────────────────────────────────
+    {
+      id: 'SIT-BRIDGESTONE-MEXICO',
+      shipToId: 'SHIP-BRIDGESTONE-MEXICO',
+      attn: 'T. Fujioka / SEVP',
+      from: '',
+      poNumberHeader: 'BS MEXICO PO No.:',
+      no2Header: '',
+      no2: '',
+      materialCodeHeader: '',
+      materialCode: '',
+      noteUnderMaterial: '',
+      user: 'BS MEXICO',
+      country: 'MANZANILLO',
+      shipper: 'TSL',
+      feederVessel: '',
+      motherVessel: '',
+      vesselCompany: '',
+      forwarder: '',
+      portOfLoading: '',
+      consignee: 'PLEASE REFER TO THE SI',
+      blType: '',
+      freeTime: '',
+      courierAddress: '',
+      eoriNo: '',
+      bookingNo: '',
+      notifyParty: 'SAME AS CONSIGNEE',
+      alsoNotify1: '',
+      alsoNotify2: '',
+      deliverTo: '',
+      requirements: '',
+      note: '',
+      note2: '',
+      note3: '',
+      description: 'VCR412',
+      underDescription: '',
+      shippingMark: 'SHIPPING MARK',
+      belowSignature: 'Thai Synthetic Rubbers Co., Ltd.',
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z'
     }
@@ -2968,6 +4175,18 @@ export const useStore = create<AppState>()(
             ? persistedMaster.groupSaleTypes
             : undefined
         );
+        const safePoTemplates = mergeById(
+          currentState.masterData.poTemplates,
+          Array.isArray(persistedMaster?.poTemplates)
+            ? persistedMaster.poTemplates
+            : undefined
+        );
+        const safeSiTemplates = mergeById(
+          currentState.masterData.siTemplates,
+          Array.isArray(persistedMaster?.siTemplates)
+            ? persistedMaster.siTemplates
+            : undefined
+        );
         const safeCompanies = mergeById(
           currentState.companies,
           Array.isArray(persisted?.companies)
@@ -3005,7 +4224,9 @@ export const useStore = create<AppState>()(
             ...currentState.masterData,
             ...(persistedMaster || {}),
             groupSaleTypes: safeGroupSaleTypes,
-            shipTos: safeShipTos
+            shipTos: safeShipTos,
+            poTemplates: safePoTemplates,
+            siTemplates: safeSiTemplates
           }
         } as AppState;
       }
