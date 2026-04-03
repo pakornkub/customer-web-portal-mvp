@@ -374,7 +374,9 @@ export const PdfGenerationModal: React.FC<Props> = ({
       siPoNumberHeader: siForm.poNumberHeader || undefined,
       siBookingNo: siForm.bookingNo || undefined,
       siCourierAddress: siForm.courierAddress || undefined,
-      siEoriNo: siForm.eoriNo || undefined
+      siEoriNo: siForm.eoriNo || undefined,
+      siAlsoNotify1: siForm.alsoNotify1 || undefined,
+      siAlsoNotify2: siForm.alsoNotify2 || undefined
     };
     onConfirm(poInput, siInput);
   };

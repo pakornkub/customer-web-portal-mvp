@@ -374,18 +374,20 @@ const SiModal: React.FC<SiModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <FLabel>ATTN (at TSL)</FLabel>
-              <FInput
+              <FTextarea
                 value={form.attn}
                 onChange={set('attn')}
-                placeholder="T.FUJIOKA / SEVP"
+                rows={3}
+                placeholder={'MR.T. Fujioka /SEVP\nTHAI SYNTHETIC RUBBERS\nCO., LTD.'}
               />
             </div>
             <div>
               <FLabel>From (at UBE)</FLabel>
-              <FInput
+              <FTextarea
                 value={form.from}
                 onChange={set('from')}
-                placeholder="M.KAWAMORI / H.UEDA"
+                rows={4}
+                placeholder={'D.KAWAMORI/UEDA\nUBE Elastomer Co. Ltd.\nTEL:81-3-5419-6167\nFAX:81-3-5419-6250'}
               />
             </div>
           </div>
@@ -446,9 +448,10 @@ const SiModal: React.FC<SiModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <FLabel>User (Company)</FLabel>
-              <FInput
+              <FTextarea
                 value={form.user}
                 onChange={set('user')}
+                rows={2}
                 placeholder="TOYO TYRE MALAYSIA"
               />
             </div>
@@ -462,7 +465,8 @@ const SiModal: React.FC<SiModalProps> = ({
             </div>
             <div>
               <FLabel>Shipper</FLabel>
-              <FInput
+              <FTextarea
+                rows={3}
                 value={form.shipper}
                 onChange={set('shipper')}
                 placeholder="TSL WITH FULL ADDRESS"
@@ -560,11 +564,12 @@ const SiModal: React.FC<SiModalProps> = ({
                 placeholder="D/M:14DAYS    D/T 14DAYS"
               />
             </div>
-            <div>
+            <div className="col-span-2">
               <FLabel>Courier Address</FLabel>
-              <FInput
+              <FTextarea
                 value={form.courierAddress}
                 onChange={set('courierAddress')}
+                rows={3}
                 placeholder=""
               />
             </div>
@@ -584,35 +589,39 @@ const SiModal: React.FC<SiModalProps> = ({
                 placeholder=""
               />
             </div>
-            <div>
+            <div className="col-span-2">
               <FLabel>Notify Party</FLabel>
-              <FInput
+              <FTextarea
                 value={form.notifyParty}
                 onChange={set('notifyParty')}
+                rows={4}
                 placeholder=""
               />
             </div>
-            <div>
+            <div className="col-span-2">
               <FLabel>Also Notify 1</FLabel>
-              <FInput
+              <FTextarea
                 value={form.alsoNotify1}
                 onChange={set('alsoNotify1')}
+                rows={4}
                 placeholder=""
               />
             </div>
-            <div>
+            <div className="col-span-2">
               <FLabel>Also Notify 2</FLabel>
-              <FInput
+              <FTextarea
                 value={form.alsoNotify2}
                 onChange={set('alsoNotify2')}
+                rows={4}
                 placeholder=""
               />
             </div>
-            <div>
+            <div className="col-span-2">
               <FLabel>Deliver To</FLabel>
-              <FInput
+              <FTextarea
                 value={form.deliverTo}
                 onChange={set('deliverTo')}
+                rows={3}
                 placeholder=""
               />
             </div>
@@ -621,34 +630,38 @@ const SiModal: React.FC<SiModalProps> = ({
           <SectionTitle>Requirements & Notes</SectionTitle>
           <div>
             <FLabel>Requirements</FLabel>
-            <FInput
+            <FTextarea
               value={form.requirements}
               onChange={set('requirements')}
+              rows={8}
               placeholder="* Please apply 14 days Free Time"
             />
           </div>
           <div className="space-y-2">
             <div>
               <FLabel>Note 1</FLabel>
-              <FInput
+              <FTextarea
                 value={form.note}
                 onChange={set('note')}
+                rows={3}
                 placeholder="*CERTIFICATE OF ANALYSIS"
               />
             </div>
             <div>
               <FLabel>Note 2</FLabel>
-              <FInput
+              <FTextarea
                 value={form.note2}
                 onChange={set('note2')}
+                rows={3}
                 placeholder="*PACKING LIST"
               />
             </div>
             <div>
               <FLabel>Note 3</FLabel>
-              <FInput
+              <FTextarea
                 value={form.note3}
                 onChange={set('note3')}
+                rows={3}
                 placeholder="*Please describe MAR information on all delivery documents."
               />
             </div>
@@ -658,7 +671,8 @@ const SiModal: React.FC<SiModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <FLabel>Description (in cargo table)</FLabel>
-              <FInput
+              <FTextarea
+                rows={3}
                 value={form.description}
                 onChange={set('description')}
                 placeholder="POLYBUTADIENE RUBBER"
@@ -666,7 +680,8 @@ const SiModal: React.FC<SiModalProps> = ({
             </div>
             <div>
               <FLabel>Under Description</FLabel>
-              <FInput
+              <FTextarea
+                rows={3}
                 value={form.underDescription}
                 onChange={set('underDescription')}
                 placeholder=""
@@ -674,7 +689,8 @@ const SiModal: React.FC<SiModalProps> = ({
             </div>
             <div>
               <FLabel>Below Signature</FLabel>
-              <FInput
+              <FTextarea
+                rows={2}
                 value={form.belowSignature}
                 onChange={set('belowSignature')}
                 placeholder="UBE Elastomer Co. Ltd."
