@@ -2821,8 +2821,7 @@ const INITIAL_MASTER: MasterDataState = {
       deliverTo: '',
       requirements:
         '* FULL SET OF surrendered B/L.\n* Pls mark BSEU code "HB12-B" and "5500070292"on all document\n* Certificate of Origin issued by manufacturer\n* Certificate of Analysis marked BS material code and PO number\nissued by manufacturer\n* Declaration of non coniferous wood packing materials" issued by manufacturer\n* General Insurance policy is accepted.\n( TSL don\'t need to send the insurance policy together with shipping documents)',
-      note:
-        '*Please send all original docs and COMMERCIAL IV (between UBE and TSL) by PDF copies by E-mail to UBE Tokyo.\n*NO need original courier to BS and UBE Tokyo.                      ? Changed !!',
+      note: '*Please send all original docs and COMMERCIAL IV (between UBE and TSL) by PDF copies by E-mail to UBE Tokyo.\n*NO need original courier to BS and UBE Tokyo.                      ? Changed !!',
       note2: '',
       note3: '',
       description: 'POLYBUTADIENE RUBBER\nHB12-B / UBEPOL VCR412',
@@ -2867,12 +2866,13 @@ const INITIAL_MASTER: MasterDataState = {
       deliverTo: '',
       requirements:
         '* FULL SET OF CLEAN OCEAN B/L 3 ORIGIANAL +4 COPIES(issued at destination)\n*PLEASE SHOW THE FOLLOWING WORDS ON DESCRIPTION OF  B/L\n(CNPJ: 57.497.539/0001-15 (when is for Santos Port) and\n(CNPJ: 57.497.539/0007-00 (when is for Salvador Port).\n(NCM CODE (HARMONIZED SYSTEM);4002 <=only 4 number\n(INVOICE NO.4900001722(ITEM10))\n*"NCM code for empty packages : 7326" on B/L<=only 4 number\n* Pls mark BSBR code "EC050A(AA2646)" and " PO NO.4900001722 on all document\n* 2 original (Full set)of Certificate of Origin issued by CHAMBER OF COMMERCE\n* 3 original of Certificate of Analysis marked BS material code and PO number\nissued by manufacturer\n* two copies of Declaration of non coniferous wood packing materials issued by manufacturer\n?Please write the manufacturing date on the Packing List.\n*please try to get 21days free time and pls. show it on BL(if you can)\nAll documents must signed by hand in blue ink indicating name and title of person signing',
-      note:
-        '*PLASE SEND ALL ORIGINAL DOCS EXCEPT COMMERCIAL CIF I/V(TSL-UBE) TO BS BRASIL DIRECLTY(PLS REFER ABOVE ADDRESS)\n*PLASE SEND US ALL DOCS PDF COPIES BY E-MAIL, NO NEED TO SEND  BY COURIER TO US',
+      note: '*PLASE SEND ALL ORIGINAL DOCS EXCEPT COMMERCIAL CIF I/V(TSL-UBE) TO BS BRASIL DIRECLTY(PLS REFER ABOVE ADDRESS)\n*PLASE SEND US ALL DOCS PDF COPIES BY E-MAIL, NO NEED TO SEND  BY COURIER TO US',
       note2: '',
       note3: '',
-      description: 'SYNTHETIC RUBBER UBE 150 L BRIDGESTONE\nFIRSTONE COMMON CODE:EC050A(AA2646)',
-      underDescription: 'NCM:4002\n"NCM code for empty packages : 7326" on B/L\n(CNPJ:57497539/0001-15)\nINVOICE NO.',
+      description:
+        'SYNTHETIC RUBBER UBE 150 L BRIDGESTONE\nFIRSTONE COMMON CODE:EC050A(AA2646)',
+      underDescription:
+        'NCM:4002\n"NCM code for empty packages : 7326" on B/L\n(CNPJ:57497539/0001-15)\nINVOICE NO.',
       shippingMark:
         'SHIPPING MARK\nBRIDGESTONE DO BRASIL IND. COM.\nLTDA\nSAO PAULO-BRAZIL\nSHIP:SANTOS\nORDER NO.:4900001722\nEC050\nMADE IN THAILAND\nPRODUCER:THAI SYNTHETIC RUBBER\nATTN:Dept. COMEX – Thatielen Bastos\nTELL:55-11-4433-1634\nCOM:BRIDGESTONE DO BRASIL\nINDUSTRIA E COMERCIO LTDA.\nADD:Av. Jornalista Roberto Marinho, 85\nTower Bridge Corporate – 18º. FL Cidade Monções\n04576-010 – São Paulo - SP – BRAZIL\nZIP CODE;04576-010, CNPJ;57.497.539/0024-01\nBRIDGESTONE DO BRASIL IND. E COM. LTDA.\nAv. Jornalista Roberto Marinho, 85\nTower Bridge Corporate – 18º. Floor\n04576-010 – São Paulo - SP – BRAZIL\nATT: Dept. COMEX – Thatielen Bastos\nPhone 55-11-4433-1634\nE-mail ?ImportacaoLASRM@la-bridgestone.com\nE-mail ? impo-bridgestone@nelsonheusi.com.\nCNPJ 57.497.539/0024-01',
       belowSignature: 'UBE Elastomer Co. Ltd.',
@@ -2911,8 +2911,7 @@ const INITIAL_MASTER: MasterDataState = {
       deliverTo: '',
       requirements:
         '* SEA WAY BILL is required.\n* Pls mark BSEU code "HB12" and "5500069106"on all document\n* Certificate of Origin issued by CHAMBER OF COMMERCE\n* Certificate of Analysis marked BS material code and PO number\nissued by manufacturer\n* Declaration of non coniferous wood packing materials issued by manufacturer\n* General Insurance policy is accepted.\n( TSL don\'t need to send the insurance policy together with shipping documents)\n*MSDS',
-      note:
-        '**Please e-mail ALL docs and  CIF COMMERCIAL IV (between UBE and TSL) by PDF copies to UBE Tokyo.\n*NO need original courier to BS and UBE Tokyo if SEA WAY BILL.',
+      note: '**Please e-mail ALL docs and  CIF COMMERCIAL IV (between UBE and TSL) by PDF copies to UBE Tokyo.\n*NO need original courier to BS and UBE Tokyo if SEA WAY BILL.',
       note2: '',
       note3: '',
       description: 'POLYBUTADIENE RUBBER\nHB12/ UBEPOL VCR412',
@@ -2956,15 +2955,15 @@ const INITIAL_MASTER: MasterDataState = {
       deliverTo: '',
       requirements:
         '*NO NEED TO DISPATCH THE ORIGINAL DOCS. EXCEPT FORM E, PDF FILES OF ORIGINAL ARE ENOUGH.\n*PLEASE COURIER ORIGINAL FULL SET OF FORME TO MSC SHENYANG\n*PDF OF BL AND FORM-E MUST BE SCAN OF THE ORIGINAL WITH COLORED\n*Please issue P/L,Surrendered B/L,CoA,I/P(No need I/P cert. for each shipment).\n(showing"returnable metal boxes "  on B/L)\n*please issue PROFORMA I/V and P/L for  box only\n*please issue Full set of FORM-E WITH UBE INVOICE  (H.S.CODE:40022090\n(PLEASE INFORM US FORM-E THIRD PARTY INV\'S DETAILS)\n*Please  issue TSL FOB CUSTOM  I/V for From-E\n*PLEASE SHOW "PG CODE: PG02596AD" AND "MFD CODE:MFD1308561A" ON ALL DOCS.',
-      note:
-        '*Please send ALL ORIGINAL DOCS.PDF COPIES BY E-MAIL to UEC Matsumoto.\n*don\'t need to include our third party Invoice in your all DOC. PDF.',
+      note: "*Please send ALL ORIGINAL DOCS.PDF COPIES BY E-MAIL to UEC Matsumoto.\n*don't need to include our third party Invoice in your all DOC. PDF.",
       note2:
         'MSC SHENYANG\nCourier address\n*In case original Form-E\nneed to be dispatched',
-      note3: 'Michelin Shenyang Tire Co., LTD\nNO.12 XI HE SI BEI Street SHENYANG ECONOMIC & TECHNOLOGICAL?\nDEVELOPMENT AREA (SEDA)Shenyang, Liaoning Province, CHINA\nZIP CODE:110142 OR 110141            ATTN:ATTN:Suning. Wang./ + 8624 8603 5105',
+      note3:
+        'Michelin Shenyang Tire Co., LTD\nNO.12 XI HE SI BEI Street SHENYANG ECONOMIC & TECHNOLOGICAL?\nDEVELOPMENT AREA (SEDA)Shenyang, Liaoning Province, CHINA\nZIP CODE:110142 OR 110141            ATTN:ATTN:Suning. Wang./ + 8624 8603 5105',
       description: 'POLYBUTADIENE RUBBER\nUBEPOL BR150L',
       underDescription: '',
       shippingMark:
-        'SHIPPING MARK\nNAME OF SUPPLIER : TSL\nUBEPOL BR150L\nMICHELIN\'S ORDER NUMBER :5910244622\nMATERIAL CODE:\nPG CODE: PG02596AD\nMFD CODE:MFD1308561A\nLOT NO.\nDATE OF FABRICATION:\nQUANTITY:20.16MTS\nMADE IN THAILAND\nNO.1-UP',
+        "SHIPPING MARK\nNAME OF SUPPLIER : TSL\nUBEPOL BR150L\nMICHELIN'S ORDER NUMBER :5910244622\nMATERIAL CODE:\nPG CODE: PG02596AD\nMFD CODE:MFD1308561A\nLOT NO.\nDATE OF FABRICATION:\nQUANTITY:20.16MTS\nMADE IN THAILAND\nNO.1-UP",
       belowSignature: 'UBE Elastomer Co. Ltd.',
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z'
@@ -3003,14 +3002,13 @@ const INITIAL_MASTER: MasterDataState = {
       deliverTo: 'SAME AS CONSIGNEE',
       requirements:
         '*NO NEED TO DISPATCH THE ORIGINAL DOCS.  BY COURIER, PDF FILES OF ORIGINAL ARE ENOUGH.\n*PDF OF BL AND FORM-E MUST BE SCANED OF THE ORIGINAL WITH COLORED\n*Please issue P/L,Surrendered B/L and arrange I/P(No need cert. for each shipment).\n*Please issue the original FORM-E  WITH TSL FOB Custom I/V.\n*Please issue of TSL FOB CUSTOM I/V for Form-E\n(please mark net weight (xx.xxxTON) on the form-E  ( 7 Column ) .\n*Please issue  CoA(and show NIF code  01406 on CoA)\n*Please issue  Declaration of No-Wood Packing Material\n*Please issue  the proforma I/V AND P/L for boxes.\n*Please apply Shipping Line to extend D/M & D/T Free Time each 14days.',
-      note:
-        '*Please send ALL ORIGINAL DOCS.(including TSL commercial INV) PDF COPIES BY E-MAIL to UEC Matsumoto.\n*Please keep the original Form-E 2 for 2 months after ETD.',
+      note: '*Please send ALL ORIGINAL DOCS.(including TSL commercial INV) PDF COPIES BY E-MAIL to UEC Matsumoto.\n*Please keep the original Form-E 2 for 2 months after ETD.',
       note2: '',
       note3: '',
       description: 'SYNTHETIC RUBBER\nUBEPOL BR150L',
       underDescription: '',
       shippingMark:
-        'SHIPPING MARK\nNAME OF SUPPLIER : TSL\nBR150L\nMICHELIN\'S ORDER NUMBE.:5400138582\nMATERIAL NO. PG02596AD/NIF code 01406 .\nLOT:NO.\nDATE OF FABRICATION:\nQUANTITY:20.16MTS\nMADE IN THAILAND\nNO.1-UP',
+        "SHIPPING MARK\nNAME OF SUPPLIER : TSL\nBR150L\nMICHELIN'S ORDER NUMBE.:5400138582\nMATERIAL NO. PG02596AD/NIF code 01406 .\nLOT:NO.\nDATE OF FABRICATION:\nQUANTITY:20.16MTS\nMADE IN THAILAND\nNO.1-UP",
       belowSignature: 'Overseas Sales Group\nUBE Elastomer Co. Ltd.',
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z'
@@ -3049,7 +3047,7 @@ const INITIAL_MASTER: MasterDataState = {
       deliverTo:
         'Cooper (Kunshan) Tire Co., Ltd.\nNo. 168 Bailing Road, Kunshan Development\nZone, Jiangsu Province\n215331 Kunshan, Jiangsu Province\nCHINA\nContact: Maggie Pan\nTel: +86- 0512 5772-7609',
       requirements:
-        '*SWB,P/L,I/P,CoA\n*I/V AND P/L FOR BOX\n*FULL SET OF ORIGINAL FORM-E(WITH TSL INVOICE)\n* COOPER PO NO.AND   Material Code: SMITHIC,  SHOULD BE ON ALL DOCS.\n*NO NEED TO ISSUE I/P CERTIFICATE FOR THIS SHIPMENT\n*PLEASE DISPATCH FULL SET OF ORIGINAL  FORM-E, customs INV TO UEG,\nFOR OTHER DOCS, YOU DON\'T NEED TO DISPATCH.\n*Please send all original docs. copies( COLORED PDF) by email to UEG and UEC, and send UEC INV+BL copies separately.',
+        "*SWB,P/L,I/P,CoA\n*I/V AND P/L FOR BOX\n*FULL SET OF ORIGINAL FORM-E(WITH TSL INVOICE)\n* COOPER PO NO.AND   Material Code: SMITHIC,  SHOULD BE ON ALL DOCS.\n*NO NEED TO ISSUE I/P CERTIFICATE FOR THIS SHIPMENT\n*PLEASE DISPATCH FULL SET OF ORIGINAL  FORM-E, customs INV TO UEG,\nFOR OTHER DOCS, YOU DON'T NEED TO DISPATCH.\n*Please send all original docs. copies( COLORED PDF) by email to UEG and UEC, and send UEC INV+BL copies separately.",
       note: '',
       note2: '',
       note3: '',
@@ -3095,8 +3093,7 @@ const INITIAL_MASTER: MasterDataState = {
       deliverTo:
         'GOODYEAR AMIENS SUD\n60 AV ROGER DUMOULIN\n80030 AMIENS\nFRANCE',
       requirements: '*SWB, P/L, CoA,I/P',
-      note:
-        '*NO NEED TO ISSUE I/P CERTIFICATE FOR THIS SHIPMENT\n*NO NEED TO DISPATCH ANY DOCS. TO UEG\n*Please send all original docs. copies( COLORED PDF) by email to UEG and UEC, and send UEC INV+BL copies separately.',
+      note: '*NO NEED TO ISSUE I/P CERTIFICATE FOR THIS SHIPMENT\n*NO NEED TO DISPATCH ANY DOCS. TO UEG\n*Please send all original docs. copies( COLORED PDF) by email to UEG and UEC, and send UEC INV+BL copies separately.',
       note2: '',
       note3: '',
       description: 'SYNTHETIC RUBBER',
@@ -3142,8 +3139,7 @@ const INITIAL_MASTER: MasterDataState = {
         'Goodyear do Brasil Produtos de Borracha Ltda.\nAv. Affonso Pansan, 3415 (Anhanguera, KM128)\nVila Bertini – Americana City\nSão Paulo State/Brazil\nZip Code 13473-620\nCNPJ 60.500.246/0016-30\nAttn.: Fernanda Duarte\nfernanda_duarte@goodyear.com\nTel.:+55 19 2109-1672',
       requirements:
         '*FULL SET OF ORIGIAL B/L\n(PLEASE SHOW FREIGHT VALUE ON BL)\n*P/L, I/P, COA\n*I/V for Returnable Metal box(INV including packing details)\n(Please be shown Container No. and Lot No. on P/L)',
-      note:
-        '*Please show material NCM NO.4002.20 on BL and P/L.\n*Please show Box NCM NO.7309.00(GPS) on BL(In case of returnable Box, )\n*Plesae send all docs.Draft to UEG (CC;KIKUCHI)before issue the original doc.\n*All documents must signed by hand in blue ink indicating name and title of person signing\n*Please dispatch the full set of  ORIGINAL BL to UEG, for other docs  PDF COPIES are enough.\n*Please send all original docs. copies(COLORED PDF) by email to UEG and UEC, and send UEC INV+BL copies separately.',
+      note: '*Please show material NCM NO.4002.20 on BL and P/L.\n*Please show Box NCM NO.7309.00(GPS) on BL(In case of returnable Box, )\n*Plesae send all docs.Draft to UEG (CC;KIKUCHI)before issue the original doc.\n*All documents must signed by hand in blue ink indicating name and title of person signing\n*Please dispatch the full set of  ORIGINAL BL to UEG, for other docs  PDF COPIES are enough.\n*Please send all original docs. copies(COLORED PDF) by email to UEG and UEC, and send UEC INV+BL copies separately.',
       note2: '',
       note3: '',
       description: 'POLYBUTADIENE RUBBER',
@@ -3171,7 +3167,8 @@ const INITIAL_MASTER: MasterDataState = {
       shipper: 'TSL /UBE EUROPE GMBH',
       feederVessel: 'SINAR BAJO V.110S',
       motherVessel: 'CMA CGM BUZIOS V.0010W',
-      vesselCompany: 'PACIFIC INTERNATIONAL LINES (PRIVATE ) LIMITED C/O PIL SHIPPING (THAILAND)LTD.',
+      vesselCompany:
+        'PACIFIC INTERNATIONAL LINES (PRIVATE ) LIMITED C/O PIL SHIPPING (THAILAND)LTD.',
       forwarder: 'DLT',
       portOfLoading: 'LAEM CHABANG, THAILAND',
       consignee:
@@ -3188,8 +3185,7 @@ const INITIAL_MASTER: MasterDataState = {
       deliverTo: '',
       requirements:
         '*ALL DOCS MUST BE SIGNED IN BLUE INK PEN\n*Handwritten amendments are not acceptable.\n* ISSUANCE OF THE ORIGINAL B/L AT DESTINATION(BRAZIL)SHOWING FREIGH COSTS\n( For B/L details, please refer to the  "sumitomo document checklist")\n*COLOR SCAN OF B/L COPY\n*PACKING LIST\n( For details, please refer to the  "sumitomo document checklist" )\n*INVOICE FOR METAL BOX FOR CUSTOMS PURPOSES ONLY.\n( For details, please refer to the  "sumitomo document checklist" )\n*CERTIFICATE OF ANALYSIS\n( For details, please refer to the attached "sumitomo document checklist" )\n*CONTAINER PHOTOS – BEFORE AND AFTER LOADING WITH PHOTO OF SEAL\n*REQ: SEND SHIPPING DOCS EXCEPT COMMERCIAL I/V IN PDF BY EMAIL TO UEG AND UEC\n*REQ: SEND B/L COPY AND COMMERCIAL IV IN PDF BY E-MAILTO UEC\n*NO NEED : CoO BY CHAMBER OF COMMERCE\n*CUSTOME TARIFF NO.40022000\n*"NCM Number :  4002.20.99  Ubepol VCR 617" AND\n*"NCM Number :  7309.00 GPS Metal Box" show on all documents.\n*Please send the all docs draft to UEG before issue the original.\n*Please mention always on BL "Wooden Package: not applicable"',
-      note:
-        '?SI???????TSL????SI???????\n*PLASE SEND ALL ORIGINAL DOCS EXCEPT COMMERCIAL CIF I/V(TSL-UBE) TO UEG DIRECLTY\n*PLASE SEND ALL ORIGINAL DOCS EXCEPT COMMERCIAL CIF I/V(TSL-UBE) TO UEG DIRECLTY\n*PLASE SEND ALL DOCS PDF COPIES BY E-MAIL TO UBE MATSUMOTO, NO NEED TO SEND THEM BY COURIER.',
+      note: '?SI???????TSL????SI???????\n*PLASE SEND ALL ORIGINAL DOCS EXCEPT COMMERCIAL CIF I/V(TSL-UBE) TO UEG DIRECLTY\n*PLASE SEND ALL ORIGINAL DOCS EXCEPT COMMERCIAL CIF I/V(TSL-UBE) TO UEG DIRECLTY\n*PLASE SEND ALL DOCS PDF COPIES BY E-MAIL TO UBE MATSUMOTO, NO NEED TO SEND THEM BY COURIER.',
       note2: '',
       note3: '',
       description: 'SYNTHETIC RUBBER',
@@ -3234,8 +3230,7 @@ const INITIAL_MASTER: MasterDataState = {
       deliverTo: '',
       requirements:
         '*P/L\n*Telex released B/L\n*Quality Certificate\n*Invoice 1 original',
-      note:
-        '*Please submit complete set of documents in advance for final aproval of Sumitomo\n*PLASE SEND ALL DOCS PDF  COLOURED COPIES BY E-MAIL TO UEC OKUNI, NO NEED TO SEND THEM BY COURIER.',
+      note: '*Please submit complete set of documents in advance for final aproval of Sumitomo\n*PLASE SEND ALL DOCS PDF  COLOURED COPIES BY E-MAIL TO UEC OKUNI, NO NEED TO SEND THEM BY COURIER.',
       note2: '',
       note3: '',
       description: 'SYNTHETIC RUBBER',
@@ -3260,7 +3255,8 @@ const INITIAL_MASTER: MasterDataState = {
       noteUnderMaterial: '',
       user: 'Sumitomo Rubber ?Hunan?CO.LTD',
       country: 'CHINA',
-      shipper: 'FULL CONTACT DETAIL OF TSL\nWITH TRADE RESISTRATION NO.\n(no need On Behalf of USH)',
+      shipper:
+        'FULL CONTACT DETAIL OF TSL\nWITH TRADE RESISTRATION NO.\n(no need On Behalf of USH)',
       feederVessel: 'HEUNG-A BANGKOK V.2602N',
       motherVessel: '-',
       vesselCompany: 'HEUNG A',
@@ -3269,13 +3265,14 @@ const INITIAL_MASTER: MasterDataState = {
       consignee:
         'Sumitomo Rubber ?Hunan?CO.LTD\nNo.1318 Liangtang East Road ,?Changlong street,?Changsha county,?\nChangsha city,?Hunan province,?China\nTEL: 0086-731-86407006-1229\nFAX: 0086-731-86407030\nATTN: DingJin Wu\ndj_wu@srh.dunlop.com.cn\nUSCI:91430100561703582X',
       blType: '',
-      freeTime: 'D/M:14DAYS       D/T:14DAYS    * Please apply 14 days Free Time',
+      freeTime:
+        'D/M:14DAYS       D/T:14DAYS    * Please apply 14 days Free Time',
       courierAddress:
-        'COURIER ADDRESS:ATTN:Yang Jie-SAN\nUBE (SHANGHAI) LTD.\nRoom 2403#, Shanghai International Trade Centre,\nYan\'an West Road 2201#, changning district,\nSHANGHAI,CHINA ZIP:200336\nTELL:021-6273-2288',
+        "COURIER ADDRESS:ATTN:Yang Jie-SAN\nUBE (SHANGHAI) LTD.\nRoom 2403#, Shanghai International Trade Centre,\nYan'an West Road 2201#, changning district,\nSHANGHAI,CHINA ZIP:200336\nTELL:021-6273-2288",
       eoriNo: '',
       bookingNo: '',
       notifyParty:
-        'THE SAME AS ABOVE AND\nUBE (SHANGHAI) LTD.\nROOM 2403#, SHANGHAI INTERNATIONAL TRADE CENTRE,\nYAN\'AN WEST ROAD 2201#, CHANGNING DISTRICT, SHANGHAI, CHINA 200336\nCONTACT PERSON : Yang Jie\nTEL : 0021-6273-2288  FAX : 0021-6273-3833\nUSCI:913101157030082793',
+        "THE SAME AS ABOVE AND\nUBE (SHANGHAI) LTD.\nROOM 2403#, SHANGHAI INTERNATIONAL TRADE CENTRE,\nYAN'AN WEST ROAD 2201#, CHANGNING DISTRICT, SHANGHAI, CHINA 200336\nCONTACT PERSON : Yang Jie\nTEL : 0021-6273-2288  FAX : 0021-6273-3833\nUSCI:913101157030082793",
       alsoNotify1: '',
       alsoNotify2: '',
       deliverTo: '',
@@ -3350,7 +3347,8 @@ const INITIAL_MASTER: MasterDataState = {
       noteUnderMaterial: '',
       user: '',
       country: '',
-      shipper: 'FULL CONTACT DETAIL OF TSL\nWITH TRADE RESISTRATION NO.\n(no need On Behalf of USH)',
+      shipper:
+        'FULL CONTACT DETAIL OF TSL\nWITH TRADE RESISTRATION NO.\n(no need On Behalf of USH)',
       feederVessel: 'JOSCO LUCKY V.2511N',
       motherVessel: '-',
       vesselCompany: 'TAICANG CONTAINER LINES CO.,LTD',
@@ -3359,12 +3357,13 @@ const INITIAL_MASTER: MasterDataState = {
       consignee:
         'HENGDASHENG TOYO TIRE(ZHANGJIAGANG) CO., LTD.\n58,DONGHAI ROAD, YANGTZE INTERNATIONAL CHEMICAL\nINDUSTRIAL PARK, ZHANGJIAGANG, JIANGSU, CHINA\nCONTACT PERSON: Lili Yu  E-MAIL: yulili@toyotiresz.com\nTEL?0512-3500-7124 FAX?0512-35007203\nUSCI:91320592553812607A',
       blType: 'SURRENDERED B/L',
-      freeTime: 'D/M:14DAYS       D/T:14DAYS    * Please apply 14 days Free Time',
+      freeTime:
+        'D/M:14DAYS       D/T:14DAYS    * Please apply 14 days Free Time',
       courierAddress: '',
       eoriNo: '',
       bookingNo: '',
       notifyParty:
-        'THE SAME AS ABOVE AND\nUBE (SHANGHAI) LTD.  ATTN:Yang Jie-san\nRoom 2403#, Shanghai International Trade Centre,\nYan\'an West Road 2201#, changning district,\nSHANGHAI,CHINA ZIP:200336\nTELL:021-6273-2288\nUSCI:913101157030082793',
+        "THE SAME AS ABOVE AND\nUBE (SHANGHAI) LTD.  ATTN:Yang Jie-san\nRoom 2403#, Shanghai International Trade Centre,\nYan'an West Road 2201#, changning district,\nSHANGHAI,CHINA ZIP:200336\nTELL:021-6273-2288\nUSCI:913101157030082793",
       alsoNotify1: '',
       alsoNotify2: '',
       deliverTo: '',
@@ -3376,7 +3375,7 @@ const INITIAL_MASTER: MasterDataState = {
       description: 'SYNTHETIC RUBBER',
       underDescription: '',
       shippingMark:
-        'SHIPPING MARK\nVCR617?TSL?\nBR-TOYO-2503\nC/NO. 1-16\nMADE IN THAILAND\nCONSIGNEE:TOYO TIRE\nR161\nUSH COURIER ADDRESS:ATTN:Yang Jie-san\nUBE (SHANGHAI) LTD.\nRoom 2403#, Shanghai International Trade Centre,\nYan\'an West Road 2201#, changning district,\nSHANGHAI,CHINA ZIP:200336\nTELL:021-6273-2288',
+        "SHIPPING MARK\nVCR617?TSL?\nBR-TOYO-2503\nC/NO. 1-16\nMADE IN THAILAND\nCONSIGNEE:TOYO TIRE\nR161\nUSH COURIER ADDRESS:ATTN:Yang Jie-san\nUBE (SHANGHAI) LTD.\nRoom 2403#, Shanghai International Trade Centre,\nYan'an West Road 2201#, changning district,\nSHANGHAI,CHINA ZIP:200336\nTELL:021-6273-2288",
       belowSignature: 'UBE Elastomer Co. Ltd.',
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z'
@@ -3411,13 +3410,13 @@ const INITIAL_MASTER: MasterDataState = {
       notifyParty:
         'D.J.Powers Company, Inc.\n5000 Business Center Drive, Suite 1000\nSavannah, GA 31405\nTEL:912-790-1927\nATTN: DANETTE PENTECOST\nTOYO.TIRE@DJPOWERS.COM',
       alsoNotify1: 'SAME AS CONSIGNEE',
-      alsoNotify2: 'UBE America Inc.\nTel: +1  (248) 516-4911\n38777 Six Mile Road, Suite 400, Livonia, MI 48152\nE-mail: akiko@ube.com\nE-mail: k.kikuta@ube.com',
+      alsoNotify2:
+        'UBE America Inc.\nTel: +1  (248) 516-4911\n38777 Six Mile Road, Suite 400, Livonia, MI 48152\nE-mail: akiko@ube.com\nE-mail: k.kikuta@ube.com',
       deliverTo:
         'TOYO TIRE NORTH AMERICA MANUFACTURING INC.\n3660 Highway 411 NE\nWhite, GA 30184\nATTN:  SUSAN WOOD',
       requirements:
         '* Full set of Sea Waybill\n* 2/2 ORIGINAL CoA\n*Please show "TOYO ITEM NO.GAR161A"  & "TOYO 4501202829" on all doc.\n*Please send ISF data to UEC and UAI by e-mail at once. When you get it\nUAI people;\nAkiko Hirayama <akiko@ube.com> & Kaori Kikuta <k.kikuta@ube.com>',
-      note:
-        '*Please e-mail ALL docs and FOB COMMERCIAL IV (between UEC and TSL)  by PDF copies to UEC Tokyo(Okuni)\n*NO need original courier to UAI and us.',
+      note: '*Please e-mail ALL docs and FOB COMMERCIAL IV (between UEC and TSL)  by PDF copies to UEC Tokyo(Okuni)\n*NO need original courier to UAI and us.',
       note2: '',
       note3: '',
       description: 'POLYBUTADIENE RUBBER',
@@ -3463,14 +3462,13 @@ const INITIAL_MASTER: MasterDataState = {
       deliverTo: '',
       requirements:
         '*Full set of Surrendered MASTER B/L(NOT FORWARDER BL)\nIMPORTANT!! ? *PLS MARK "FREE TIME: 14 DAYS FREE DETENTION AT NHAVA SHEVA.\n*HS CODE:\n*PAN Number (Permanent Account Number) of notify party address.:-  "AABCB2304E " ON BL\n* 2 original of Certificate of Origin Form-AI with TSL FOB customs Invoice.\nNEW!!?*Please issue 1 ORIGINAL FORM I (section III) with Manufacturing process outline\nWhenever there is change in Manufacturing process, please inform us along with necessary documents.\n* 3 original of Certificate of Analysis marked BS material code (TC 50)and PO number\nissued by manufacturer\n* 2 original of Declaration of non coniferous wood packing materials issued by manufacturer\n*please send us the draft of ONLY B/L before issue the original\n*Det at Nhava must be 14 days as we cofirmed',
-      note:
-        '*Please send all original docs. to BS INDIA direclty except CIF COMMERCIAL IV (between UBE and TSL) by courier.\n(FOR COURIER ADDRESS, PLEASE REFER AS FOLLOWS(SI/ PAGE 2)\n*Please send ALL docs. PDF copies by E-mail to UBE Tokyo(Matsumoto) /NO need original courier to us.',
+      note: '*Please send all original docs. to BS INDIA direclty except CIF COMMERCIAL IV (between UBE and TSL) by courier.\n(FOR COURIER ADDRESS, PLEASE REFER AS FOLLOWS(SI/ PAGE 2)\n*Please send ALL docs. PDF copies by E-mail to UBE Tokyo(Matsumoto) /NO need original courier to us.',
       note2: '',
       note3: '',
       description: 'TC 50\nPOLY BUTADIENE\nRUBBER  UBEPOL BR150L',
       underDescription: '',
       shippingMark:
-        'SHIPPING MARK\nBRIDGESTONE INDIA PRIVATE LIMITED\nTRADE NAME:UBEPOL BR150L\nTC50/BSID/4500077118\nINVOICE NO./4500077118\nMANUFACTURE\'S NAME\nTHAI SYNTHETIC RUBBERS CO., LTD.\nLOT.NO:\nGROSS WT.  ---Please advise\nNET WT. 2,100\nMADE IN THAILAND',
+        "SHIPPING MARK\nBRIDGESTONE INDIA PRIVATE LIMITED\nTRADE NAME:UBEPOL BR150L\nTC50/BSID/4500077118\nINVOICE NO./4500077118\nMANUFACTURE'S NAME\nTHAI SYNTHETIC RUBBERS CO., LTD.\nLOT.NO:\nGROSS WT.  ---Please advise\nNET WT. 2,100\nMADE IN THAILAND",
       belowSignature: 'UBE Elastomer Co. Ltd.',
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z'
@@ -3643,8 +3641,7 @@ const INITIAL_MASTER: MasterDataState = {
       deliverTo: '',
       requirements:
         '*FULL SET OF SURRENDERE B/L\n* Pls mark BS material code "TC30"ON ALL DOCS.\n*3 ORIGINAL OF CERTIFICATE OF ANALYSIS & 1 ORIGINAL CoA TOGETHER WITH PRODUCT\n*3 ORIGINAL OF  NO WOOD PACKING OR IPPC CERT.\n* PACKING LIST MUST SHOW GROSS,TARE,AND NET WEIGHT\n* BRIDGESTONE CODE OF  "TC30"SHOULD BE MARKED ON ALL BAGS, DRUMS,CONTAINERS\n*PLEASE ISSUE FULL SET OF FORM-E WITH UBE INVOICE\n*TSL FOB CUSTOM I/V for Form-E\n*No need to issue individual I/P\n*Please send Arrival Notice by e-mail to Xiaoqi Ding (xiaoqi.ding@bridgestone.com)\n*CIF COMMERCIAL IV(BETWEEN TSL AND UEC)\n*Please label BS code no." TC30 or TC50 " on each box.(4 side)',
-      note:
-        '*Don\'t  need to send all original docs to BS WUXI directly by courier including 1 original COMMERCIAL CIF I/V(I/V between TSL and UEC)\n*Please send ALL docs by PDF copies by E-mail to UEC /NO need original courier to UEC also.',
+      note: "*Don't  need to send all original docs to BS WUXI directly by courier including 1 original COMMERCIAL CIF I/V(I/V between TSL and UEC)\n*Please send ALL docs by PDF copies by E-mail to UEC /NO need original courier to UEC also.",
       note2: '',
       note3: '',
       description: 'POLYBUTADIENE RUBBER\nTC30 / UBEPOL VCR412',
@@ -3692,7 +3689,8 @@ const INITIAL_MASTER: MasterDataState = {
       note: '',
       note2: '',
       note3: '',
-      description: 'SYNTHETIC RUBBER\n/ UBEPOL BR150L(TC50)\nCO NUMBER :F2602-TSL-2',
+      description:
+        'SYNTHETIC RUBBER\n/ UBEPOL BR150L(TC50)\nCO NUMBER :F2602-TSL-2',
       underDescription: '',
       shippingMark:
         'SHIPPING MARK\nBRIDGESTONE INDONESIA\nCO NUMBER :F2602-TSL-2\nTC50/BR150L\nC/NO.1-32\nMADE IN THAILAND',
@@ -3733,14 +3731,13 @@ const INITIAL_MASTER: MasterDataState = {
       deliverTo: '',
       requirements:
         '*surrendered  B/L\n*1 SET OF CoA\n*1 SET OF MSDS\n*PLEASE PUT THE NAME OF BSFC CODE NO.OF TC 30 or TC50 ON 4 sides of Metal box.\n*PLEASE TAKE the picture of packing outward appearance of 200008199 before you export.\n*General Insurance policy is accepted.',
-      note:
-        '*You don\'t need to send all original docs. to BS TAIWAN(ABOVE ADDRESS) direclty by courier. << CHANGE!\n*Please send ALL docs. PDF copies by E-mail to UBE Tokyo/NO need original coueirer.\n1.     Please label BS code no. TC30 or TC50 at front and both\nsides of each your steel box.\n2.     Please make the figure size of BS code no. as following',
+      note: "*You don't need to send all original docs. to BS TAIWAN(ABOVE ADDRESS) direclty by courier. << CHANGE!\n*Please send ALL docs. PDF copies by E-mail to UBE Tokyo/NO need original coueirer.\n1.     Please label BS code no. TC30 or TC50 at front and both\nsides of each your steel box.\n2.     Please make the figure size of BS code no. as following",
       note2: '',
       note3: '',
       description: 'SYNTHETIC RUBBER\nTC30 UBEPOL  VCR412',
       underDescription: '',
       shippingMark:
-        'SHIPPING MARK\nBSFC P,O. NO:200008199\nVCR412/TC30\nCASE NO.:1-12\nN/W  :  15,120KG\nG/W  :  16,707.6KG\nMAKER\'S NAMETHAI SYNTHETIC RUBBERS CO, LTD\nCOUTRY OF ORIGIN:THAILAND',
+        "SHIPPING MARK\nBSFC P,O. NO:200008199\nVCR412/TC30\nCASE NO.:1-12\nN/W  :  15,120KG\nG/W  :  16,707.6KG\nMAKER'S NAMETHAI SYNTHETIC RUBBERS CO, LTD\nCOUTRY OF ORIGIN:THAILAND",
       belowSignature: 'UBE Elastomer Co. Ltd.',
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z'
@@ -3778,8 +3775,7 @@ const INITIAL_MASTER: MasterDataState = {
       deliverTo: '',
       requirements:
         '*Full set SEA WAY BILL REQUIRED\n*PLS show the following words on all docs.on all DOCs.\n"TC030" "UBE Elastomer Co. Ltd."\n*CERTIFICATE OF ANALYSIS including SPECIFICATION AND QUALITY RANGE\n*CERTIFICATE OF ORIGIN BY TSL MANUFACTURE AND SHOW HS CODE 4002.20.01\n*Box IV of GPS ($50/box)\n*21 DAYS FREE TIME ( WE CONFIRMED THIS)\n*FULL SET OF I/P WITH COVERING ALL RISK',
-      note:
-        '*Please send all original docs. to BSMX direclty except CIF COMMERCIAL IV (between UEC and TSL) by courier.\n*Please send ALL docs. PDF copies by E-mail to UBE Tokyo/NO need original courier to us.',
+      note: '*Please send all original docs. to BSMX direclty except CIF COMMERCIAL IV (between UEC and TSL) by courier.\n*Please send ALL docs. PDF copies by E-mail to UBE Tokyo/NO need original courier to us.',
       note2: '',
       note3: '',
       description: 'POLYBUTADIEN RUBBER',
@@ -3789,7 +3785,7 @@ const INITIAL_MASTER: MasterDataState = {
       belowSignature: 'UBE Elastomer Co. Ltd.',
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z'
-    },
+    }
   ] as SiTemplate[]
 };
 

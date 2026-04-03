@@ -378,7 +378,9 @@ const SiModal: React.FC<SiModalProps> = ({
                 value={form.attn}
                 onChange={set('attn')}
                 rows={3}
-                placeholder={'MR.T. Fujioka /SEVP\nTHAI SYNTHETIC RUBBERS\nCO., LTD.'}
+                placeholder={
+                  'MR.T. Fujioka /SEVP\nTHAI SYNTHETIC RUBBERS\nCO., LTD.'
+                }
               />
             </div>
             <div>
@@ -387,7 +389,9 @@ const SiModal: React.FC<SiModalProps> = ({
                 value={form.from}
                 onChange={set('from')}
                 rows={4}
-                placeholder={'D.KAWAMORI/UEDA\nUBE Elastomer Co. Ltd.\nTEL:81-3-5419-6167\nFAX:81-3-5419-6250'}
+                placeholder={
+                  'D.KAWAMORI/UEDA\nUBE Elastomer Co. Ltd.\nTEL:81-3-5419-6167\nFAX:81-3-5419-6250'
+                }
               />
             </div>
           </div>
