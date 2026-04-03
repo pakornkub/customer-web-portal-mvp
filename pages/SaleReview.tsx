@@ -340,7 +340,7 @@ export const SaleReview: React.FC = () => {
               {groupedTargets.map((group) => (
                 <div
                   key={group.orderNo}
-                  className="bg-white dark:bg-slate-900 ui-radius-card border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden"
+                  className="bg-white dark:bg-slate-900 ui-radius-card border border-slate-200 dark:border-slate-800 shadow-sm"
                 >
                   <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-950/30">
                     <div className="flex items-center gap-4">
@@ -373,8 +373,8 @@ export const SaleReview: React.FC = () => {
                       Commercial Line Items
                     </h4>
 
-                    <div className="overflow-hidden border border-slate-100 dark:border-slate-800 ui-radius-panel bg-white dark:bg-slate-900">
-                      <table className="w-full text-left text-sm ui-table-standard">
+                    <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 ui-radius-panel bg-white dark:bg-slate-900">
+                      <table className="min-w-full text-left text-sm ui-table-standard whitespace-nowrap">
                         <thead className="bg-slate-50/50 dark:bg-slate-950/50 ui-table-head border-b border-slate-100 dark:border-slate-800">
                           <tr>
                             <th className="px-6 py-4 text-left">PO</th>
@@ -510,7 +510,7 @@ export const SaleReview: React.FC = () => {
           {groupedPoTargets.map((group) => (
             <div
               key={group.orderNo}
-              className="bg-white dark:bg-slate-900 ui-radius-card border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden"
+              className="bg-white dark:bg-slate-900 ui-radius-card border border-slate-200 dark:border-slate-800 shadow-sm"
             >
               <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-amber-50/30 dark:bg-amber-950/20">
                 <div className="flex items-center gap-4">
@@ -535,8 +535,8 @@ export const SaleReview: React.FC = () => {
               </div>
 
               <div className="p-8 space-y-4">
-                <div className="overflow-hidden border border-slate-100 dark:border-slate-800 ui-radius-panel bg-white dark:bg-slate-900">
-                  <table className="w-full text-left text-sm ui-table-standard">
+                <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 ui-radius-panel bg-white dark:bg-slate-900">
+                  <table className="min-w-full text-left text-sm ui-table-standard whitespace-nowrap">
                     <thead className="bg-slate-50/50 dark:bg-slate-950/50 ui-table-head border-b border-slate-100 dark:border-slate-800">
                       <tr>
                         <th className="px-6 py-4 text-left">PO</th>

@@ -62,6 +62,8 @@ export type PoPdfInput = {
   siBookingNo?: string;
   siCourierAddress?: string;
   siEoriNo?: string;
+  siAlsoNotify1?: string;
+  siAlsoNotify2?: string;
 };
 
 interface Props {
@@ -117,6 +119,8 @@ interface SiForm {
   bookingNo: string;
   courierAddress: string;
   eoriNo: string;
+  alsoNotify1: string;
+  alsoNotify2: string;
 }
 
 const EMPTY_PO: PoForm = {
@@ -163,7 +167,9 @@ const EMPTY_SI: SiForm = {
   poNumberHeader: '',
   bookingNo: '',
   courierAddress: '',
-  eoriNo: ''
+  eoriNo: '',
+  alsoNotify1: '',
+  alsoNotify2: ''
 };
 
 const Label: React.FC<{ children: React.ReactNode; required?: boolean }> = ({
@@ -292,7 +298,9 @@ export const PdfGenerationModal: React.FC<Props> = ({
         poNumberHeader: siTpl.poNumberHeader ?? '',
         bookingNo: siTpl.bookingNo ?? '',
         courierAddress: siTpl.courierAddress ?? '',
-        eoriNo: siTpl.eoriNo ?? ''
+        eoriNo: siTpl.eoriNo ?? '',
+        alsoNotify1: siTpl.alsoNotify1 ?? '',
+        alsoNotify2: siTpl.alsoNotify2 ?? ''
       });
     }
   }, [line.shipToId, masterData]);
@@ -592,17 +600,19 @@ export const PdfGenerationModal: React.FC<Props> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>ATTN (at TSL)</Label>
-                  <Input
+                  <Textarea
                     value={siForm.attn}
                     onChange={setSi('attn')}
+                    rows={3}
                     placeholder="T.FUJIOKA / SEVP"
                   />
                 </div>
                 <div>
                   <Label>From (at UBE)</Label>
-                  <Input
+                  <Textarea
                     value={siForm.from}
                     onChange={setSi('from')}
+                    rows={4}
                     placeholder="M.KAWAMORI / H.UEDA"
                   />
                 </div>
@@ -632,9 +642,10 @@ export const PdfGenerationModal: React.FC<Props> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>User (Company)</Label>
-                  <Input
+                  <Textarea
                     value={siForm.user}
                     onChange={setSi('user')}
+                    rows={2}
                     placeholder="TOYO TYRE MALAYSIA"
                   />
                 </div>
@@ -648,9 +659,10 @@ export const PdfGenerationModal: React.FC<Props> = ({
                 </div>
                 <div>
                   <Label>Shipper</Label>
-                  <Input
+                  <Textarea
                     value={siForm.shipper}
                     onChange={setSi('shipper')}
+                    rows={3}
                     placeholder="TSL WITH FULL ADDRESS"
                   />
                 </div>
@@ -766,17 +778,39 @@ export const PdfGenerationModal: React.FC<Props> = ({
               </div>
               <div>
                 <Label>Notify Party</Label>
-                <Input
+                <Textarea
                   value={siForm.notifyParty}
                   onChange={setSi('notifyParty')}
+                  rows={4}
                   placeholder="SAME AS CONSIGNEE"
                 />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Also Notify 1</Label>
+                  <Textarea
+                    value={siForm.alsoNotify1}
+                    onChange={setSi('alsoNotify1')}
+                    rows={4}
+                    placeholder=""
+                  />
+                </div>
+                <div>
+                  <Label>Also Notify 2</Label>
+                  <Textarea
+                    value={siForm.alsoNotify2}
+                    onChange={setSi('alsoNotify2')}
+                    rows={4}
+                    placeholder=""
+                  />
+                </div>
+              </div>
               <div>
                 <Label>Courier Address (Bridgestone)</Label>
-                <Input
+                <Textarea
                   value={siForm.courierAddress}
                   onChange={setSi('courierAddress')}
+                  rows={3}
                   placeholder="No need original courier."
                 />
               </div>
@@ -830,9 +864,10 @@ export const PdfGenerationModal: React.FC<Props> = ({
               </div>
               <div>
                 <Label>Requirements Note (shown after FREE TIME label)</Label>
-                <Input
+                <Textarea
                   value={siForm.requirements}
                   onChange={setSi('requirements')}
+                  rows={6}
                   placeholder="* Please apply 14 days Free Time"
                 />
               </div>
@@ -841,25 +876,28 @@ export const PdfGenerationModal: React.FC<Props> = ({
               <div className="space-y-2">
                 <div>
                   <Label>Note 1</Label>
-                  <Input
+                  <Textarea
                     value={siForm.note}
                     onChange={setSi('note')}
+                    rows={3}
                     placeholder="*CERTIFICATE OF ANALYSIS"
                   />
                 </div>
                 <div>
                   <Label>Note 2</Label>
-                  <Input
+                  <Textarea
                     value={siForm.note2}
                     onChange={setSi('note2')}
+                    rows={3}
                     placeholder="*PACKING LIST"
                   />
                 </div>
                 <div>
                   <Label>Note 3</Label>
-                  <Input
+                  <Textarea
                     value={siForm.note3}
                     onChange={setSi('note3')}
+                    rows={3}
                     placeholder="*Please describe MAR information on all delivery documents."
                   />
                 </div>
@@ -869,25 +907,28 @@ export const PdfGenerationModal: React.FC<Props> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Description (in cargo table)</Label>
-                  <Input
+                  <Textarea
                     value={siForm.description}
                     onChange={setSi('description')}
+                    rows={3}
                     placeholder="POLYBUTADIENE RUBBER"
                   />
                 </div>
                 <div>
                   <Label>Under Description</Label>
-                  <Input
+                  <Textarea
                     value={siForm.underDescription}
                     onChange={setSi('underDescription')}
+                    rows={3}
                     placeholder=""
                   />
                 </div>
                 <div>
                   <Label>Below Signature</Label>
-                  <Input
+                  <Textarea
                     value={siForm.belowSignature}
                     onChange={setSi('belowSignature')}
+                    rows={2}
                     placeholder="UBE Elastomer Co. Ltd."
                   />
                 </div>
