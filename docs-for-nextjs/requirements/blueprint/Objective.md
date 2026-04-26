@@ -7,12 +7,30 @@
 
 ## 🎯 Project Overview
 
-ระบบ **Customer Web Portal** เป็น internal B2B portal สำหรับจัดการ **Order แบบ
-Header + Line** (1 order มีหลาย line items) โดยแต่ละ line มี workflow แยก
-ไปจนถึงการปิดงานขนส่ง (Vessel Departed) ระบบรองรับหลาย roles, หลาย company
-(multi-tenant) และมี permission matrix ที่ Admin กำหนดได้
+ระบบ **Customer Web Portal** เป็น internal B2B portal สำหรับจัดการ **PO Header +
+Product Line** โดย 1 header = 1 PO และ product rows อยู่เป็น child lines ใต้
+header เดียวกัน Workflow ทั้งหมดวิ่งที่ระดับ header ไปจนถึงการ ปิดงานขนส่ง
+(Vessel Departed) ระบบรองรับหลาย roles, หลาย company (multi-tenant) และมี
+permission matrix ที่ Admin กำหนดได้
 
 **Business domain**: Chemical product order management (UBE company group)
+
+> Note: this document is still the migration blueprint for the future Next.js
+> project, but workflow rules, page access, document flow, and admin behavior
+> below have been refreshed to match the current MVP implementation in this
+> repository.
+
+> Precedence rule: for order structure, workflow, page behavior, and database
+> design, the dedicated docs under `requirements/domain`,
+> `requirements/workflow`, `requirements/pages`, and `database` are more
+> authoritative than any older legacy examples that may still appear later in
+> this long blueprint.
+
+> For AI-friendly requirement intake, start with `README.md`,
+> `requirements/workflow/WORKFLOW-AND-PERMISSIONS.md`,
+> `requirements/pages/MENU-FLOWS.md`,
+> `requirements/domain/MASTER-DATA-REFERENCE.md`, and
+> `database/DATABASE-SCHEMA.md` before reading this full blueprint.
 
 ---
 
@@ -28,11 +46,11 @@ Header + Line** (1 order มีหลาย line items) โดยแต่ละ
 | Forms          | React Hook Form 7.x + Zod 4.x                                   |
 | Auth           | Mock credential auth (no external provider, MVP)                |
 | Data           | In-memory + localStorage (no backend DB, MVP)                   |
-| PDF Generation | jsPDF 2.x (client-side)                                         |
+| PDF Generation | Custom client-side generator in `utils/poPdf.ts`                |
 | Routing        | Next.js App Router (file-based)                                 |
 | Theme          | Dark mode via Tailwind `dark:` class strategy                   |
 | Alerts         | sweetalert2 11.x                                                |
-| ID generation  | nanoid 5.x                                                      |
+| ID generation  | Lightweight local helper / prefixed random IDs                  |
 
 ---
 
@@ -66,12 +84,12 @@ npm install lucide-react
 # Alerts / confirm dialogs
 npm install sweetalert2
 
-# PDF generation
-npm install jspdf
-npm install --save-dev @types/jspdf
+# Full-option operational data table
+npm install tnks-data-table
 
-# ID generation
-npm install nanoid
+# PDF generation / ID generation
+# No extra package required in the current MVP implementation.
+# PDF creation lives in utils/poPdf.ts and IDs are generated with local helpers.
 ```
 
 ### `package.json` dependencies (expected result)
@@ -88,8 +106,7 @@ npm install nanoid
     "zod": "^4.0.0",
     "lucide-react": "^0.475.0",
     "sweetalert2": "^11.0.0",
-    "jspdf": "^2.5.0",
-    "nanoid": "^5.0.0"
+    "tnks-data-table": "latest"
   },
   "devDependencies": {
     "typescript": "^5.0.0",
@@ -139,14 +156,13 @@ app/
       page.tsx               ← orders list
       create/page.tsx        ← create order
       [orderNo]/
-        page.tsx             ← order detail
+        page.tsx             ← unified order workspace + detail
         edit/page.tsx        ← edit order
-    review/page.tsx          ← sale review
-    cs/page.tsx              ← CS dashboard
     admin/page.tsx           ← user management + permission matrix
+    po-si-templates/page.tsx ← PO/SI template management
     master-data/page.tsx     ← master data CRUD
     logs/page.tsx            ← activity / notification / integration logs
-    clear-data/page.tsx      ← reset store (dev/demo only)
+    clear-data/page.tsx      ← clear transactional data (admin-only)
 components/
   layout/
     Sidebar.tsx
@@ -214,49 +230,60 @@ interface User {
 }
 ```
 
-### Order
+### Order Header
 
 ```typescript
-interface Order {
-  orderNo: string; // auto-generated e.g. "ORD-2026-001"
-  orderDate: string; // ISO date
-  note: string;
-  status: OrderProgressStatus;
-  quotationNo?: string; // filled by CRM callback simulation
-  companyId: string;
-  createdBy: string;
-  updatedBy: string;
-  createdAt: string;
-  updatedAt: string;
-  actualETD?: string;
-  items: OrderItem[];
-  documents: OrderDocument[];
-  saleNote?: string;
-}
-```
-
-### OrderItem (= Line)
-
-```typescript
-interface OrderItem {
+interface OrderHeader {
   id: string;
-  poNo: string;
+  poNo: string; // business PO number, one header per PO
+  orderDate: string; // ISO date
+  companyId: string;
   shipToId: string;
-  status: OrderLineStatus;
   destinationId: string;
   termId: string;
-  requestETD: string;
-  requestETA: string;
-  gradeId: string;
-  qty: number;
+  status: OrderHeaderStatus;
+  requestETD?: string;
+  requestETA?: string;
   price?: number;
   currency?: string;
   otherRequested?: string;
   saleNote?: string;
-  quotationNo?: string;
+  quotationNo?: string; // filled by CRM callback simulation
   asap: boolean;
   actualETD?: string;
+  clearanceDate?: string;
+  feederVessel?: string;
+  motherVessel?: string;
+  vesselCompany?: string;
+  forwarder?: string;
+  vesselEtd?: string;
+  vesselEta?: string;
+  note?: string;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+  pdfSnapshot?: PdfGenerationSnapshot;
+  items: OrderProductLine[];
   documents: OrderDocument[];
+}
+```
+
+### OrderProductLine (= Product Line)
+
+```typescript
+interface OrderProductLine {
+  id: string;
+  headerId: string;
+  lineNo: number;
+  productId?: string;
+  gradeId?: string;
+  productName?: string;
+  qty: number;
+  unit?: string;
+  remark?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 ```
 
@@ -290,29 +317,34 @@ interface ShipToRecord extends MasterDataRecord {
 }
 interface IntegrationLog {
   id: string;
-  orderNo: string;
+  orderId: string;
+  integrationType: string;
   status: 'SUCCESS' | 'FAILED' | 'PENDING';
   message: string;
   timestamp: string;
 }
 interface NotificationLog {
   id: string;
+  orderId?: string;
   message: string;
   timestamp: string;
   role: Role;
   type: 'email' | 'system';
+  eventName: string;
 }
 interface ActivityLog {
   id: string;
+  orderId?: string;
+  category: 'WORKFLOW' | 'EDIT' | 'DOCUMENT' | 'SYSTEM' | 'NOTIFICATION';
   action: string;
   user: string;
   timestamp: string;
   details: string;
 }
-interface LineActionPermission {
-  action: LineAction;
-  fromStatus: OrderLineStatus;
-  toStatus: OrderLineStatus;
+interface HeaderActionPermission {
+  action: HeaderAction;
+  fromStatus: OrderHeaderStatus;
+  toStatus: OrderHeaderStatus;
   allowedUserGroups: UserGroup[];
 }
 ```
@@ -388,7 +420,7 @@ enum UserGroup {
   ADMIN
 }
 
-enum OrderLineStatus {
+enum OrderHeaderStatus {
   DRAFT,
   CREATED,
   APPROVED,
@@ -396,12 +428,6 @@ enum OrderLineStatus {
   WAIT_MGR_UEC_APPROVE_PO,
   VESSEL_SCHEDULED,
   VESSEL_DEPARTED
-}
-
-enum OrderProgressStatus {
-  CREATE,
-  IN_PROGRESS,
-  COMPLETE
 }
 
 enum DocumentType {
@@ -413,7 +439,7 @@ enum DocumentType {
   SHIPPING_INSTRUCTION_PDF = 'SHIPPING_INSTRUCTION_PDF'
 }
 
-enum LineAction {
+enum HeaderAction {
   SUBMIT_LINE,
   APPROVE_LINE,
   SET_ETD,
@@ -434,40 +460,30 @@ enum GroupSaleType {
 
 Define in `utils/statusLabel.ts` — used in badges, tables, and headings.
 
-### OrderLineStatus Labels
+### OrderHeaderStatus Labels
 
 ```ts
-export const LINE_STATUS_LABELS: Record<OrderLineStatus, string> = {
-  [OrderLineStatus.DRAFT]: 'Draft',
-  [OrderLineStatus.CREATED]: 'Created',
-  [OrderLineStatus.APPROVED]: 'Confirmed',
-  [OrderLineStatus.WAIT_SALE_UEC_APPROVE_PO]: 'Wait Sale UEC Approve PO',
-  [OrderLineStatus.WAIT_MGR_UEC_APPROVE_PO]: 'Wait Mgr UEC Approve PO',
-  [OrderLineStatus.VESSEL_SCHEDULED]: 'Wait Vessel Departure',
-  [OrderLineStatus.VESSEL_DEPARTED]: 'Vessel Departed'
+export const HEADER_STATUS_LABELS: Record<OrderHeaderStatus, string> = {
+  [OrderHeaderStatus.DRAFT]: 'Draft',
+  [OrderHeaderStatus.CREATED]: 'Created',
+  [OrderHeaderStatus.APPROVED]: 'Confirmed',
+  [OrderHeaderStatus.WAIT_SALE_UEC_APPROVE_PO]: 'Wait Sale UEC Approve PO',
+  [OrderHeaderStatus.WAIT_MGR_UEC_APPROVE_PO]: 'Wait Mgr UEC Approve PO',
+  [OrderHeaderStatus.VESSEL_SCHEDULED]: 'Wait Vessel Departure',
+  [OrderHeaderStatus.VESSEL_DEPARTED]: 'Vessel Departed'
 };
 ```
 
-### OrderProgressStatus Labels
+### HeaderAction Labels (for activity log display)
 
 ```ts
-export const ORDER_STATUS_LABELS: Record<OrderProgressStatus, string> = {
-  [OrderProgressStatus.CREATE]: 'New',
-  [OrderProgressStatus.IN_PROGRESS]: 'In Progress',
-  [OrderProgressStatus.COMPLETE]: 'Complete'
-};
-```
-
-### LineAction Labels (for activity log display)
-
-```ts
-export const ACTION_LABELS: Record<LineAction, string> = {
-  [LineAction.SUBMIT_LINE]: 'Submit Line',
-  [LineAction.APPROVE_LINE]: 'Sale Approve',
-  [LineAction.SET_ETD]: 'Set ETD & Generate PO',
-  [LineAction.APPROVE_SALE_PO]: 'Sale Review & Approve PO',
-  [LineAction.APPROVE_MGR_PO]: 'Manager Approve PO',
-  [LineAction.UPLOAD_FINAL_DOCS]: 'Upload & Complete'
+export const ACTION_LABELS: Record<HeaderAction, string> = {
+  [HeaderAction.SUBMIT_LINE]: 'Submit Header',
+  [HeaderAction.APPROVE_LINE]: 'Sale Approve',
+  [HeaderAction.SET_ETD]: 'Set ETD & Generate PO',
+  [HeaderAction.APPROVE_SALE_PO]: 'Sale Review & Approve PO',
+  [HeaderAction.APPROVE_MGR_PO]: 'Manager Approve PO',
+  [HeaderAction.UPLOAD_FINAL_DOCS]: 'Upload & Complete'
 };
 ```
 
@@ -492,7 +508,8 @@ export const UPLOADABLE_DOC_TYPES: DocumentType[] = [
 ];
 ```
 
-แต่ละ line มี status แยกกัน ผ่าน 7 steps:
+แต่ละ PO header มี status ชุดเดียวกันผ่าน 7 steps และ product lines ใต้ header
+จะตาม lifecycle เดียวกัน:
 
 ```
 DRAFT
@@ -504,30 +521,24 @@ DRAFT
                            └─[UPLOAD_FINAL_DOCS by TSL_CS]──▶ VESSEL_DEPARTED
 ```
 
-**OrderProgressStatus** (computed):
-
-- `CREATE` = all lines are DRAFT
-- `IN_PROGRESS` = mixed statuses
-- `COMPLETE` = all lines are VESSEL_DEPARTED
-
 ### Step Detail & Business Rules
 
-| Step               | Action              | Pre-condition                                             | Side Effects                                                                                                                                                     |
-| ------------------ | ------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Submit             | `SUBMIT_LINE`       | Line is DRAFT                                             | Line → CREATED. Notify SALE via mock email, activity log                                                                                                         |
-| Sale Approve       | `APPROVE_LINE`      | Line is CREATED + `price > 0`                             | CRM simulation (await ~1.8s) → sets `quotationNo` (format: `QT-XXXXXX` 6 random digits), notifies CS. Line → APPROVED                                            |
-| Set ETD + Gen PO   | `SET_ETD`           | Line is APPROVED + actualETD provided                     | Auto-generate PO PDF + SI PDF, attach to line docs. **Auto-download both PDFs** (if user has `allowedDocumentTypes` permission). Line → WAIT_SALE_UEC_APPROVE_PO |
-| Sale Review PO     | `APPROVE_SALE_PO`   | Line is WAIT_SALE_UEC_APPROVE_PO                          | Sale opens/reviews PO PDF, confirms. Line → WAIT_MGR_UEC_APPROVE_PO. Activity log                                                                                |
-| Manager Approve PO | `APPROVE_MGR_PO`    | Line is WAIT_MGR_UEC_APPROVE_PO                           | Sale Manager reviews and approves. Line → VESSEL_SCHEDULED. Activity log                                                                                         |
-| Upload & Depart    | `UPLOAD_FINAL_DOCS` | Line is VESSEL_SCHEDULED + has `Shipping Document` + `BL` | Uploaded docs replace same-type existing docs. Notify customer (mock), activity log, line → VESSEL_DEPARTED                                                      |
+| Step               | Action              | Pre-condition                                                 | Side Effects                                                                                                                                                           |
+| ------------------ | ------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Submit             | `SUBMIT_LINE`       | Header is `DRAFT` and has at least 1 product line             | Header → `CREATED`. Notify SALE via mock email + in-app notification, activity log                                                                                     |
+| Sale Approve       | `APPROVE_LINE`      | Header is `CREATED` + `price > 0`                             | CRM simulation (await ~1.8s) → sets `quotationNo` (format: `QT-XXXXXX` 6 random digits), notifies CS. Header → `APPROVED`                                              |
+| Set ETD + Gen PO   | `SET_ETD`           | Header is `APPROVED` + `actualETD` provided                   | Auto-generate PO PDF + SI PDF, attach to header docs. **Auto-download both PDFs** (if user has `allowedDocumentTypes` permission). Header → `WAIT_SALE_UEC_APPROVE_PO` |
+| Sale Review PO     | `APPROVE_SALE_PO`   | Header is `WAIT_SALE_UEC_APPROVE_PO`                          | UEC_SALE reviewer opens/reviews PO PDF, confirms. Header → `WAIT_MGR_UEC_APPROVE_PO`. General editing locks after this step                                            |
+| Manager Approve PO | `APPROVE_MGR_PO`    | Header is `WAIT_MGR_UEC_APPROVE_PO`                           | Sale Manager reviews and approves. Header → `VESSEL_SCHEDULED`. Notify CS, activity log                                                                                |
+| Upload & Depart    | `UPLOAD_FINAL_DOCS` | Header is `VESSEL_SCHEDULED` + has `Shipping Document` + `BL` | Uploaded docs replace same-type existing docs. Notify target users by email + in-app, activity log, header → `VESSEL_DEPARTED`                                         |
 
 ---
 
 ## 🔐 Permission System
 
-### Line Action Permission Matrix
+### Header Action Permission Matrix
 
-- Stored as `LineActionPermission[]` in state
+- Stored as `HeaderActionPermission[]` in state
 - Each entry: `{ action, fromStatus, toStatus, allowedUserGroups[] }`
 - **ADMIN bypasses all matrix checks**
 - Admin can edit, lock/unlock, and save custom presets
@@ -554,12 +565,12 @@ DRAFT
 
 ### Data Visibility Rules
 
-- Non-ADMIN: only see lines where `canUserAccessShipTo(user, line.shipToId)` =
-  true
-  - `shipToAccess === 'ALL'` → see all lines
-  - `shipToAccess === 'SELECTED'` → only lines whose `shipToId` is in
+- Non-ADMIN: only see headers where `canUserAccessShipTo(user, order.shipToId)`
+  = true
+  - `shipToAccess === 'ALL'` → see all headers
+  - `shipToAccess === 'SELECTED'` → only headers whose `shipToId` is in
     `allowedShipToIds`
-- Orders with zero visible lines are hidden from the user entirely
+- Hidden headers hide their product lines together with them
 - **No company-level filter** — ship-to access is the sole visibility gate
 
 ### Document Access Rules
@@ -599,7 +610,7 @@ DRAFT
 - [ ] Create `store/defaults.ts` with exact seed data (see **Initial Seed Data**
       section)
 - [ ] Create `store/selectors.ts` with `getVisibleOrdersForUser`,
-      `canUserRunLineAction`, `canUserAccessShipTo`, `deriveOrderProgressStatus`
+      `canUserRunHeaderAction`, `canUserAccessShipTo`
 - [ ] Create `store/index.ts` — Zustand store with `persist` middleware (see
       **Store API** section for full actions list and hydration config)
 - [ ] Create `utils/statusLabel.ts` with label map (see **Status Labels**
@@ -628,14 +639,14 @@ DRAFT
 
 **Test users to seed:**
 
-| Username    | Password   | Role         | UserGroup    | Company             |
-| ----------- | ---------- | ------------ | ------------ | ------------------- |
-| `trader1`   | `password` | MAIN_TRADER  | TRADER       | C001 (UBE Thailand) |
-| `ubejp1`    | `password` | UBE_JAPAN    | UBE          | AG-UBE-JP           |
-| `sale1`     | `password` | SALE         | SALE         | (internal)          |
-| `sale_mgr1` | `password` | SALE_MANAGER | SALE_MANAGER | (internal)          |
-| `cs1`       | `password` | CS           | CS           | (internal)          |
-| `admin`     | `password` | ADMIN        | ADMIN        | (all)               |
+| Username    | Password   | Role         | UserGroup   | Company             |
+| ----------- | ---------- | ------------ | ----------- | ------------------- |
+| `trader1`   | `password` | MAIN_TRADER  | TRADER      | C001 (UBE Thailand) |
+| `ubejp1`    | `password` | UBE_JAPAN    | UEC_SALE    | AG-UBE-JP           |
+| `sale1`     | `password` | SALE         | TSL_SALE    | (internal)          |
+| `sale_mgr1` | `password` | SALE_MANAGER | UEC_MANAGER | (internal)          |
+| `cs1`       | `password` | CS           | TSL_CS      | (internal)          |
+| `admin`     | `password` | ADMIN        | ADMIN       | (all)               |
 
 ### TASK-03: Layout & Navigation
 
@@ -644,39 +655,43 @@ DRAFT
       toggle, logout button
 - [ ] Sidebar menu items shown per role (exact spec below)
 - [ ] Active menu item highlighted
-- [ ] Sidebar collapse state persisted in localStorage
+- [ ] Sidebar collapse state is optional for the target project; current MVP
+      keeps it in local component state only and does not persist it
 
 **Sidebar menu per role:**
 
-| Menu Item    | Route          | Icon              | Show condition                  |
-| ------------ | -------------- | ----------------- | ------------------------------- |
-| Dashboard    | `/`            | `LayoutDashboard` | Always                          |
-| Orders       | `/orders`      | `Package`         | Always                          |
-| Sale Review  | `/review`      | `ClipboardCheck`  | Role: SALE, SALE_MANAGER, ADMIN |
-| Mgr Approve  | `/mgr-approve` | `BadgeCheck`      | Role: SALE_MANAGER, ADMIN       |
-| CS Dashboard | `/cs`          | `Ship`            | Role: CS, ADMIN                 |
-| Admin        | `/admin`       | `ShieldCheck`     | Role: ADMIN                     |
-| Master Data  | `/master-data` | `Database`        | Role: ADMIN                     |
-| Logs         | `/logs`        | `ScrollText`      | Role: ADMIN                     |
-| Clear Data   | `/clear-data`  | `Trash2`          | Always (dev/demo tool)          |
+Use the current sidebar labels from the MVP UI. Task sections later in this
+document still use normalized page names such as "CS Dashboard" or "Master Data"
+when describing page responsibilities.
+
+| Menu Item       | Route              | Icon              | Show condition |
+| --------------- | ------------------ | ----------------- | -------------- |
+| Dashboard       | `/`                | `LayoutDashboard` | Always         |
+| Orders          | `/orders`          | `Package`         | Always         |
+| PO/SI Templates | `/po-si-templates` | `FileText`        | Role: ADMIN    |
+| Configuration   | `/master-data`     | `Database`        | Role: ADMIN    |
+| User Management | `/admin`           | `ShieldCheck`     | Role: ADMIN    |
+| System Logs     | `/logs`            | `ScrollText`      | Role: ADMIN    |
+| Clear Data      | `/clear-data`      | `Trash2`          | Role: ADMIN    |
 
 **Role → visible menu summary:**
 
-| Role         | Visible menus                               |
-| ------------ | ------------------------------------------- |
-| MAIN_TRADER  | Dashboard, Orders                           |
-| UBE_JAPAN    | Dashboard, Orders                           |
-| SALE         | Dashboard, Orders, Sale Review              |
-| SALE_MANAGER | Dashboard, Orders, Sale Review, Mgr Approve |
-| CS           | Dashboard, Orders, CS Dashboard             |
-| ADMIN        | All menus                                   |
+| Role         | Visible menus     |
+| ------------ | ----------------- |
+| MAIN_TRADER  | Dashboard, Orders |
+| UBE_JAPAN    | Dashboard, Orders |
+| SALE         | Dashboard, Orders |
+| SALE_MANAGER | Dashboard, Orders |
+| CS           | Dashboard, Orders |
+| ADMIN        | All menus         |
 
 ### TASK-04: Dashboard (`/`)
 
-- [ ] Summary cards: count of lines per `OrderLineStatus` (for visible lines)
-- [ ] Urgent lines section: ASAP lines with ETA within 30 days, exclude
+- [ ] Summary cards: count of headers per `OrderHeaderStatus` (for visible
+      headers)
+- [ ] Urgent section: ASAP headers with ETA within 30 days, exclude
       VESSEL_DEPARTED
-- [ ] Recent orders table: last 8 lines, sorted by orderDate desc
+- [ ] Recent orders table: last 8 headers, sorted by orderDate desc
 - [ ] Quick link to Create Order (if permitted)
 - [ ] All data scoped to `getVisibleOrdersForUser`
 
@@ -686,117 +701,84 @@ VESSEL_DEPARTED
 
 ### TASK-05: Orders List (`/orders`)
 
-- [ ] Table of all visible orders
-- [ ] Columns: Order No, Date, Company, Status badge, Line count, Actions
+- [ ] Full-option `tnks-data-table` of all visible PO headers
+- [ ] Columns: PO No, Date, Company, Ship-To, Status badge, Product line count,
+      Actions
 - [ ] Search by order no / company
-- [ ] Filter by `OrderProgressStatus`
+- [ ] Filter by header status
 - [ ] Row click → order detail
 - [ ] Create New Order button (if permitted, accessible from this page — **not**
       via sidebar)
-- [ ] **Delete order** only allowed when `OrderProgressStatus === CREATE` (all
-      lines still DRAFT); button disabled with tooltip otherwise
+- [ ] **Delete order** only allowed when header status is `DRAFT`; button
+      disabled with tooltip otherwise
+- [ ] Route all workflow follow-up back into the Orders module; do not link to
+      separate review/approval/CS pages
 
 ### TASK-06: Create / Edit Order (`/orders/create`, `/orders/[orderNo]/edit`)
 
-- [ ] Form: Order-level fields (note)
-- [ ] Dynamic line items (add/remove/duplicate/move-up/move-down rows)
-- [ ] Per line: poNo (must be unique within order), shipToId, destinationId,
-      termId, requestETD, requestETA, gradeId, qty, asap, otherRequested
+Current MVP route for edit is `/orders/edit/:orderNo`. The Next.js target route
+should map this to `/orders/[orderNo]/edit`.
+
+- [ ] Form: Header-level fields (`poNo`, `shipToId`, `destinationId`, `termId`,
+      `requestETD`, `requestETA`, `asap`, `otherRequested`, `note`)
+- [ ] Dynamic product lines (add/remove/duplicate/move-up/move-down rows)
+- [ ] Per product line: product/grade, qty, optional unit, optional remark
 - [ ] Require: `asap === true` OR at least one of `requestETD` / `requestETA` is
       set (Zod cross-field refinement)
 - [ ] `shipToId` dropdown filtered by user's allowed ship-tos
       (`canUserAccessShipTo`)
 - [ ] `destinationId` dropdown filtered by selected Ship-To's `destinationIds` —
       when `shipToId` changes, reset `destinationId` to empty
-- [ ] `termId`, `gradeId` dropdowns show **all records** (no filter)
+- [ ] `termId` and product/grade dropdowns show **all records** (no filter)
 - [ ] Validate with Zod before submit
-- [ ] **Selective submit**: row-level checkboxes. Only DRAFT-status lines are
-      selectable. User must select ≥1 line to submit. Unselected DRAFT lines
-      remain DRAFT.
-- [ ] **UBE shortcut**: when submitting, if
-      `currentUser.userGroup === UserGroup.UEC_SALE`, selected lines go to
-      `UBE_APPROVED` (not `CREATED`)
-- [ ] **Save Draft button**: saves all lines as DRAFT with no status change. No
-      lines need to be selected.
-- [ ] **Edit constraint**: lines past DRAFT are read-only (locked in the table
-      but visible)
-- [ ] Auto-generate `orderNo` on create (sequential format `ORD-{YYYY}-{NNN}`)
+- [ ] Submit acts on the whole header, not selected lines.
+- [ ] `UEC_SALE` users submit through the same `SUBMIT_LINE` action as other
+      permitted groups; header moves to `CREATED` per the active permission
+      matrix (no separate `UBE_APPROVED` status)
+- [ ] **Save Draft button**: saves header + product lines with no status change
+      and writes an activity log
+- [ ] **Edit constraint**: header and product lines remain editable until
+      `APPROVE_SALE_PO` completes
+- [ ] Auto-generate primary record ID on create; `poNo` remains the business key
 - [ ] CSV Import: accept `.csv` file, parse rows into line items, prefill form
       (see sample in `/sample/order-import-sample.csv`)
 
 ### TASK-07: Order Detail (`/orders/[orderNo]`)
 
-- [ ] Order header info (orderNo, date, company, status, quotationNo, saleNote)
-- [ ] Lines table with status badges
-- [ ] Per-line action zone based on `canUserRunLineAction()`
-- [ ] **Line actions** (show only when applicable):
-  - Submit Line (DRAFT → CREATED)
-  - Sale Approve with price + currency input (CREATED → APPROVED)
-  - Set ETD with date picker (APPROVED → WAIT_SALE_UEC_APPROVE_PO) →
+Detailed source of truth for this page now lives in
+`requirements/pages/ORDERS-WORKSPACE.md` and
+`requirements/blueprint/ORDERS-WORKSPACE-CHECKLIST.md`.
+
+- [ ] Order header info (poNo, date, company, shipTo, status, quotationNo,
+      saleNote)
+- [ ] Product-line table with line number and quantity details
+- [ ] Per-header action zone based on `canUserRunHeaderAction()`
+- [ ] Keep all workflow step zones visible on one page even when disabled
+- [ ] **Header actions** (show only when applicable):
+  - Submit Header (`DRAFT` → `CREATED`)
+  - Sale Approve with price + currency input (`CREATED` → `APPROVED`)
+  - Set ETD with date picker (`APPROVED` → `WAIT_SALE_UEC_APPROVE_PO`) →
     **auto-generate PO PDF + SI PDF** + auto-download
-  - Sale Review PO: button to open PO PDF + confirm (WAIT_SALE_UEC_APPROVE_PO →
-    WAIT_MGR_UEC_APPROVE_PO)
-  - Manager Approve PO: review + approve (WAIT_MGR_UEC_APPROVE_PO →
-    VESSEL_SCHEDULED)
-  - Upload Final Docs (VESSEL_SCHEDULED → VESSEL_DEPARTED)
-- [ ] Per-line document list with download (filtered by `allowedDocumentTypes`)
+  - Sale Review PO: button to open PO PDF + confirm (`WAIT_SALE_UEC_APPROVE_PO`
+    → `WAIT_MGR_UEC_APPROVE_PO`)
+  - Manager Approve PO: review + approve (`WAIT_MGR_UEC_APPROVE_PO` →
+    `VESSEL_SCHEDULED`)
+  - Upload Final Docs (`VESSEL_SCHEDULED` → `VESSEL_DEPARTED`)
+- [ ] Per-header document list with download (filtered by
+      `allowedDocumentTypes`)
+- [ ] Use `tnks-data-table` when the product-line grid needs advanced sorting,
+      filtering, or row actions
 - [ ] Confirm dialog before any status-changing action
 
-### TASK-08: Sale Review (`/review`)
+### Unified Workflow Step Zones Inside Order Detail
 
-Page has two distinct sections, each with its own section header and item count
-badge:
-
-**Section 1 — Line Confirm** (indigo theme)
-
-- [ ] List all lines with status `CREATED` across all orders (for visible
-      orders)
-- [ ] Section header: "Line Confirm — Waiting Sale Review" + count badge
-- [ ] Per line: PO No, Order No, Ship-To, Grade, Qty, Request ETD/ETA
-- [ ] Inline price + currency input per line
-- [ ] Sale note input per line
-- [ ] Approve button with confirm dialog
-- [ ] On approve: single `await sleep(1800)` simulating CRM API round-trip
-- [ ] After await: set `quotationNo = 'QT-' + 6 random digits` (e.g.
-      `QT-482917`); log SUCCESS to integrationLogs; notify CS (system)
-- [ ] Show spinner/disabled state on Approve button during the 1.8s wait
-- [ ] **Save Draft** button (per line): persists price, currency, saleNote
-      WITHOUT changing line status
-
-**Section 2 — PO Review** (amber theme)
-
-- [ ] List all lines with status `WAIT_SALE_UEC_APPROVE_PO` across all visible
-      orders
-- [ ] Section header: "PO Review — Waiting Sale Approval" + count badge
-- [ ] Per line: PO No, Ship-To, Qty, Price, ETD, link to download PO PDF
-- [ ] **Approve PO** button with confirm dialog → line →
-      `WAIT_MGR_UEC_APPROVE_PO`; notify `SALE_MANAGER` (email); activity log
-- [ ] Show spinner/disabled state on Approve button during processing
-
-- [ ] Restrict page to SALE + SALE_MANAGER + ADMIN
-- [ ] Empty state shows when **both** sections have no items
-
-### TASK-09: CS Dashboard (`/cs`)
-
-- [ ] **Stage 1 — Set ETD**: cards for lines with status `APPROVED`
-  - Show: Order No, PO No, Ship-To, Grade, Qty, Request ETD, ASAP flag
-  - Action: Set Actual ETD (date input + confirm) → auto-generates PO PDF + SI
-    PDF + auto-download → line → WAIT_SALE_UEC_APPROVE_PO
-- [ ] **Stage 2 — Finalize Shipping**: cards for lines with status
-      `VESSEL_SCHEDULED`
-  - Show: line info + current uploaded docs list
-  - Action: upload documents (type selector + file input, save draft)
-  - Complete button: only enabled when `Shipping Document` + `BL` both present
-- [ ] Restrict page to CS + ADMIN
-
-### TASK-08b: Mgr Approve (`/mgr-approve`)
-
-- [ ] List all lines with status `WAIT_MGR_UEC_APPROVE_PO` across all visible
-      orders
-- [ ] Per line: PO No, Order No, Ship-To, Grade, Qty, ETD, link/button to open
-      PO PDF
-- [ ] Approve button with confirm dialog → line → VESSEL_SCHEDULED. Activity log
-- [ ] Restrict page to SALE_MANAGER + ADMIN
+- [ ] Commercial review, UEC sale review, manager approval, and CS execution all
+      live in the order detail workspace
+- [ ] Do not implement separate pages for `/review`, `/mgr-approve`, or `/cs`
+- [ ] Keep future-step zones visible but disabled until status reaches them
+- [ ] Keep past-step zones visible as read-only context
+- [ ] Use `requirements/blueprint/ORDERS-WORKSPACE-CHECKLIST.md` as the detailed
+      implementation checklist for these zones
 
 ### TASK-10: Admin Page (`/admin`)
 
@@ -810,16 +792,27 @@ badge:
 - [ ] Delete user with confirm
 - [ ] Company association
 
-**Tab 2: Line Permission Matrix**
+**Tab 2: Header Permission Matrix**
 
-- [ ] Table showing each LineAction → fromStatus → toStatus → allowedUserGroups
-      (checkboxes)
+- [ ] Table showing each HeaderAction → fromStatus → toStatus →
+      allowedUserGroups (checkboxes)
 - [ ] Lock/Unlock matrix toggle
 - [ ] Apply preset: STANDARD / STRICT
 - [ ] Save current as named custom preset
 - [ ] Apply saved custom preset
 - [ ] Delete custom preset
 - [ ] Reset to default
+
+### TASK-10b: PO/SI Templates (`/po-si-templates`)
+
+- [ ] Admin-only page for maintaining PO templates and SI templates keyed by
+      `shipToId`
+- [ ] PO template CRUD: add, edit, delete, and persist template defaults used by
+      PDF generation
+- [ ] SI template CRUD: add, edit, delete, and persist pre-fill values used by
+      `PdfGenerationModal`
+- [ ] Template changes persist in Zustand/localStorage and are immediately used
+      by SET_ETD / PDF generation flows
 
 ### TASK-11: Master Data (`/master-data`)
 
@@ -844,15 +837,15 @@ Three tabs:
 
 ### TASK-13: PDF Generation
 
-> **Engine**: Raw PDF 1.4 builder (no external jsPDF library). All generation
-> lives in `utils/poPdf.ts` and runs client-side only (`'use client'` context).
-> The file exports three functions consumed by the app.
+> **Engine**: Client-side custom PDF generator in `utils/poPdf.ts`. All
+> generation lives in `utils/poPdf.ts` and runs client-side only (`'use client'`
+> context). The file exports three functions consumed by the app.
 
 #### Exported Functions
 
 ```ts
 // Generate PO PDF, returns base64 data-URI string
-createPurchaseOrderPdfDataUrl(input: PoPdfInput): string
+createOfficialPoPdfDataUrl(input: PoPdfInput): string
 
 // Generate Shipping Instruction PDF, dispatches to correct builder by shipToId
 createShippingInstructionPdfDataUrl(input: PoPdfInput): string
@@ -1019,19 +1012,19 @@ embedded material code in the shipping mark box. Key differences:
 
 ```ts
 import {
-  createPurchaseOrderPdfDataUrl,
+  createOfficialPoPdfDataUrl,
   createShippingInstructionPdfDataUrl
 } from '@/utils/poPdf';
 
 // In SET_ETD / CS action handler:
-const poDataUrl = createPurchaseOrderPdfDataUrl(siInput);
+const poDataUrl = createOfficialPoPdfDataUrl(siInput);
 const siDataUrl = createShippingInstructionPdfDataUrl(siInput);
 
 // Attach to line documents:
 updateOrderLine(orderNo, line.id, {
   documents: [
-    { id: nanoid(), type: DocumentType.PO_PDF, filename: `PO-${poNo}.pdf`, dataUrl: poDataUrl, ... },
-    { id: nanoid(), type: DocumentType.SHIPPING_INSTRUCTION_PDF, filename: `SI-${poNo}.pdf`, dataUrl: siDataUrl, ... }
+    { id: `doc-${Math.random().toString(36).slice(2, 8)}`, type: DocumentType.PO_PDF, filename: `PO-${poNo}.pdf`, dataUrl: poDataUrl, ... },
+    { id: `doc-${Math.random().toString(36).slice(2, 8)}`, type: DocumentType.SHIPPING_INSTRUCTION_PDF, filename: `SI-${poNo}.pdf`, dataUrl: siDataUrl, ... }
   ]
 });
 ```
@@ -1104,8 +1097,12 @@ interface SiTemplate {
 
 ### TASK-15: Clear Data Page (`/clear-data`)
 
-- [ ] Button: "Reset All Data" with confirmation
-- [ ] Calls `resetStore()` → resets to initial seed state
+- [ ] Admin-only page with confirmation before destructive action
+- [ ] Button clears **transactional data only** via `clearTransactionalData()`
+      (orders, activity logs, notification logs, integration logs, currentUser)
+- [ ] Users, permissions, companies, master data, and template masters are
+      preserved
+- [ ] Redirect to `/login` after completion
 - [ ] For demo/dev use only
 
 ---
@@ -1278,6 +1275,10 @@ export const createSwal = (isDark: boolean) =>
 Uses shadcn `Badge` as base with className override. Must work in both light and
 dark mode.
 
+> Legacy snippet note: if you reuse this sample, remap it to the current
+> header-level model from `requirements/domain/ORDER-STRUCTURE.md`. Do not
+> reintroduce `OrderProgressStatus` in the new project.
+
 ```tsx
 import { Badge } from '@/components/ui/badge';
 import { OrderLineStatus, OrderProgressStatus } from '@/store/types';
@@ -1287,14 +1288,14 @@ const LINE_STATUS_STYLES: Record<OrderLineStatus, string> = {
     'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
   CREATED:
     'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-800',
-  UBE_APPROVED:
-    'bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900/40 dark:text-cyan-300 dark:border-cyan-800',
   APPROVED:
     'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/40 dark:text-violet-300 dark:border-violet-800',
+  WAIT_SALE_UEC_APPROVE_PO:
+    'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800',
+  WAIT_MGR_UEC_APPROVE_PO:
+    'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800',
   VESSEL_SCHEDULED:
     'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800',
-  RECEIVED_ACTUAL_PO:
-    'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800',
   VESSEL_DEPARTED:
     'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800'
 };
@@ -1351,24 +1352,23 @@ Use these consistently everywhere in the app:
 
 #### Status Icons
 
-| Status / Concept     | Icon            |
-| -------------------- | --------------- |
-| DRAFT                | `FileEdit`      |
-| CREATED              | `Send`          |
-| UBE_APPROVED         | `ShieldCheck`   |
-| APPROVED / Confirmed | `BadgeCheck`    |
-| VESSEL_SCHEDULED     | `CalendarCheck` |
-| RECEIVED_ACTUAL_PO   | `FileCheck`     |
-| VESSEL_DEPARTED      | `Ship`          |
-| COMPLETE / Done      | `CheckCircle2`  |
-| Urgent / Warning     | `AlertCircle`   |
+| Status / Concept         | Icon             |
+| ------------------------ | ---------------- |
+| DRAFT                    | `FileEdit`       |
+| CREATED                  | `Send`           |
+| APPROVED / Confirmed     | `BadgeCheck`     |
+| WAIT_SALE_UEC_APPROVE_PO | `FileCheck`      |
+| WAIT_MGR_UEC_APPROVE_PO  | `ClipboardCheck` |
+| VESSEL_SCHEDULED         | `CalendarCheck`  |
+| VESSEL_DEPARTED          | `Ship`           |
+| COMPLETE / Done          | `CheckCircle2`   |
+| Urgent / Warning         | `AlertCircle`    |
 
 #### Action Icons
 
 | Action       | Icon                   |
 | ------------ | ---------------------- |
 | Submit line  | `Send`                 |
-| UBE Approve  | `ShieldCheck`          |
 | Sale Approve | `BadgeCheck`           |
 | Set ETD      | `CalendarCheck`        |
 | Generate PO  | `FileCheck`            |
@@ -1386,17 +1386,17 @@ Use these consistently everywhere in the app:
 
 #### Navigation Icons
 
-| Page         | Icon              |
-| ------------ | ----------------- |
-| Dashboard    | `LayoutDashboard` |
-| Orders       | `Package`         |
-| Create Order | `PlusCircle`      |
-| Sale Review  | `ClipboardCheck`  |
-| CS Dashboard | `Ship`            |
-| Admin        | `ShieldCheck`     |
-| Master Data  | `Database`        |
-| Logs         | `ScrollText`      |
-| Clear Data   | `Trash2`          |
+| Page            | Icon              |
+| --------------- | ----------------- |
+| Dashboard       | `LayoutDashboard` |
+| Orders          | `Package`         |
+| Create Order    | `PlusCircle`      |
+| Order Detail    | `FileSearch`      |
+| PO/SI Templates | `FileText`        |
+| Configuration   | `Database`        |
+| User Management | `ShieldCheck`     |
+| System Logs     | `ScrollText`      |
+| Clear Data      | `Trash2`          |
 
 #### Notification / Log Type Icons
 
@@ -2923,6 +2923,10 @@ export const INITIAL_PASSWORDS: Record<string, string> = {
 
 ### Sample Orders (for demo — 2 orders with lines in various statuses)
 
+> Legacy sample note: this seed example still reflects the older MVP demo shape.
+> For the new project, seed one PO per header and place only product-detail rows
+> in `items`.
+
 ```ts
 export const INITIAL_ORDERS: Order[] = [
   {
@@ -3009,6 +3013,9 @@ export const INITIAL_ORDERS: Order[] = [
 
 ### Selector: `getVisibleOrdersForUser`
 
+> Replace this older derived-status selector with the header-level visibility
+> rule described in `requirements/workflow/WORKFLOW-AND-PERMISSIONS.md`.
+
 ```ts
 // store/selectors.ts
 export const getVisibleOrdersForUser = (
@@ -3062,12 +3069,12 @@ interface AppState {
   };
 
   // Permissions
-  linePermissionMatrix: LineActionPermission[];
-  linePermissionLocked: boolean;
-  linePermissionCustomPresets: Array<{
+  headerPermissionMatrix: HeaderActionPermission[];
+  headerPermissionLocked: boolean;
+  headerPermissionCustomPresets: Array<{
     id: string;
     name: string;
-    matrix: LineActionPermission[];
+    matrix: HeaderActionPermission[];
   }>;
 }
 ```
@@ -3084,27 +3091,26 @@ logout: () => void;
 
 // Orders
 addOrder: (order: Order) => void;
-updateOrder: (orderNo: string, updates: Partial<Order>) => void;
-deleteOrder: (orderNo: string) => void;
+updateOrder: (orderId: string, updates: Partial<Order>) => void;
+deleteOrder: (orderId: string) => void;
 
-// ⚠️ Critical: update a single line within an order
-updateOrderLine: (orderNo: string, lineId: string, updates: Partial<OrderItem>) => void;
+// ⚠️ Critical: update a PO header and its product lines safely
+updateOrderHeader: (orderId: string, updates: Partial<Order>) => void;
+updateOrderLine: (orderId: string, lineId: string, updates: Partial<OrderItem>) => void;
 // Implementation:
-// updateOrderLine: (orderNo, lineId, updates) => set(state => ({
+// updateOrderLine: (orderId, lineId, updates) => set(state => ({
 //   orders: state.orders.map(o =>
-//     o.orderNo !== orderNo ? o :
+//     o.id !== orderId ? o :
 //     { ...o, items: o.items.map(item => item.id !== lineId ? item : { ...item, ...updates }) }
 //   )
 // }))
 
 // ID / number generation
-generateOrderNo: () => string;
-// Returns next sequential: ORD-{YYYY}-{NNN padded to 3 digits}
-// Algorithm: find existing orders for current year, increment max + 1
-// Example: if ORD-2026-003 exists, next = ORD-2026-004
+generatePoNo: () => string;
+// Returns next sequential PO number based on business format chosen by the new project
 
-generateLineId: () => string;     // returns nanoid()
-generateDocumentId: () => string; // returns nanoid()
+generateLineId: () => string;     // returns a prefixed random id string
+generateDocumentId: () => string; // returns a prefixed random id string
 
 // Logs
 addActivity: (action: string, user: string, details: string) => void;
@@ -3123,13 +3129,13 @@ updateGroupSaleTypes: (data: GroupSaleTypeRecord[]) => void;
 updateCompanies: (data: CustomerCompany[]) => void;
 
 // Permission matrix
-updateLinePermission: (action: LineAction, fromStatus: OrderLineStatus, updates: Pick<LineActionPermission, 'allowedUserGroups'>) => void;
-setLinePermissionLocked: (locked: boolean) => void;
-applyLinePermissionPreset: (preset: 'STANDARD' | 'STRICT') => void;
-saveLinePermissionCustomPreset: (name: string) => boolean;  // false if name duplicate
-applyLinePermissionCustomPreset: (presetId: string) => boolean;
-deleteLinePermissionCustomPreset: (presetId: string) => void;
-resetLinePermissionMatrix: () => void;
+updateHeaderPermission: (action: HeaderAction, fromStatus: OrderHeaderStatus, updates: Pick<HeaderActionPermission, 'allowedUserGroups'>) => void;
+setHeaderPermissionLocked: (locked: boolean) => void;
+applyHeaderPermissionPreset: (preset: 'STANDARD' | 'STRICT') => void;
+saveHeaderPermissionCustomPreset: (name: string) => boolean;  // false if name duplicate
+applyHeaderPermissionCustomPreset: (presetId: string) => boolean;
+deleteHeaderPermissionCustomPreset: (presetId: string) => void;
+resetHeaderPermissionMatrix: () => void;
 
 // Scheduled / system
 runScheduledChecks: () => void;
@@ -3275,20 +3281,24 @@ export type AddUserFormValues = z.infer<typeof addUserSchema>;
 1. `price > 0` required before APPROVE_LINE
 2. `actualETD` required before SET_ETD
 3. Both `Shipping Document` + `BL` required before UPLOAD_FINAL_DOCS
-4. Urgent lines: `asap === true` AND ETA within 30 days AND NOT VESSEL_DEPARTED
-5. Line edit: all fields locked when status > DRAFT
+4. Urgent headers: `asap === true` AND ETA within 30 days AND NOT
+   VESSEL_DEPARTED
+5. Header + product-line edit: editable until `APPROVE_SALE_PO`, then general
+   editing locks
 6. Document download: checked against `allowedDocumentTypes`
-7. All actions must pass `canUserRunLineAction()` (ADMIN bypasses)
+7. All actions must pass `canUserRunHeaderAction()` (ADMIN bypasses)
 8. All sensitive actions logged to `activities`
-9. OrderProgressStatus is always computed (derived), never stored directly
-10. **UBE submit shortcut**: `userGroup === UBE` → DRAFT lines submit directly
-    to `UBE_APPROVED`
+9. Header status is the canonical workflow state and is stored directly on the
+   PO header
+10. **No UBE intermediate state**: permitted submitters (`TRADER`, `UEC_SALE`,
+    `TSL_SALE`) all use the same `SUBMIT_LINE` transition and move DRAFT headers
+    to `CREATED`
 11. **quotationNo format**: `QT-` + 6 random digits (e.g. `QT-482917`),
     generated during CRM simulation
 12. **poNo uniqueness**: must be unique within the same order (cross-field Zod
     validation)
-13. **MARK_RECEIVED_PO auto-downloads**: triggers browser download of PO PDF and
-    SI PDF immediately (if user's `allowedDocumentTypes` includes them)
+13. **SET_ETD auto-downloads**: triggers browser download of PO PDF and SI PDF
+    immediately (if user's `allowedDocumentTypes` includes them)
 14. **Document upsert**: UPLOAD_FINAL_DOCS replaces existing documents of the
     same `DocumentType` (no duplicates per type)
 
@@ -3306,21 +3316,23 @@ export type AddUserFormValues = z.infer<typeof addUserSchema>;
 ### As ubejp1 (UBE_JAPAN)
 
 1. Login
-2. Go to Order with CREATED line
-3. UBE Approve line → status = UBE_APPROVED
+2. Go to Orders and open an order in the unified workspace
+3. Find header in `WAIT_SALE_UEC_APPROVE_PO` and approve PO
+4. Confirm header moves to `WAIT_MGR_UEC_APPROVE_PO`
 
 ### As sale1 (SALE)
 
-1. Login → go to Sale Review
-2. Find UBE_APPROVED line → enter price → Approve
-3. Wait for CRM simulation → quotationNo appears
+1. Login → go to Orders → open a `CREATED` header
+2. Enter price in the commercial review zone → Approve
+3. Wait for CRM simulation → quotationNo appears on the same workspace
 
 ### As cs1 (CS)
 
 1. Login
-2. Go to CS Dashboard Stage 1 → find APPROVED line → set ETD
-3. Go to Order Detail → Generate PO → download
-4. Go to CS Dashboard Stage 2 → upload Shipping Doc + BL → Complete
+2. Go to Orders → open an `APPROVED` header → set ETD in the CS zone
+3. Confirm PO PDF + SI PDF are downloaded and header moves to
+   `WAIT_SALE_UEC_APPROVE_PO`
+4. Stay on the same workspace → upload Shipping Doc + BL → Complete
 
 ### As admin
 

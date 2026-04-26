@@ -1,0 +1,400 @@
+// SQL Server-oriented Prisma reference schema for the next backend project.
+// This file uses singular PascalCase table names and PascalCase physical
+// column names aligned with SQL Server naming best practices.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+}
+
+// SQL Server connector validation in current Prisma tooling does not support
+// enum or Json fields in this reference file, so code-based values are modeled
+// as String columns.
+
+model CustomerCompany {
+  companyCode String   @id @map("CompanyCode")
+  companyName String   @map("CompanyName")
+  createdAt   DateTime @map("CreatedAt")
+  updatedAt   DateTime @map("UpdatedAt")
+
+  users        AppUser[]
+  orderHeaders OrderHeader[]
+
+  @@map("CustomerCompany")
+}
+
+model AppUser {
+  userId            String           @id @map("UserId")
+  userName          String           @unique @map("UserName")
+  roleCode          String           @map("RoleCode")
+  userGroupCode     String           @map("UserGroupCode")
+  companyCode       String           @map("CompanyCode")
+  canCreateOrder    Boolean          @map("CanCreateOrder")
+  shipToAccessMode  String           @map("ShipToAccessMode")
+  isActive          Boolean          @default(true) @map("IsActive")
+  createdAt         DateTime         @map("CreatedAt")
+  updatedAt         DateTime         @map("UpdatedAt")
+
+  company               CustomerCompany           @relation(fields: [companyCode], references: [companyCode])
+  shipToAccesses        UserShipToAccess[]
+  documentTypeAccesses  UserDocumentTypeAccess[]
+  createdOrders         OrderHeader[]             @relation("OrderCreatedByUser")
+  updatedOrders         OrderHeader[]             @relation("OrderUpdatedByUser")
+  lineDocumentsUploaded OrderLineDocument[]       @relation("OrderLineDocumentUploadedByUser")
+  headerDocumentsUploaded OrderHeaderDocument[]   @relation("OrderHeaderDocumentUploadedByUser")
+
+  @@map("AppUser")
+}
+
+model UserShipToAccess {
+  userId     String @map("UserId")
+  shipToCode String @map("ShipToCode")
+
+  appUser AppUser @relation(fields: [userId], references: [userId])
+  shipTo  ShipTo  @relation(fields: [shipToCode], references: [shipToCode])
+
+  @@id([userId, shipToCode])
+  @@map("UserShipToAccess")
+}
+
+model UserDocumentTypeAccess {
+  userId           String       @map("UserId")
+  documentTypeCode String       @map("DocumentTypeCode")
+
+  appUser AppUser @relation(fields: [userId], references: [userId])
+
+  @@id([userId, documentTypeCode])
+  @@map("UserDocumentTypeAccess")
+}
+
+model GroupSaleTypeLookup {
+  groupSaleTypeCode String @id @map("GroupSaleTypeCode")
+  groupSaleTypeName String @map("GroupSaleTypeName")
+
+  shipTos ShipTo[]
+
+  @@map("GroupSaleType")
+}
+
+model Destination {
+  destinationCode String   @id @map("DestinationCode")
+  destinationName String   @map("DestinationName")
+  createdAt       DateTime @map("CreatedAt")
+  updatedAt       DateTime @map("UpdatedAt")
+
+  shipToDestinationMaps ShipToDestinationMap[]
+  orderHeaders          OrderHeader[]
+
+  @@map("Destination")
+}
+
+model ShippingTerm {
+  termCode  String   @id @map("TermCode")
+  termName  String   @map("TermName")
+  createdAt DateTime @map("CreatedAt")
+  updatedAt DateTime @map("UpdatedAt")
+
+  orderHeaders OrderHeader[]
+
+  @@map("ShippingTerm")
+}
+
+model ProductGrade {
+  gradeCode String   @id @map("GradeCode")
+  gradeName String   @map("GradeName")
+  createdAt DateTime @map("CreatedAt")
+  updatedAt DateTime @map("UpdatedAt")
+
+  orderLines OrderLine[]
+
+  @@map("ProductGrade")
+}
+
+model ShipTo {
+  shipToCode        String   @id @map("ShipToCode")
+  shipToName        String   @map("ShipToName")
+  groupSaleTypeCode String   @map("GroupSaleTypeCode")
+  createdAt         DateTime @map("CreatedAt")
+  updatedAt         DateTime @map("UpdatedAt")
+
+  groupSaleType      GroupSaleTypeLookup @relation(fields: [groupSaleTypeCode], references: [groupSaleTypeCode])
+  destinationMaps    ShipToDestinationMap[]
+  userShipToAccesses UserShipToAccess[]
+  poTemplate         PoTemplate?
+  siTemplate         SiTemplate?
+  orderHeaders       OrderHeader[]
+
+  @@map("ShipTo")
+}
+
+model ShipToDestinationMap {
+  shipToCode      String @map("ShipToCode")
+  destinationCode String @map("DestinationCode")
+
+  shipTo      ShipTo      @relation(fields: [shipToCode], references: [shipToCode])
+  destination Destination @relation(fields: [destinationCode], references: [destinationCode])
+
+  @@id([shipToCode, destinationCode])
+  @@map("ShipToDestinationMap")
+}
+
+model PoTemplate {
+  poTemplateId        String   @id @map("PoTemplateId")
+  shipToCode          String   @unique @map("ShipToCode")
+  toBlock             String   @map("ToBlock")
+  consigneeNotify     String   @map("ConsigneeNotify")
+  agent               String?  @map("Agent")
+  endUser             String?  @map("EndUser")
+  termsOfPayment      String?  @map("TermsOfPayment")
+  packingInstructions String?  @map("PackingInstructions")
+  confirmBy           String?  @map("ConfirmBy")
+  createdAt           DateTime @map("CreatedAt")
+  updatedAt           DateTime @map("UpdatedAt")
+
+  shipTo ShipTo @relation(fields: [shipToCode], references: [shipToCode])
+
+  @@map("PoTemplate")
+}
+
+model SiTemplate {
+  siTemplateId       String   @id @map("SiTemplateId")
+  shipToCode         String   @unique @map("ShipToCode")
+  attn               String?  @map("Attn")
+  fromBlock          String?  @map("FromBlock")
+  poNumberHeader     String?  @map("PoNumberHeader")
+  no2Header          String?  @map("No2Header")
+  no2                String?  @map("No2")
+  materialCodeHeader String?  @map("MaterialCodeHeader")
+  materialCode       String?  @map("MaterialCode")
+  noteUnderMaterial  String?  @map("NoteUnderMaterial")
+  userText           String?  @map("UserText")
+  country            String?  @map("Country")
+  shipper            String?  @map("Shipper")
+  feederVessel       String?  @map("FeederVessel")
+  motherVessel       String?  @map("MotherVessel")
+  vesselCompany      String?  @map("VesselCompany")
+  forwarder          String?  @map("Forwarder")
+  portOfLoading      String?  @map("PortOfLoading")
+  consignee          String?  @map("Consignee")
+  blType             String?  @map("BlType")
+  freeTime           String?  @map("FreeTime")
+  courierAddress     String?  @map("CourierAddress")
+  eoriNo             String?  @map("EoriNo")
+  bookingNo          String?  @map("BookingNo")
+  notifyParty        String?  @map("NotifyParty")
+  alsoNotify1        String?  @map("AlsoNotify1")
+  alsoNotify2        String?  @map("AlsoNotify2")
+  deliverTo          String?  @map("DeliverTo")
+  requirements       String?  @map("Requirements")
+  note               String?  @map("Note")
+  note2              String?  @map("Note2")
+  note3              String?  @map("Note3")
+  description        String?  @map("Description")
+  underDescription   String?  @map("UnderDescription")
+  shippingMark       String?  @map("ShippingMark")
+  belowSignature     String?  @map("BelowSignature")
+  createdAt          DateTime @map("CreatedAt")
+  updatedAt          DateTime @map("UpdatedAt")
+
+  shipTo ShipTo @relation(fields: [shipToCode], references: [shipToCode])
+
+  @@map("SiTemplate")
+}
+
+model OrderHeader {
+  orderHeaderId         String              @id @map("OrderHeaderId")
+  purchaseOrderNumber   String              @unique @map("PurchaseOrderNumber")
+  orderDate             DateTime            @map("OrderDate")
+  companyCode           String              @map("CompanyCode")
+  shipToCode            String              @map("ShipToCode")
+  destinationCode       String              @map("DestinationCode")
+  termCode              String              @map("TermCode")
+  orderHeaderStatusCode String              @map("OrderHeaderStatusCode")
+  requestedEtd          DateTime?           @map("RequestedEtd")
+  requestedEta          DateTime?           @map("RequestedEta")
+  price                 Decimal?            @map("Price")
+  currencyCode          String?             @map("CurrencyCode")
+  otherRequestedText    String?             @map("OtherRequestedText")
+  saleNote              String?             @map("SaleNote")
+  quotationNumber       String?             @map("QuotationNumber")
+  isAsap                Boolean             @map("IsAsap")
+  actualEtd             DateTime?           @map("ActualEtd")
+  clearanceDate         DateTime?           @map("ClearanceDate")
+  feederVesselName      String?             @map("FeederVesselName")
+  motherVesselName      String?             @map("MotherVesselName")
+  vesselCompanyName     String?             @map("VesselCompanyName")
+  forwarderName         String?             @map("ForwarderName")
+  vesselEtd             DateTime?           @map("VesselEtd")
+  vesselEta             DateTime?           @map("VesselEta")
+  orderNote             String?             @map("OrderNote")
+  pdfSnapshotJson       String?             @map("PdfSnapshotJson")
+  createdByUserName     String              @map("CreatedByUserName")
+  updatedByUserName     String              @map("UpdatedByUserName")
+  createdAt             DateTime            @map("CreatedAt")
+  updatedAt             DateTime            @map("UpdatedAt")
+
+  company         CustomerCompany       @relation(fields: [companyCode], references: [companyCode], onDelete: NoAction, onUpdate: NoAction)
+  shipTo          ShipTo                @relation(fields: [shipToCode], references: [shipToCode], onDelete: NoAction, onUpdate: NoAction)
+  destination     Destination           @relation(fields: [destinationCode], references: [destinationCode], onDelete: NoAction, onUpdate: NoAction)
+  shippingTerm    ShippingTerm          @relation(fields: [termCode], references: [termCode], onDelete: NoAction, onUpdate: NoAction)
+  createdByUser   AppUser               @relation("OrderCreatedByUser", fields: [createdByUserName], references: [userName], onDelete: NoAction, onUpdate: NoAction)
+  updatedByUser   AppUser               @relation("OrderUpdatedByUser", fields: [updatedByUserName], references: [userName], onDelete: NoAction, onUpdate: NoAction)
+  orderLines      OrderLine[]
+  headerDocuments OrderHeaderDocument[]
+  integrationLogs IntegrationLog[]
+  notificationLogs NotificationLog[]
+  activityLogs    ActivityLog[]
+
+  @@index([companyCode, orderDate])
+  @@index([shipToCode, updatedAt])
+  @@index([orderHeaderStatusCode, updatedAt])
+  @@map("OrderHeader")
+}
+
+model OrderLine {
+  orderLineId    String             @id @map("OrderLineId")
+  orderHeaderId  String             @map("OrderHeaderId")
+  lineNumber     Int                @map("LineNumber")
+  productCode    String?            @map("ProductCode")
+  gradeCode      String?            @map("GradeCode")
+  productName    String?            @map("ProductName")
+  quantity       Decimal            @map("Quantity")
+  unitCode       String?            @map("UnitCode")
+  remarkText     String?            @map("RemarkText")
+  createdAt      DateTime           @map("CreatedAt")
+  updatedAt      DateTime           @map("UpdatedAt")
+
+  orderHeader    OrderHeader        @relation(fields: [orderHeaderId], references: [orderHeaderId], onDelete: NoAction, onUpdate: NoAction)
+  productGrade   ProductGrade?      @relation(fields: [gradeCode], references: [gradeCode], onDelete: NoAction, onUpdate: NoAction)
+  lineDocuments  OrderLineDocument[]
+
+  @@unique([orderHeaderId, lineNumber])
+  @@index([orderHeaderId])
+  @@index([gradeCode])
+  @@map("OrderLine")
+}
+
+model OrderLineDocument {
+  orderLineDocumentId String       @id @map("OrderLineDocumentId")
+  orderLineId         String       @map("OrderLineId")
+  documentTypeCode    String       @map("DocumentTypeCode")
+  fileName            String       @map("FileName")
+  storageUrl          String?      @map("StorageUrl")
+  uploadedByUserName  String       @map("UploadedByUserName")
+  uploadedAt          DateTime     @map("UploadedAt")
+
+  orderLine      OrderLine @relation(fields: [orderLineId], references: [orderLineId], onDelete: NoAction, onUpdate: NoAction)
+  uploadedByUser AppUser   @relation("OrderLineDocumentUploadedByUser", fields: [uploadedByUserName], references: [userName], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([orderLineId, documentTypeCode])
+  @@index([orderLineId])
+  @@map("OrderLineDocument")
+}
+
+model OrderHeaderDocument {
+  orderHeaderDocumentId String       @id @map("OrderHeaderDocumentId")
+  orderHeaderId         String       @map("OrderHeaderId")
+  documentTypeCode      String       @map("DocumentTypeCode")
+  fileName              String       @map("FileName")
+  storageUrl            String?      @map("StorageUrl")
+  dataUrl               String?      @map("DataUrl")
+  uploadedByUserName    String       @map("UploadedByUserName")
+  uploadedAt            DateTime     @map("UploadedAt")
+
+  orderHeader    OrderHeader @relation(fields: [orderHeaderId], references: [orderHeaderId], onDelete: NoAction, onUpdate: NoAction)
+  uploadedByUser AppUser     @relation("OrderHeaderDocumentUploadedByUser", fields: [uploadedByUserName], references: [userName], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([orderHeaderId, documentTypeCode])
+  @@index([orderHeaderId])
+  @@map("OrderHeaderDocument")
+}
+
+model HeaderActionPermission {
+  headerActionCode         String @map("HeaderActionCode")
+  fromOrderHeaderStatusCode String @map("FromOrderHeaderStatusCode")
+  toOrderHeaderStatusCode  String @map("ToOrderHeaderStatusCode")
+  allowedUserGroupCode     String @map("AllowedUserGroupCode")
+
+  @@id([headerActionCode, fromOrderHeaderStatusCode, allowedUserGroupCode])
+  @@index([fromOrderHeaderStatusCode, headerActionCode])
+  @@map("HeaderActionPermission")
+}
+
+model HeaderPermissionPreset {
+  headerPermissionPresetId String   @id @map("HeaderPermissionPresetId")
+  presetName              String   @unique @map("PresetName")
+  isSystemPreset          Boolean  @map("IsSystemPreset")
+  createdAt               DateTime @map("CreatedAt")
+  updatedAt               DateTime @map("UpdatedAt")
+
+  rules HeaderPermissionPresetRule[]
+
+  @@map("HeaderPermissionPreset")
+}
+
+model HeaderPermissionPresetRule {
+  headerPermissionPresetId  String @map("HeaderPermissionPresetId")
+  headerActionCode          String @map("HeaderActionCode")
+  fromOrderHeaderStatusCode String @map("FromOrderHeaderStatusCode")
+  toOrderHeaderStatusCode   String @map("ToOrderHeaderStatusCode")
+  allowedUserGroupCode      String @map("AllowedUserGroupCode")
+
+  headerPermissionPreset HeaderPermissionPreset @relation(fields: [headerPermissionPresetId], references: [headerPermissionPresetId])
+
+  @@id([headerPermissionPresetId, headerActionCode, fromOrderHeaderStatusCode, allowedUserGroupCode])
+  @@map("HeaderPermissionPresetRule")
+}
+
+model AppSetting {
+  settingKey       String @id @map("SettingKey")
+  settingValueJson String @map("SettingValueJson")
+
+  @@map("AppSetting")
+}
+
+model IntegrationLog {
+  integrationLogId       String            @id @map("IntegrationLogId")
+  orderHeaderId          String            @map("OrderHeaderId")
+  integrationTypeCode    String            @map("IntegrationTypeCode")
+  integrationStatusCode  String            @map("IntegrationStatusCode")
+  messageText            String            @map("MessageText")
+  occurredAt             DateTime          @map("OccurredAt")
+
+  orderHeader OrderHeader @relation(fields: [orderHeaderId], references: [orderHeaderId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([orderHeaderId, occurredAt])
+  @@map("IntegrationLog")
+}
+
+model NotificationLog {
+  notificationLogId    String           @id @map("NotificationLogId")
+  orderHeaderId        String?          @map("OrderHeaderId")
+  messageText          String           @map("MessageText")
+  occurredAt           DateTime         @map("OccurredAt")
+  targetRoleCode       String           @map("TargetRoleCode")
+  notificationTypeCode String           @map("NotificationTypeCode")
+  eventName            String           @map("EventName")
+
+  orderHeader OrderHeader? @relation(fields: [orderHeaderId], references: [orderHeaderId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([targetRoleCode, occurredAt])
+  @@map("NotificationLog")
+}
+
+model ActivityLog {
+  activityLogId       String      @id @map("ActivityLogId")
+  orderHeaderId       String?     @map("OrderHeaderId")
+  activityCategoryCode String     @map("ActivityCategoryCode")
+  actionName          String      @map("ActionName")
+  actorUserName       String      @map("ActorUserName")
+  occurredAt          DateTime    @map("OccurredAt")
+  detailText          String      @map("DetailText")
+
+  orderHeader OrderHeader? @relation(fields: [orderHeaderId], references: [orderHeaderId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([activityCategoryCode, occurredAt])
+  @@map("ActivityLog")
+}

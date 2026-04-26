@@ -7,13 +7,25 @@
 
 ## Project Context
 
-This is a **Customer Web Portal** for order management with a line-level
-workflow. Built with Next.js 16.1.6 App Router, TypeScript, Tailwind CSS,
-shadcn/ui, and Zustand. It is a frontend-only MVP — all data lives in
-localStorage via Zustand persist.
+This is a **Customer Web Portal** for order management with a header-level PO
+workflow. One header equals one PO and product rows live underneath it. Built
+with Next.js 16.1.6 App Router, TypeScript, Tailwind CSS, shadcn/ui, and
+Zustand. It is a frontend-only MVP — all data lives in localStorage via Zustand
+persist.
 
-Key reference document: `Objective.md` (contains full feature spec, data models,
-workflow rules, seed data, Zod schemas)
+Key reference documents:
+
+- `FINAL-HANDOFF.md`
+- `requirements/domain/ORDER-STRUCTURE.md`
+- `requirements/workflow/WORKFLOW-AND-PERMISSIONS.md`
+- `requirements/pages/MENU-FLOWS.md`
+- `requirements/pages/ORDERS-WORKSPACE.md`
+- `requirements/blueprint/ORDERS-WORKSPACE-CHECKLIST.md`
+- `requirements/blueprint/Objective.md`
+
+Current-project source references:
+
+- `project/CURRENT-MVP-FILE-MAP.md`
 
 ---
 
@@ -56,20 +68,20 @@ workflow rules, seed data, Zod schemas)
 - Storage key: `'ube-portal-storage'` (localStorage).
 - **REQUIRED**: use `skipHydration: true` in persist config, then call
   `useStore.persist.rehydrate()` inside `useEffect` in the root portal layout.
-  This prevents Next.js SSR/client hydration mismatch. See `Objective.md` Store
-  API section for exact implementation.
+  This prevents Next.js SSR/client hydration mismatch. See
+  `requirements/blueprint/Objective.md` Store API section for exact
+  implementation.
 - Pure selector functions (no side effects) go in `store/selectors.ts`.
 - Initial/seed data goes in `store/defaults.ts`.
 - The store holds: `currentUser`, `users`, `passwords`, `orders`, `companies`,
-  `masterData`, `linePermissionMatrix`, `linePermissionLocked`,
-  `linePermissionCustomPresets`, `notifications`, `activities`,
+  `masterData`, `headerPermissionMatrix`, `headerPermissionLocked`,
+  `headerPermissionCustomPresets`, `notifications`, `activities`,
   `integrationLogs`.
-- Computed values (e.g., `OrderProgressStatus`) are always derived, never
-  stored.
+- Do not reintroduce a derived `OrderProgressStatus` layer above the PO header.
 - Always use `useStore` hook from client components to access state.
-- See `Objective.md` **Store API** section for the full list of actions and
-  their signatures — especially `updateOrderLine` which is required by every
-  workflow step.
+- See `requirements/blueprint/Objective.md` **Store API** section for the full
+  list of actions and their signatures — especially `updateOrderHeader` which is
+  required by every workflow step.
 
 ### Forms
 
@@ -81,10 +93,10 @@ workflow rules, seed data, Zod schemas)
 
 ### PDF Generation
 
-- All PDF generation is in `utils/poPdf.ts` — **raw PDF 1.4 builder** (no jsPDF)
+- All PDF generation is in `utils/poPdf.ts` — custom client-side PDF generator
 - All generation runs in `'use client'` context only
-- Three exported functions:
-  - `createPurchaseOrderPdfDataUrl(input: PoPdfInput): string`
+- Exported functions used by the current MVP:
+  - `createOfficialPoPdfDataUrl(input: PoPdfInput): string`
   - `createShippingInstructionPdfDataUrl(input: PoPdfInput): string`
   - Two internal SI builders dispatched by `shipToId`:
     - `buildBridgestoneSI` → for `SHIP-BRIDGESTONE-POZNAN`
@@ -93,8 +105,8 @@ workflow rules, seed data, Zod schemas)
 - Trigger download: create `<a href={dataUrl} download={filename}>` and click
   programmatically
 - `PoPdfInput` contains both base Order/Line fields AND all SI template fields
-  (Bridgestone-specific + Cooper-specific) — see `Objective.md` TASK-13 for the
-  complete type
+  (Bridgestone-specific + Cooper-specific) — see
+  `requirements/blueprint/Objective.md` TASK-13 for the complete type
 - SI templates are pre-seeded in `masterData.siTemplates` keyed by `shipToId`
 - The `PdfGenerationModal` component reads the matching template, pre-fills the
   form, and calls `onConfirm(poInput, siInput)` — the parent action handler
@@ -102,8 +114,8 @@ workflow rules, seed data, Zod schemas)
 
 ### ID Generation
 
-- Use `nanoid` for generating unique IDs: `import { nanoid } from 'nanoid'`
-- Use for: order IDs, line IDs, document IDs, log entry IDs
+- Use the project's lightweight local ID helpers / prefixed random strings for
+  order IDs, line IDs, document IDs, and log entry IDs
 
 ### UI Components — Priority Order
 
@@ -121,8 +133,9 @@ acceptable.**
 - Use `cn()` from `@/lib/utils` for ALL conditional class merging — never string
   template literals for Tailwind classes.
 
-- Use **lucide-react** for all icons. See Icon Catalog in `Objective.md` for
-  exact icon per action/status.
+- Use **lucide-react** for all icons. See Icon Catalog in
+  `requirements/blueprint/Objective.md` for exact icon per action/status.
+- Use `tnks-data-table` for operational grids that need full table features.
 - Use `AlertDialog` for destructive/irreversible confirms. Use `Dialog` for
   workflow action modals.
 - DO NOT use inline styles. Use Tailwind utility classes only.
@@ -187,8 +200,8 @@ export default function PageName() {
 
 These CSS utility classes MUST be defined in `app/globals.css` using
 `@layer utilities` with `@apply` and CSS variable-based tokens (see
-`Objective.md` UI Guidelines for exact implementation). They automatically adapt
-to dark mode via CSS variables.
+`requirements/blueprint/Objective.md` UI Guidelines for exact implementation).
+They automatically adapt to dark mode via CSS variables.
 
 | Class               | Usage                                                   |
 | ------------------- | ------------------------------------------------------- |
@@ -215,11 +228,12 @@ MUST use `ui-table-head` + `ui-table-standard`. New forms MUST use shadcn
 - All layout surfaces MUST use CSS variable tokens: `bg-background`, `bg-card`,
   `text-foreground`, `text-muted-foreground`, `border-border`
 - Status badge colors MUST include `dark:` variants (see StatusBadge in
-  `Objective.md`)
+  `requirements/blueprint/Objective.md`)
 - The `dark` class is applied to `<html>` by the root layout reacting to
   `store.theme`
 - sweetalert2 dialogs MUST be initialized with the dark-aware
-  `createSwal(isDark)` helper (see `Objective.md` Dark Mode Implementation)
+  `createSwal(isDark)` helper (see `requirements/blueprint/Objective.md` Dark
+  Mode Implementation)
 - Loading spinner: always use `<Loader2 className="animate-spin" />` inside a
   disabled `Button`
 
@@ -241,10 +255,10 @@ if (roles && !roles.includes(currentUser.role)) redirect('/');
 
 ### Action Permission Check
 
-Always use the `canUserRunLineAction` helper from selectors:
+Always use the `canUserRunHeaderAction` helper from selectors:
 
 ```ts
-canUserRunLineAction(user, lineStatus, action, linePermissionMatrix);
+canUserRunHeaderAction(user, headerStatus, action, headerPermissionMatrix);
 // Returns true if user.role === ADMIN OR user's userGroup is in allowedUserGroups
 ```
 
@@ -262,14 +276,15 @@ button. ADMIN always has access.
 
 ## Workflow Action Patterns
 
-When implementing a line action:
+When implementing a header action:
 
 1. Show confirm dialog (sweetalert2)
-2. Check `canUserRunLineAction()` — reject if false
+2. Check `canUserRunHeaderAction()` — reject if false
 3. Validate pre-conditions (e.g., `price > 0`, `actualETD` present)
-4. Update line status in store
+4. Update header status in store
 5. Create activity log entry
-6. Create notification log if applicable
+6. Create notification log if applicable, including both email and system when
+   required
 7. If CRM step: simulate async delay + integration log
 8. Show success toast/alert
 
@@ -280,22 +295,30 @@ When implementing a line action:
 For the APPROVE_LINE action (Sale → CRM):
 
 ```ts
-// Step 1: Simulate API call (2s)
-addIntegrationLog({ orderNo, status: 'PENDING', message: 'Sending to CRM...' });
-await sleep(2000);
-addIntegrationLog({ orderNo, status: 'SUCCESS', message: 'CRM confirmed' });
+// Step 1: Simulate API call (1.8s)
+addIntegrationLog({
+  orderId,
+  integrationType: 'CRM',
+  status: 'PENDING',
+  message: 'Sending to CRM...'
+});
+await sleep(1800);
 
-// Step 2: Simulate callback (5s delay)
-setTimeout(() => {
-  const quotationNo = `QT-${Date.now()}`;
-  updateOrder(orderNo, { quotationNo });
-  addActivity(
-    'CRM_CALLBACK',
-    'CRM System',
-    `Quotation ${quotationNo} received`
-  );
-  addNotification(`Quotation ${quotationNo} ready`, Role.MAIN_TRADER, 'email');
-}, 5000);
+const quotationNo = `QT-${Math.floor(100000 + Math.random() * 900000)}`;
+addIntegrationLog({
+  orderId,
+  integrationType: 'CRM',
+  status: 'SUCCESS',
+  message: `CRM callback success. Quotation: ${quotationNo}`
+});
+updateOrderHeader(orderId, { quotationNo });
+addActivity(
+  'CRM Callback (header)',
+  'CRM System',
+  `Quotation ${quotationNo} received`
+);
+addNotification(`Quotation ${quotationNo} ready`, Role.CS, 'email');
+addNotification(`Quotation ${quotationNo} ready`, Role.CS, 'system');
 ```
 
 ---
@@ -304,13 +327,13 @@ setTimeout(() => {
 
 For `SET_ETD` / CS Dashboard action:
 
-1. Build `PoPdfInput` from order line + SI template fields (pre-filled via
-   `PdfGenerationModal`)
-2. Call `createPurchaseOrderPdfDataUrl(input)` → `poDataUrl` (string)
+1. Build `PoPdfInput` from order header + product rows + SI template fields
+   (pre-filled via `PdfGenerationModal`)
+2. Call `createOfficialPoPdfDataUrl(input)` → `poDataUrl` (string)
 3. Call `createShippingInstructionPdfDataUrl(input)` → `siDataUrl` (string)
    - Internally dispatches to `buildBridgestoneSI` or `buildCooperKunshanSI` by
      `shipToId`
-4. Attach both as `OrderDocument` records to the line via `updateOrderLine`
+4. Attach both as `OrderDocument` records to the header via `updateOrderHeader`
 5. Trigger browser download: `<a href={dataUrl} download={filename}>`
 6. Mark line as `WAIT_SALE_UEC_APPROVE_PO`
 
@@ -320,11 +343,11 @@ parent.
 
 ```ts
 import {
-  createPurchaseOrderPdfDataUrl,
+  createOfficialPoPdfDataUrl,
   createShippingInstructionPdfDataUrl
 } from '@/utils/poPdf';
 
-const poDataUrl = createPurchaseOrderPdfDataUrl(siInput);
+const poDataUrl = createOfficialPoPdfDataUrl(siInput);
 const siDataUrl = createShippingInstructionPdfDataUrl(siInput);
 
 const triggerDownload = (dataUrl: string, filename: string) => {
@@ -333,8 +356,8 @@ const triggerDownload = (dataUrl: string, filename: string) => {
   a.download = filename;
   a.click();
 };
-triggerDownload(poDataUrl, `PO-${line.poNo}.pdf`);
-triggerDownload(siDataUrl, `SI-${line.poNo}.pdf`);
+triggerDownload(poDataUrl, `PO-${header.poNo}.pdf`);
+triggerDownload(siDataUrl, `SI-${header.poNo}.pdf`);
 ```
 
 ---
@@ -349,19 +372,13 @@ const runScheduledChecks = () => {
   const threshold = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
   orders.forEach((order) => {
-    order.items.forEach((line) => {
-      if (line.status === OrderLineStatus.VESSEL_DEPARTED) return;
-      if (!line.asap) return;
-      const eta = new Date(line.requestETA);
-      if (eta >= now && eta <= threshold) {
-        // check for existing notification to avoid duplicates
-        addNotification(
-          `Urgent: ${order.orderNo} line ${line.poNo}`,
-          Role.CS,
-          'system'
-        );
-      }
-    });
+    if (order.status === OrderHeaderStatus.VESSEL_DEPARTED) return;
+    if (!order.asap || !order.requestETA) return;
+    const eta = new Date(order.requestETA);
+    if (eta >= now && eta <= threshold) {
+      // check for existing notification to avoid duplicates
+      addNotification(`Urgent: ${order.poNo}`, Role.CS, 'system');
+    }
   });
 };
 ```
@@ -378,9 +395,9 @@ const runScheduledChecks = () => {
 - Use `dark:` prefix only for status badge colors and semantic accent classes
   that are NOT CSS variable-based.
 - sweetalert2 must use `createSwal(theme === 'dark')` helper (see
-  `Objective.md`) — never call `Swal.fire()` directly.
-- Full implementation pattern in `Objective.md` → Dark Mode Implementation
-  section.
+  `requirements/blueprint/Objective.md`) — never call `Swal.fire()` directly.
+- Full implementation pattern in `requirements/blueprint/Objective.md` → Dark
+  Mode Implementation section.
 
 ---
 
@@ -392,16 +409,18 @@ const runScheduledChecks = () => {
 4. **shadcn/ui first** — no raw `<button>`, `<input>`, `<select>` for
    interactive UI
 5. **No raw Tailwind colors on layout surfaces** — use CSS variable tokens
-6. **Permission check before every action** — never skip `canUserRunLineAction`
+6. **Permission check before every action** — never skip
+   `canUserRunHeaderAction`
 7. **Confirm dialog for all state-changing workflow actions** — use
    `AlertDialog` (destructive) or `Dialog` (workflow)
 8. **sweetalert2 via createSwal helper only** — never `Swal.fire()` directly
 9. **Zod validation for all forms** — never trust raw form data
 10. **Activity log for every workflow action** —
     `addActivity(action, user.username, details)`
-11. **Computed status never persisted** — `OrderProgressStatus` is always
-    derived
-12. **Icon consistency** — follow the Icon Catalog in `Objective.md`
+11. **Do not reintroduce derived progress status** — header status is the
+    canonical workflow state
+12. **Icon consistency** — follow the Icon Catalog in
+    `requirements/blueprint/Objective.md`
 
 ---
 
@@ -409,19 +428,19 @@ const runScheduledChecks = () => {
 
 - [ ] TypeScript: no type errors (`tsc --noEmit`)
 - [ ] All new pages use `ui-page-title` + `ui-page-subtitle`
-- [ ] All new tables use `ui-table-head` + `ui-table-standard` with shadcn
-      `Table` components
+- [ ] All new tables use `tnks-data-table` when advanced operational features
+      are needed, otherwise shadcn `Table` is acceptable for simple static grids
 - [ ] All new forms use shadcn `FormField`/`FormLabel` + Zod validation error
       messages
 - [ ] No raw `<button>`, `<input>`, `<select>` — replaced with shadcn
       equivalents
 - [ ] Layout surfaces use CSS variable tokens (not hardcoded slate/white/gray)
-- [ ] Status badges use `LineStatusBadge` / `OrderProgressBadge` components
+- [ ] Status badges use header-status-centric badge components
 - [ ] Dark mode tested: toggle theme and verify all elements readable
 - [ ] sweetalert2 calls go through `createSwal` helper
 - [ ] Permission checks present on all action handlers
 - [ ] Confirm dialogs on all status-changing actions
-- [ ] Icons match the Icon Catalog in `Objective.md`
+- [ ] Icons match the Icon Catalog in `requirements/blueprint/Objective.md`
 - [ ] Zustand store accessed only via `useStore` in `'use client'` components
 - [ ] No `any` types introduced
 
@@ -432,7 +451,7 @@ const runScheduledChecks = () => {
 The store must be initialized with:
 
 - 5–6 test users (one per role)
-- 9 companies (see Objective.md)
+- 9 companies (see requirements/blueprint/Objective.md)
 - Ship-To records (at least 3, linked to C001)
 - Sample destinations, terms, grades (3–5 each)
 - Standard permission matrix as default

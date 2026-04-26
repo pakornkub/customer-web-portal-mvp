@@ -1,0 +1,466 @@
+// Reference Prisma schema for the next backend project.
+// Adjust provider-specific details such as @db.Text or @db.Date if needed.
+// If the target database is SQL Server and physical names should follow SQL
+// Server best practice, use docs-for-nextjs/database/schema.sqlserver.prisma instead.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = env("DATABASE_PROVIDER")
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  UBE_JAPAN
+  MAIN_TRADER
+  CS
+  SALE
+  SALE_MANAGER
+  ADMIN
+}
+
+enum UserGroup {
+  TRADER
+  UEC_SALE
+  TSL_SALE
+  UEC_MANAGER
+  TSL_CS
+  ADMIN
+}
+
+enum ShipToAccessMode {
+  ALL
+  SELECTED
+}
+
+enum GroupSaleType {
+  OVERSEAS
+  DOMESTIC
+}
+
+enum OrderHeaderStatus {
+  DRAFT
+  CREATED
+  APPROVED
+  WAIT_SALE_UEC_APPROVE_PO
+  WAIT_MGR_UEC_APPROVE_PO
+  VESSEL_SCHEDULED
+  VESSEL_DEPARTED
+}
+
+enum HeaderAction {
+  SUBMIT_LINE
+  APPROVE_LINE
+  SET_ETD
+  APPROVE_SALE_PO
+  APPROVE_MGR_PO
+  UPLOAD_FINAL_DOCS
+}
+
+enum DocumentType {
+  SHIPPING_DOC               @map("Shipping Document")
+  BL
+  INVOICE                    @map("Invoice")
+  COA
+  PO_PDF
+  SHIPPING_INSTRUCTION_PDF
+}
+
+enum NotificationType {
+  EMAIL  @map("email")
+  SYSTEM @map("system")
+}
+
+enum IntegrationStatus {
+  SUCCESS
+  FAILED
+  PENDING
+}
+
+model CustomerCompany {
+  id        String   @id
+  name      String
+  createdAt DateTime @map("created_at")
+  updatedAt DateTime @map("updated_at")
+
+  users  User[]
+  orders Order[]
+
+  @@map("customer_companies")
+}
+
+model User {
+  id               String           @id
+  username         String           @unique
+  role             Role
+  userGroup        UserGroup        @map("user_group")
+  companyId        String           @map("company_id")
+  canCreateOrder   Boolean          @map("can_create_order")
+  shipToAccessMode ShipToAccessMode @map("ship_to_access_mode")
+  isActive         Boolean          @default(true) @map("is_active")
+  createdAt        DateTime         @map("created_at")
+  updatedAt        DateTime         @map("updated_at")
+
+  company              CustomerCompany          @relation(fields: [companyId], references: [id])
+  allowedShipTos       UserAllowedShipTo[]
+  allowedDocumentTypes UserAllowedDocumentType[]
+  createdOrders        Order[]                  @relation("OrderCreatedBy")
+  updatedOrders        Order[]                  @relation("OrderUpdatedBy")
+  itemDocuments        OrderItemDocument[]      @relation("OrderItemDocumentUploadedBy")
+  orderDocuments       OrderDocument[]          @relation("OrderDocumentUploadedBy")
+
+  @@map("users")
+}
+
+model UserAllowedShipTo {
+  userId   String @map("user_id")
+  shipToId String @map("ship_to_id")
+
+  user   User   @relation(fields: [userId], references: [id])
+  shipTo ShipTo @relation(fields: [shipToId], references: [id])
+
+  @@id([userId, shipToId])
+  @@map("user_allowed_ship_tos")
+}
+
+model UserAllowedDocumentType {
+  userId       String       @map("user_id")
+  documentType DocumentType @map("document_type")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([userId, documentType])
+  @@map("user_allowed_document_types")
+}
+
+model GroupSaleTypeMaster {
+  id   GroupSaleType @id
+  name String
+
+  shipTos ShipTo[]
+
+  @@map("group_sale_types")
+}
+
+model Destination {
+  id        String   @id
+  name      String
+  createdAt DateTime @map("created_at")
+  updatedAt DateTime @map("updated_at")
+
+  shipToMappings ShipToDestination[]
+  orders         Order[]
+
+  @@map("destinations")
+}
+
+model Term {
+  id        String   @id
+  name      String
+  createdAt DateTime @map("created_at")
+  updatedAt DateTime @map("updated_at")
+
+  orders Order[]
+
+  @@map("terms")
+}
+
+model Grade {
+  id        String   @id
+  name      String
+  createdAt DateTime @map("created_at")
+  updatedAt DateTime @map("updated_at")
+
+  orderItems OrderItem[]
+
+  @@map("grades")
+}
+
+model ShipTo {
+  id              String        @id
+  name            String
+  groupSaleTypeId GroupSaleType @map("group_sale_type_id")
+  createdAt       DateTime      @map("created_at")
+  updatedAt       DateTime      @map("updated_at")
+
+  groupSaleType GroupSaleTypeMaster @relation(fields: [groupSaleTypeId], references: [id])
+  destinations  ShipToDestination[]
+  visibleTo     UserAllowedShipTo[]
+  poTemplate    PoTemplate?
+  siTemplate    SiTemplate?
+  orders        Order[]
+
+  @@map("ship_tos")
+}
+
+model ShipToDestination {
+  shipToId      String @map("ship_to_id")
+  destinationId String @map("destination_id")
+
+  shipTo      ShipTo      @relation(fields: [shipToId], references: [id])
+  destination Destination @relation(fields: [destinationId], references: [id])
+
+  @@id([shipToId, destinationId])
+  @@map("ship_to_destinations")
+}
+
+model PoTemplate {
+  id                  String   @id
+  shipToId            String   @unique @map("ship_to_id")
+  toBlock             String   @map("to_block")
+  consigneeNotify     String   @map("consignee_notify")
+  agent               String?
+  endUser             String?  @map("end_user")
+  termsOfPayment      String?  @map("terms_of_payment")
+  packingInstructions String?  @map("packing_instructions")
+  confirmBy           String?  @map("confirm_by")
+  createdAt           DateTime @map("created_at")
+  updatedAt           DateTime @map("updated_at")
+
+  shipTo ShipTo @relation(fields: [shipToId], references: [id])
+
+  @@map("po_templates")
+}
+
+model SiTemplate {
+  id                String   @id
+  shipToId          String   @unique @map("ship_to_id")
+  attn              String?
+  fromBlock         String?  @map("from_block")
+  poNumberHeader    String?  @map("po_number_header")
+  no2Header         String?  @map("no2_header")
+  no2               String?
+  materialCodeHeader String? @map("material_code_header")
+  materialCode      String?  @map("material_code")
+  noteUnderMaterial String?  @map("note_under_material")
+  userText          String?  @map("user_text")
+  country           String?
+  shipper           String?
+  feederVessel      String?  @map("feeder_vessel")
+  motherVessel      String?  @map("mother_vessel")
+  vesselCompany     String?  @map("vessel_company")
+  forwarder         String?
+  portOfLoading     String?  @map("port_of_loading")
+  consignee         String?
+  blType            String?  @map("bl_type")
+  freeTime          String?  @map("free_time")
+  courierAddress    String?  @map("courier_address")
+  eoriNo            String?  @map("eori_no")
+  bookingNo         String?  @map("booking_no")
+  notifyParty       String?  @map("notify_party")
+  alsoNotify1       String?  @map("also_notify_1")
+  alsoNotify2       String?  @map("also_notify_2")
+  deliverTo         String?  @map("deliver_to")
+  requirements      String?
+  note              String?
+  note2             String?
+  note3             String?
+  description       String?
+  underDescription  String?  @map("under_description")
+  shippingMark      String?  @map("shipping_mark")
+  belowSignature    String?  @map("below_signature")
+  createdAt         DateTime @map("created_at")
+  updatedAt         DateTime @map("updated_at")
+
+  shipTo ShipTo @relation(fields: [shipToId], references: [id])
+
+  @@map("si_templates")
+}
+
+model Order {
+  id                String              @id
+  poNo              String              @unique @map("po_no")
+  orderDate         DateTime            @map("order_date")
+  companyId         String              @map("company_id")
+  shipToId          String              @map("ship_to_id")
+  destinationId     String              @map("destination_id")
+  termId            String              @map("term_id")
+  status            OrderHeaderStatus
+  requestEtd        DateTime?           @map("request_etd")
+  requestEta        DateTime?           @map("request_eta")
+  price             Decimal?
+  currency          String?
+  otherRequested    String?             @map("other_requested")
+  saleNote          String?             @map("sale_note")
+  quotationNo       String?             @map("quotation_no")
+  asap              Boolean
+  actualEtd         DateTime?           @map("actual_etd")
+  clearanceDate     DateTime?           @map("clearance_date")
+  feederVessel      String?             @map("feeder_vessel")
+  motherVessel      String?             @map("mother_vessel")
+  vesselCompany     String?             @map("vessel_company")
+  forwarder         String?
+  vesselEtd         DateTime?           @map("vessel_etd")
+  vesselEta         DateTime?           @map("vessel_eta")
+  note              String?
+  pdfSnapshotJson   Json?               @map("pdf_snapshot_json")
+  createdByUsername String              @map("created_by")
+  updatedByUsername String              @map("updated_by")
+  createdAt         DateTime            @map("created_at")
+  updatedAt         DateTime            @map("updated_at")
+
+  company         CustomerCompany @relation(fields: [companyId], references: [id])
+  shipTo          ShipTo          @relation(fields: [shipToId], references: [id])
+  destination     Destination     @relation(fields: [destinationId], references: [id])
+  term            Term            @relation(fields: [termId], references: [id])
+  createdBy       User            @relation("OrderCreatedBy", fields: [createdByUsername], references: [username])
+  updatedBy       User            @relation("OrderUpdatedBy", fields: [updatedByUsername], references: [username])
+  items           OrderItem[]
+  documents       OrderDocument[]
+  integrationLogs IntegrationLog[]
+  notificationLogs NotificationLog[]
+  activityLogs    ActivityLog[]
+
+  @@index([companyId, orderDate])
+  @@index([shipToId, updatedAt])
+  @@index([status, updatedAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id              String          @id
+  orderId         String          @map("order_id")
+  lineNo          Int             @map("line_no")
+  productId       String?         @map("product_id")
+  gradeId         String?         @map("grade_id")
+  productName     String?         @map("product_name")
+  qty             Decimal
+  unit            String?
+  remark          String?
+  createdAt       DateTime        @map("created_at")
+  updatedAt       DateTime        @map("updated_at")
+
+  order       Order               @relation(fields: [orderId], references: [id])
+  grade       Grade?              @relation(fields: [gradeId], references: [id])
+  documents   OrderItemDocument[]
+
+  @@unique([orderId, lineNo])
+  @@index([orderId])
+  @@index([gradeId])
+  @@map("order_items")
+}
+
+model OrderItemDocument {
+  id               String       @id
+  orderItemId      String       @map("order_item_id")
+  type             DocumentType
+  filename         String
+  storageUrl       String?      @map("storage_url")
+  dataUrl          String?      @map("data_url")
+  uploadedByUsername String     @map("uploaded_by")
+  uploadedAt       DateTime     @map("uploaded_at")
+
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+  uploadedBy  User      @relation("OrderItemDocumentUploadedBy", fields: [uploadedByUsername], references: [username])
+
+  @@unique([orderItemId, type])
+  @@index([orderItemId])
+  @@map("order_item_documents")
+}
+
+model OrderDocument {
+  id               String       @id
+  orderId          String       @map("order_id")
+  type             DocumentType
+  filename         String
+  storageUrl       String?      @map("storage_url")
+  dataUrl          String?      @map("data_url")
+  uploadedByUsername String     @map("uploaded_by")
+  uploadedAt       DateTime     @map("uploaded_at")
+
+  order      Order @relation(fields: [orderId], references: [id])
+  uploadedBy User  @relation("OrderDocumentUploadedBy", fields: [uploadedByUsername], references: [username])
+
+  @@unique([orderId, type])
+  @@index([orderId])
+  @@map("order_documents")
+}
+
+model HeaderActionPermission {
+  action           HeaderAction
+  fromStatus       OrderHeaderStatus @map("from_status")
+  toStatus         OrderHeaderStatus @map("to_status")
+  allowedUserGroup UserGroup       @map("allowed_user_group")
+
+  @@id([action, fromStatus, allowedUserGroup])
+  @@index([fromStatus, action])
+  @@map("header_action_permissions")
+}
+
+model HeaderPermissionPreset {
+  id        String   @id
+  name      String   @unique
+  isSystem  Boolean  @map("is_system")
+  createdAt DateTime @map("created_at")
+  updatedAt DateTime @map("updated_at")
+
+  rules HeaderPermissionPresetRule[]
+
+  @@map("header_permission_presets")
+}
+
+model HeaderPermissionPresetRule {
+  presetId          String            @map("preset_id")
+  action            HeaderAction
+  fromStatus        OrderHeaderStatus @map("from_status")
+  toStatus          OrderHeaderStatus @map("to_status")
+  allowedUserGroup  UserGroup         @map("allowed_user_group")
+
+  preset HeaderPermissionPreset @relation(fields: [presetId], references: [id])
+
+  @@id([presetId, action, fromStatus, allowedUserGroup])
+  @@map("header_permission_preset_rules")
+}
+
+model AppSetting {
+  key       String @id
+  valueJson Json   @map("value_json")
+
+  @@map("app_settings")
+}
+
+model IntegrationLog {
+  id        String            @id
+  orderId   String            @map("order_id")
+  integrationType String      @map("integration_type")
+  status    IntegrationStatus
+  message   String
+  timestamp DateTime
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId, timestamp])
+  @@map("integration_logs")
+}
+
+model NotificationLog {
+  id        String           @id
+  orderId   String?          @map("order_id")
+  message   String
+  timestamp DateTime
+  role      Role
+  type      NotificationType
+  eventName String           @map("event_name")
+
+  order Order? @relation(fields: [orderId], references: [id])
+
+  @@index([role, timestamp])
+  @@map("notification_logs")
+}
+
+model ActivityLog {
+  id        String   @id
+  orderId   String?  @map("order_id")
+  category  String
+  action    String
+  userName  String   @map("user_name")
+  timestamp DateTime
+  details   String
+
+  order Order? @relation(fields: [orderId], references: [id])
+
+  @@index([category, timestamp])
+  @@map("activity_logs")
+}
